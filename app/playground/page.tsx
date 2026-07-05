@@ -405,7 +405,9 @@ export default function Playground() {
       const res = await fetch("/api/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages: apiMessages, stream: true }),
+        // max_tokens caps the reply so expensive models can't run away and
+        // upstream credit reservations stay small. ~3000 words is plenty for chat.
+        body: JSON.stringify({ model, messages: apiMessages, stream: true, max_tokens: 4096 }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
