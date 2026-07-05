@@ -213,6 +213,9 @@ export async function POST(req: Request) {
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
+        // Vercel's proxy buffers compressible responses; opting out of
+        // compression is what makes SSE actually flush chunk-by-chunk.
+        "Content-Encoding": "none",
       },
     });
   }
