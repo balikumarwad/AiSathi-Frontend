@@ -116,8 +116,8 @@ export async function POST(req: Request) {
     }
   }
 
-  // MVP is non-streaming: metering stays trivially correct.
-  const upstreamBody = { ...body, stream: false, usage: { include: true } };
+  const wantStream = body.stream === true;
+  const upstreamBody = { ...body, stream: wantStream, usage: { include: true } };
 
   let upstream: Response;
   try {
@@ -127,6 +127,94 @@ export async function POST(req: Request) {
       { error: { message: `Upstream unreachable: ${String(e)}`, code: 502 } },
       { status: 502 },
     );
+  }
+
+  // ---- Streaming path: relay SSE bytes live, bill from the final usage chunk ----
+  if (wantStream && upstream.ok && upstream.body) {
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    let buffer = "";
+    let usage: Record<string, unknown> | null = null;
+    let billed = false;
+
+    // Billing runs exactly once — either when we see [DONE] (so we can inject
+    // the cost event before it) or in flush() as a safety net on abrupt ends.
+    const bill = async (): Promise<Record<string, unknown> | null> => {
+      if (billed) return null;
+      billed = true;
+      const promptTok = Number(usage?.prompt_tokens) || 0;
+      const completionTok = Number(usage?.completion_tokens) || 0;
+      const upstreamUsd =
+        Number(usage?.cost) ||
+        (usage ? await estimateUsd(String(body.model), promptTok, completionTok) : 0);
+      const costNpr = usdToNpr(upstreamUsd);
+      let balanceNpr: number | null = null;
+      if (auth.mode === "db" && db && usage) {
+        const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
+          p_user: auth.userId,
+          p_amount_npr: costNpr,
+          p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, stream: true },
+        });
+        if (!dedErr) balanceNpr = round4(Number(newBal));
+        await db.from("usage_log").insert({
+          user_id: auth.userId,
+          api_key_id: auth.keyId,
+          model: String(body.model),
+          prompt_tokens: promptTok,
+          completion_tokens: completionTok,
+          upstream_cost_usd: upstreamUsd,
+          cost_npr: costNpr,
+          status: dedErr ? "deduct_failed" : "ok",
+        });
+        await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", auth.keyId);
+      }
+      return { cost_npr: costNpr, balance_npr: balanceNpr, dev_mode: auth.mode === "dev" };
+    };
+
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      async transform(chunk, controller) {
+        buffer += decoder.decode(chunk, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") {
+              // Bill BEFORE releasing [DONE]; tell the client what it cost.
+              const info = await bill();
+              if (info) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ nepalai: info })}\n\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              continue;
+            }
+            try {
+              const j = JSON.parse(data);
+              if (j.usage) usage = j.usage; // final chunk carries usage + cost
+            } catch {
+              /* partial/non-JSON line — pass through */
+            }
+          }
+          controller.enqueue(encoder.encode(line + "\n"));
+        }
+      },
+      async flush(controller) {
+        if (buffer) controller.enqueue(encoder.encode(buffer));
+        await bill(); // abrupt end without [DONE]: still settle what we saw
+      },
+    });
+
+    upstream.body.pipeTo(transform.writable).catch(() => {
+      /* client disconnected or upstream dropped — flush() already settles */
+    });
+
+    return new Response(transform.readable, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
   }
 
   const payload = await upstream.json().catch(() => null);

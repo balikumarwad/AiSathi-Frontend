@@ -53,16 +53,43 @@ export default function Playground() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ model, messages: next }),
+        body: JSON.stringify({ model, messages: next, stream: true }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error?.message ?? `Error ${res.status}`);
-      } else {
-        const reply = json.choices?.[0]?.message?.content ?? "(empty reply)";
-        setMessages([...next, { role: "assistant", content: reply }]);
-        setLastCost(json.nepalai?.cost_npr ?? null);
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => null);
+        setError(json?.error?.message ?? `Error ${res.status}`);
+        return;
       }
+      // Live SSE: append tokens to the assistant bubble as they arrive.
+      let reply = "";
+      setMessages([...next, { role: "assistant", content: "" }]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const j = JSON.parse(data);
+            if (j.nepalai) setLastCost(j.nepalai.cost_npr ?? null);
+            const delta = j.choices?.[0]?.delta?.content;
+            if (delta) {
+              reply += delta;
+              setMessages([...next, { role: "assistant", content: reply }]);
+            }
+          } catch {
+            /* partial line */
+          }
+        }
+      }
+      if (!reply) setMessages([...next, { role: "assistant", content: "(empty reply)" }]);
     } catch (e) {
       setError(String(e));
     } finally {
