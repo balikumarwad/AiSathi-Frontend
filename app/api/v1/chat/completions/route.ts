@@ -53,6 +53,22 @@ async function authenticate(req: Request): Promise<KeyContext | NextResponse> {
   return { mode: "db", userId: keyRow.user_id, keyId: keyRow.id };
 }
 
+/** Free tier: models whose upstream price is $0 are usable with an empty balance. */
+async function isFreeModel(model: string) {
+  try {
+    const models = (await upstreamModels()) as Array<{
+      id: string;
+      pricing?: { prompt?: string; completion?: string };
+    }>;
+    const m = models.find((x) => x.id === model);
+    return (
+      !!m && (Number(m.pricing?.prompt) || 0) === 0 && (Number(m.pricing?.completion) || 0) === 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Estimate upstream USD cost from token counts when upstream omits `cost`. */
 async function estimateUsd(model: string, promptTok: number, completionTok: number) {
   try {
@@ -102,11 +118,12 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
-    if (Number(bal) <= 0) {
+    if (Number(bal) <= 0 && !(await isFreeModel(String(body.model)))) {
       return NextResponse.json(
         {
           error: {
-            message: "Insufficient credits. Top up your SathiAI balance.",
+            message:
+              "Insufficient credits. Top up your SathiAI balance — or use a free model (रू0/M in the catalog).",
             code: 402,
           },
           balance_npr: Number(bal),
@@ -150,12 +167,16 @@ export async function POST(req: Request) {
       const costNpr = usdToNpr(upstreamUsd);
       let balanceNpr: number | null = null;
       if (auth.mode === "db" && db && usage) {
-        const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
-          p_user: auth.userId,
-          p_amount_npr: costNpr,
-          p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, stream: true },
-        });
-        if (!dedErr) balanceNpr = round4(Number(newBal));
+        let dedErr = null;
+        if (costNpr > 0) {
+          const { data: newBal, error } = await db.rpc("deduct_credits", {
+            p_user: auth.userId,
+            p_amount_npr: costNpr,
+            p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, stream: true },
+          });
+          dedErr = error;
+          if (!dedErr) balanceNpr = round4(Number(newBal));
+        }
         await db.from("usage_log").insert({
           user_id: auth.userId,
           api_key_id: auth.keyId,
@@ -248,19 +269,21 @@ export async function POST(req: Request) {
 
   let balanceNpr: number | null = null;
   if (auth.mode === "db" && db) {
-    const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
-      p_user: auth.userId,
-      p_amount_npr: costNpr,
-      p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok },
-    });
-    if (dedErr) {
-      // Race: balance ran out between the gate and the deduction.
-      return NextResponse.json(
-        { error: { message: "Insufficient credits", code: 402 } },
-        { status: 402 },
-      );
+    if (costNpr > 0) {
+      const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
+        p_user: auth.userId,
+        p_amount_npr: costNpr,
+        p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok },
+      });
+      if (dedErr) {
+        // Race: balance ran out between the gate and the deduction.
+        return NextResponse.json(
+          { error: { message: "Insufficient credits", code: 402 } },
+          { status: 402 },
+        );
+      }
+      balanceNpr = round4(Number(newBal));
     }
-    balanceNpr = round4(Number(newBal));
     await db.from("usage_log").insert({
       user_id: auth.userId,
       api_key_id: auth.keyId,
