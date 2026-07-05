@@ -44,13 +44,13 @@ export async function GET(req: Request) {
       .from("api_keys")
       .select("id, name, key_prefix, active")
       .eq("user_id", uid),
-    db.from("usage_log").select("cost_npr.sum()").eq("user_id", uid).eq("status", "ok"),
+    db.rpc("total_spent", { p_user: uid }),
   ]);
 
   const keyName = new Map((keys ?? []).map((k) => [k.id, `${k.name} (${k.key_prefix}…)`]));
   return NextResponse.json({
     balance_npr: bal === null ? 0 : Number(bal),
-    total_spent_npr: Number((spent?.[0] as { sum?: number } | undefined)?.sum ?? 0),
+    total_spent_npr: Number(spent ?? 0),
     active_keys: (keys ?? []).filter((k) => k.active).length,
     recent_usage: (usage ?? []).map((u) => ({
       ...u,
