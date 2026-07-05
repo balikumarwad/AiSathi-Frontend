@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HeroVideo from "@/components/HeroVideo";
 import Nav from "@/components/Nav";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -18,18 +19,10 @@ export default function Home() {
     <div className="min-h-screen bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        {/* High-res background video (public/hero.mp4). If absent, the
-            animated aurora below still carries the scene. */}
-        <video
-          className="absolute inset-0 h-full w-full object-cover opacity-40"
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster="/hero-poster.jpg"
-        >
-          <source src="/hero.mp4" type="video/mp4" />
-        </video>
+        {/* High-res background video, loaded AFTER first paint so it never
+            blocks the page (components/HeroVideo). Aurora carries the scene
+            until it fades in. */}
+        <HeroVideo />
 
         {/* Animated aurora fallback / underlay */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
