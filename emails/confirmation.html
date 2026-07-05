@@ -1,0 +1,68 @@
+<!-- AIsathi transactional email: signup confirmation (Supabase template).
+     Table-based + inline styles for email-client compatibility. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f3f1;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e5e2de;border-radius:6px;overflow:hidden;">
+        <!-- Header -->
+        <tr>
+          <td style="padding:28px 40px;border-bottom:1px solid #eeebe7;">
+            <span style="font:700 22px Arial,Helvetica,sans-serif;color:#0a0a0a;letter-spacing:-0.5px;"><span style="color:#e11d2e;">AI</span>sathi</span>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:40px 40px 12px;">
+            <h1 style="margin:0;font:700 26px/1.2 Arial,Helvetica,sans-serif;color:#0a0a0a;">Confirm your email</h1>
+            <p style="margin:6px 0 0;font:400 17px 'Segoe Script','Comic Sans MS',cursive;color:#e11d2e;">नमस्ते! स्वागत छ 🙏</p>
+            <p style="margin:22px 0 0;font:400 15px/1.65 Arial,Helvetica,sans-serif;color:#3d3a37;">
+              Welcome to AIsathi — your gateway to hundreds of AI models, priced in rupees.
+              One click and your account is ready:
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:26px 40px 8px;" align="center">
+            <a href="{{ .ConfirmationURL }}"
+               style="display:inline-block;background:#e11d2e;color:#ffffff;text-decoration:none;font:700 15px Arial,Helvetica,sans-serif;padding:15px 44px;border-radius:9999px;">
+              Confirm my email
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px 8px;">
+            <p style="margin:0;font:400 13px/1.6 Arial,Helvetica,sans-serif;color:#8a857f;">
+              Button not working? Copy and paste this link into your browser:
+            </p>
+            <p style="margin:6px 0 0;font:400 12px/1.5 'Courier New',monospace;color:#6b6660;word-break:break-all;">{{ .ConfirmationURL }}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:26px 40px 36px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf9f7;border:1px solid #eeebe7;border-radius:4px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0;font:600 12px Arial,Helvetica,sans-serif;color:#0a0a0a;letter-spacing:0.08em;text-transform:uppercase;">What&rsquo;s waiting for you</p>
+                  <p style="margin:8px 0 0;font:400 13px/1.7 Arial,Helvetica,sans-serif;color:#3d3a37;">
+                    🆓 &nbsp;Free AI models — chat without paying a rupee<br>
+                    ⚡ &nbsp;Claude, GPT, Gemini &amp; 300+ more, priced in NPR<br>
+                    💳 &nbsp;Top up with Khalti or eSewa — no USD card needed
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:22px 40px;border-top:1px solid #eeebe7;">
+            <p style="margin:0;font:400 12px/1.6 Arial,Helvetica,sans-serif;color:#8a857f;">
+              AIsathi · तपाईंको AI साथी · <a href="https://aisathi.io" style="color:#e11d2e;text-decoration:none;">aisathi.io</a><br>
+              You received this because someone signed up with this address. If it wasn&rsquo;t you, simply ignore this email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
