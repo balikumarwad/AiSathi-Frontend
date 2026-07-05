@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { bearerFrom, hashApiKey } from "@/lib/keys";
+import { allow } from "@/lib/ratelimit";
 import { usdToNpr, round4 } from "@/lib/pricing";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { upstreamChat, upstreamModels } from "@/lib/upstream";
@@ -90,6 +91,15 @@ async function estimateUsd(model: string, promptTok: number, completionTok: numb
 export async function POST(req: Request) {
   const auth = await authenticate(req);
   if (auth instanceof NextResponse) return auth;
+
+  // Abuse cap: 60 requests/min per key (dev mode keyed as one bucket).
+  const rlId = auth.mode === "db" ? auth.keyId : "dev";
+  if (!allow(rlId, 60, 60_000)) {
+    return NextResponse.json(
+      { error: { message: "Rate limit exceeded — max 60 requests/minute per key.", code: 429 } },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
 
   let body: Record<string, unknown>;
   try {

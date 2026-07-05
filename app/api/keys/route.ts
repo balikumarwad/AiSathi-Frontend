@@ -39,6 +39,20 @@ export async function POST(req: Request) {
   const db = supabaseAdmin();
   if (!user || !db) return unauthorized();
 
+  // Cap key sprawl: max 10 active keys per account. (The playground's
+  // auto-minted "chat" keys land here too.)
+  const { count } = await db
+    .from("api_keys")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("active", true);
+  if ((count ?? 0) >= 10) {
+    return NextResponse.json(
+      { error: { message: "Key limit reached (10 active). Revoke an old key on your account page first.", code: 429 } },
+      { status: 429 },
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const { key, hash, prefix } = generateApiKey();
   const { error } = await db.from("api_keys").insert({
