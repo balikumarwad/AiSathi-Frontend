@@ -11,6 +11,7 @@ export default function Nav() {
         <Link href="/playground" className="hover:text-white">Playground</Link>
         <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
         <Link href="/topup" className="font-medium text-purple-400 hover:text-purple-300">Top up</Link>
+        <Link href="/account" className="hover:text-white">Account</Link>
       </div>
     </nav>
   );
