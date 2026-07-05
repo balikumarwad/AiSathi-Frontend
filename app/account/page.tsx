@@ -108,8 +108,13 @@ export default function AccountPage() {
           <div className="mt-8 space-y-8">
             <div className="flex items-center justify-between rounded-xl border border-zinc-800 p-4">
               <div>
-                <div className="text-sm text-zinc-400">Signed in as</div>
-                <div className="font-medium">{session.user.email}</div>
+                <div className="text-sm text-zinc-400">
+                  नमस्ते{session.user.user_metadata?.full_name ? `, ${String(session.user.user_metadata.full_name).split(" ")[0]}` : ""} 🙏
+                </div>
+                <div className="font-medium">
+                  {(session.user.user_metadata?.full_name as string) ?? session.user.email}
+                </div>
+                <div className="text-xs text-zinc-500">{session.user.email}</div>
               </div>
               <button
                 onClick={() => sb.auth.signOut()}

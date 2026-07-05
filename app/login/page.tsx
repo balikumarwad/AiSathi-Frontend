@@ -3,8 +3,9 @@
 /**
  * Login / signup — implements the AIsathi design (design/SathiAI.dc.html):
  * Bebas display "Welcome back", red script फेरि स्वागत छ, "Signing in as"
- * email chip with Change, Show/Hide password, red pill CTA. Real Supabase
- * auth underneath: password sign-in/up + magic link, confirmation kept ON.
+ * email chip with Change, Show/Hide password, red pill CTA. Two doors only:
+ * Google one-tap or email+password (confirmation email link, kept ON).
+ * Signup captures name (for greetings) + optional billing address.
  */
 
 import Link from "next/link";
@@ -44,6 +45,7 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,14 +76,15 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/account`,
-            data: { address: address.trim() || null },
+            data: { full_name: name.trim() || null, address: address.trim() || null },
           },
         });
         if (error) throw error;
         if (data.session) router.replace("/account");
-        // No session yet: confirmation required. Send them straight to the
-        // code page — the email carries both a link and a 6-digit code.
-        else router.push(`/verify?email=${encodeURIComponent(email.trim())}`);
+        else
+          setNotice(
+            `✉️ ${name.trim() ? name.trim() + ", " : ""}खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.`,
+          );
       } else {
         const { error } = await sb.auth.signInWithPassword({
           email: email.trim(),
@@ -121,24 +124,6 @@ export default function LoginPage() {
       );
     }
     // On success the browser navigates to Google — no state to reset.
-  }
-
-  async function sendMagicLink() {
-    if (!sb || !email.includes("@")) return;
-    setBusy(true);
-    setError("");
-    try {
-      const { error } = await sb.auth.signInWithOtp({
-        email: email.trim(),
-        options: { emailRedirectTo: `${window.location.origin}/account` },
-      });
-      if (error) throw error;
-      setNotice("✨ जादुई लिङ्क पठाइयो! Check your inbox and click the link to sign in.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
   }
 
   const microLabel = {
@@ -220,23 +205,6 @@ export default function LoginPage() {
                   <button onClick={continueWithEmail} disabled={!email.includes("@")} style={pillBtn} className="disabled:opacity-40">
                     Continue — जारी राख्नुहोस्
                   </button>
-                  <div className="flex items-center gap-3 py-1 text-xs" style={{ color: "var(--text-faint)" }}>
-                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} /> OR
-                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} />
-                  </div>
-                  <button
-                    onClick={sendMagicLink}
-                    disabled={busy || !email.includes("@")}
-                    className="w-full py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
-                    style={{
-                      background: "transparent",
-                      color: "var(--text-strong)",
-                      border: "1px solid var(--border-strong)",
-                      borderRadius: "var(--radius-pill)",
-                    }}
-                  >
-                    ✨ {busy ? "Sending…" : "Email me a magic link"}
-                  </button>
                 </>
               )}
 
@@ -259,16 +227,28 @@ export default function LoginPage() {
                     </div>
                   </div>
                   {isSignup && (
-                    <div>
-                      <div className="mb-1.5"><span style={microLabel}>City / address — optional</span></div>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="e.g. Kathmandu, Bagmati"
-                        style={inputStyle}
-                      />
-                    </div>
+                    <>
+                      <div>
+                        <div className="mb-1.5"><span style={microLabel}>Your name</span></div>
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g. Oscar Neupane"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1.5"><span style={microLabel}>Billing address — optional</span></div>
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="e.g. Kathmandu, Bagmati"
+                          style={inputStyle}
+                        />
+                      </div>
+                    </>
                   )}
                   <div>
                     <div className="mb-1.5"><span style={microLabel}>Password</span></div>

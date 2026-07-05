@@ -16,6 +16,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 type Msg = { role: "user" | "assistant"; content: string; costNpr?: number | null };
 type CatalogModel = {
   id: string;
+  name?: string;
   pricing?: { prompt_npr_per_m: number; completion_npr_per_m: number };
 };
 
@@ -45,6 +46,115 @@ const fieldStyle = {
   border: "1px solid var(--border-strong)",
   outline: "none",
 } as const;
+
+function fmtPrice(m: CatalogModel) {
+  if (!m.pricing) return "";
+  if (isFree(m)) return "Free";
+  return `रू${m.pricing.prompt_npr_per_m} / रू${m.pricing.completion_npr_per_m}`;
+}
+
+/** OpenRouter-style model picker: click to open, type to filter, pick a row. */
+function ModelPicker({
+  models,
+  model,
+  onPick,
+}: {
+  models: CatalogModel[];
+  model: string;
+  onPick: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const ql = q.trim().toLowerCase();
+  const match = (m: CatalogModel) =>
+    !ql || m.id.toLowerCase().includes(ql) || (m.name ?? "").toLowerCase().includes(ql);
+  const free = models.filter(isFree).filter(match);
+  const paid = models.filter((m) => !isFree(m)).filter(match);
+
+  const groupLabel = {
+    padding: "8px 16px 4px",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    color: "var(--text-faint)",
+  };
+
+  const row = (m: CatalogModel) => (
+    <button
+      key={m.id}
+      onClick={() => { onPick(m.id); setOpen(false); setQ(""); }}
+      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+      style={{ background: m.id === model ? "var(--ev-red-15)" : "transparent" }}
+    >
+      <span className="min-w-0">
+        <span className="block truncate text-sm" style={{ color: "var(--text-strong)" }}>
+          {m.name ?? m.id}
+        </span>
+        <span className="block truncate font-[family-name:var(--font-mono)] text-[11px]" style={{ color: "var(--text-faint)" }}>
+          {m.id}
+        </span>
+      </span>
+      <span className="flex-none text-xs font-semibold" style={{ color: isFree(m) ? "#4ade80" : "var(--text-muted)" }}>
+        {fmtPrice(m)}
+      </span>
+    </button>
+  );
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-2 text-left"
+        style={fieldStyle}
+      >
+        <span className="truncate">{model}</span>
+        <span className="flex-none text-xs" style={{ color: "var(--text-faint)" }}>▼</span>
+      </button>
+      {open && (
+        <div
+          className="absolute z-30 mt-1 w-full min-w-[320px] overflow-hidden"
+          style={{
+            background: "#111",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--radius-sm)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
+          }}
+        >
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={`Search ${models.length} models…`}
+            className="w-full px-4 py-3 text-sm outline-none"
+            style={{ background: "transparent", borderBottom: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
+          />
+          <div className="sathi-scroll max-h-80 overflow-y-auto pb-1">
+            {free.length > 0 && <div style={groupLabel}>🆓 Free — works without credits</div>}
+            {free.slice(0, 30).map(row)}
+            {paid.length > 0 && <div style={groupLabel}>⚡ Paid — रू in / out per 1M tokens</div>}
+            {paid.slice(0, 80).map(row)}
+            {free.length + paid.length === 0 && (
+              <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+                No models match &quot;{q}&quot;
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Minimal renderer: alternate prose / fenced code so replies read cleanly. */
 function Content({ text }: { text: string }) {
@@ -227,8 +337,10 @@ export default function Playground() {
     }
   }
 
-  const freeModels = models.filter(isFree);
-  const paidModels = models.filter((m) => !isFree(m)).slice(0, 200);
+  const fullName =
+    (session?.user.user_metadata?.full_name as string | undefined) ??
+    (session?.user.user_metadata?.name as string | undefined);
+  const firstName = fullName?.trim().split(/\s+/)[0];
   const waitingForFirstToken =
     busy && messages.length > 0 && messages[messages.length - 1].role === "user";
 
@@ -244,7 +356,7 @@ export default function Playground() {
                 <label style={microLabel}>Account</label>
                 <div className="flex items-center justify-between" style={{ ...fieldStyle, padding: "12px 14px" }}>
                   <span className="truncate text-sm" style={{ color: "var(--text-body)" }}>
-                    {session.user.email}
+                    {fullName ?? session.user.email}
                   </span>
                   <span className="ml-3 flex-none text-sm font-semibold">
                     {balance !== null ? `रू ${balance}` : "…"}
@@ -302,20 +414,7 @@ export default function Playground() {
           </div>
           <div>
             <label style={microLabel}>Model</label>
-            <select value={model} onChange={(e) => setModel(e.target.value)} style={fieldStyle}>
-              {freeModels.length > 0 && (
-                <optgroup label="Free — works without credits">
-                  {freeModels.map((m) => (
-                    <option key={m.id} value={m.id}>{m.id}</option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label="Paid — metered per message">
-                {[...(models.length === 0 ? [{ id: model }] : []), ...paidModels].map((m) => (
-                  <option key={m.id} value={m.id}>{m.id}</option>
-                ))}
-              </optgroup>
-            </select>
+            <ModelPicker models={models} model={model} onPick={setModel} />
             <p className="mt-1.5 text-xs" style={{ color: "var(--text-faint)" }}>
               See prices on the{" "}
               <a href="/models" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>Models page</a>
@@ -336,7 +435,9 @@ export default function Playground() {
         >
           {messages.length === 0 && (
             <div className="m-auto max-w-[380px] text-center">
-              <div className="mb-2 text-[17px] font-semibold">Say नमस्ते</div>
+              <div className="mb-2 text-[17px] font-semibold">
+                {firstName ? `नमस्ते, ${firstName}! 🙏` : "Say नमस्ते"}
+              </div>
               <p className="m-0 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
                 {apiKey
                   ? "Pick a model above and type your message below. Free models cost nothing — paid ones show रू per message."
