@@ -1,51 +1,48 @@
 "use client";
 
 /**
- * Login / signup — two methods, one page:
- *   - Password: classic email + password (signup sends a confirmation email)
- *   - Magic link: passwordless, emails a one-click sign-in link
- * On success you land in /account. All auth goes through Supabase; this page
- * only ever touches the public anon key.
+ * Login / signup — ChatGPT-style: one centered card, email first, then the
+ * password step. Magic link as the passwordless alternative. Nepali touches
+ * throughout. Auth = Supabase (browser only ever holds the public anon key).
  */
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Nav from "@/components/Nav";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-type Mode = "signin" | "signup" | "magic";
+type Step = "email" | "password";
 
 export default function LoginPage() {
   const router = useRouter();
   const sb = supabaseBrowser();
-  const [mode, setMode] = useState<Mode>("signin");
+  const [step, setStep] = useState<Step>("email");
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
-  // Already signed in? Straight to the account page.
   useEffect(() => {
     sb?.auth.getSession().then(({ data }) => {
       if (data.session) router.replace("/account");
     });
   }, [sb, router]);
 
-  async function submit() {
-    if (!sb) return;
+  function continueWithEmail() {
+    if (!email.includes("@")) return;
+    setError("");
+    setStep("password");
+  }
+
+  async function submitPassword() {
+    if (!sb || password.length < 6) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      if (mode === "magic") {
-        const { error } = await sb.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo: `${window.location.origin}/account` },
-        });
-        if (error) throw error;
-        setNotice("✉️ Magic link sent — check your inbox and click it.");
-      } else if (mode === "signup") {
+      if (isSignup) {
         const { data, error } = await sb.auth.signUp({
           email: email.trim(),
           password,
@@ -53,7 +50,10 @@ export default function LoginPage() {
         });
         if (error) throw error;
         if (data.session) router.replace("/account");
-        else setNotice("✉️ Account created — confirm your email, then sign in.");
+        else
+          setNotice(
+            "✉️ खाता बन्यो! We sent a confirmation email — click the link inside, then sign in. (Delivery can take a few minutes; check spam too.)",
+          );
       } else {
         const { error } = await sb.auth.signInWithPassword({
           email: email.trim(),
@@ -63,93 +63,140 @@ export default function LoginPage() {
         router.replace("/account");
       }
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        msg === "Email not confirmed"
+          ? "इमेल पुष्टि भएको छैन — click the link in your confirmation email first (check spam)."
+          : msg,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendMagicLink() {
+    if (!sb || !email.includes("@")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { error } = await sb.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: `${window.location.origin}/account` },
+      });
+      if (error) throw error;
+      setNotice("✨ जादुई लिङ्क पठाइयो! Check your inbox and click the link to sign in.");
+    } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }
 
-  const tab = (m: Mode, label: string) => (
-    <button
-      key={m}
-      onClick={() => { setMode(m); setError(""); setNotice(""); }}
-      className={
-        "flex-1 rounded-md px-3 py-1.5 text-sm " +
-        (mode === m ? "bg-zinc-800 font-medium" : "text-zinc-500 hover:text-zinc-300")
-      }
-    >
-      {label}
-    </button>
-  );
+  const input =
+    "w-full rounded-full border border-zinc-700 bg-zinc-900/80 px-5 py-3.5 text-sm outline-none transition focus:border-red-500";
+  const primary =
+    "w-full rounded-full bg-red-600 px-5 py-3.5 text-sm font-semibold transition hover:bg-red-500 disabled:opacity-40";
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <Nav />
-      <main className="mx-auto max-w-md px-6 py-16">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">
-          {mode === "signup" ? "Create your account" : "Welcome back, साथी"}
-        </h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          One account for API keys, credits, and the playground.
-        </p>
+    <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
+      {/* Minimal header, ChatGPT-style: just the wordmark */}
+      <header className="p-6">
+        <Link href="/" className="text-xl font-bold tracking-tight">
+          Sathi<span className="text-red-500">AI</span>
+        </Link>
+      </header>
 
-        {!sb ? (
-          <p className="mt-8 text-sm text-yellow-400">Auth is not configured on this deployment.</p>
-        ) : (
-          <div className="mt-8 space-y-4">
-            <div className="flex rounded-lg border border-zinc-800 p-1">
-              {tab("signin", "Sign in")}
-              {tab("signup", "Sign up")}
-              {tab("magic", "Magic link")}
-            </div>
+      <main className="flex flex-1 items-center justify-center px-6 pb-24">
+        <div className="w-full max-w-sm text-center">
+          <div className="text-4xl">🙏</div>
+          <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-bold">
+            {isSignup ? "खाता बनाउनुहोस्" : "फेरि स्वागत छ"}
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400">
+            {isSignup ? "Create your account" : "Welcome back"} — your AI साथी is waiting.
+          </p>
 
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm outline-none focus:border-zinc-600"
-            />
-            {mode !== "magic" && (
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submit()}
-                placeholder={mode === "signup" ? "choose a password (min 6 chars)" : "password"}
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm outline-none focus:border-zinc-600"
-              />
-            )}
+          {!sb ? (
+            <p className="mt-10 text-sm text-yellow-400">Auth is not configured on this deployment.</p>
+          ) : (
+            <div className="mt-10 space-y-3 text-left">
+              {step === "email" && (
+                <>
+                  <input
+                    type="email"
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && continueWithEmail()}
+                    placeholder="Email address / इमेल"
+                    className={input}
+                  />
+                  <button onClick={continueWithEmail} disabled={!email.includes("@")} className={primary}>
+                    जारी राख्नुहोस् — Continue
+                  </button>
 
-            <button
-              onClick={submit}
-              disabled={busy || !email.includes("@") || (mode !== "magic" && password.length < 6)}
-              className="w-full rounded-lg bg-red-600 px-5 py-3 font-medium hover:bg-red-500 disabled:opacity-40"
-            >
-              {busy
-                ? "Working…"
-                : mode === "signup"
-                  ? "Create account"
-                  : mode === "magic"
-                    ? "Email me a magic link"
-                    : "Sign in"}
-            </button>
+                  <div className="flex items-center gap-3 py-2 text-xs text-zinc-600">
+                    <div className="h-px flex-1 bg-zinc-800" /> OR <div className="h-px flex-1 bg-zinc-800" />
+                  </div>
 
-            {notice && (
-              <p className="rounded-lg border border-green-800 bg-green-900/20 p-3 text-sm text-green-300">{notice}</p>
-            )}
-            {error && <p className="text-sm text-red-400">{error}</p>}
-
-            <p className="pt-2 text-xs text-zinc-500">
-              {mode === "signin" ? (
-                <>No account? <button onClick={() => setMode("signup")} className="text-purple-400 hover:text-purple-300">Sign up</button> — takes 20 seconds.</>
-              ) : (
-                <>Already have one? <button onClick={() => setMode("signin")} className="text-purple-400 hover:text-purple-300">Sign in</button></>
+                  <button
+                    onClick={sendMagicLink}
+                    disabled={busy || !email.includes("@")}
+                    className="w-full rounded-full border border-zinc-700 px-5 py-3.5 text-sm font-medium transition hover:border-zinc-500 disabled:opacity-40"
+                  >
+                    ✨ {busy ? "Sending…" : "Email me a magic link"}
+                  </button>
+                </>
               )}
-            </p>
-          </div>
-        )}
+
+              {step === "password" && (
+                <>
+                  <button
+                    onClick={() => { setStep("email"); setError(""); }}
+                    className="w-full truncate rounded-full border border-zinc-800 px-5 py-3 text-center text-sm text-zinc-400 hover:border-zinc-600"
+                    title="change email"
+                  >
+                    {email} <span className="text-zinc-600">· change</span>
+                  </button>
+                  <input
+                    type="password"
+                    autoFocus
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitPassword()}
+                    placeholder={isSignup ? "Choose a password (min 6) / पासवर्ड" : "Password / पासवर्ड"}
+                    className={input}
+                  />
+                  <button onClick={submitPassword} disabled={busy || password.length < 6} className={primary}>
+                    {busy ? "One moment…" : isSignup ? "खाता बनाउनुहोस् — Create account" : "साइन इन — Sign in"}
+                  </button>
+                </>
+              )}
+
+              {notice && (
+                <p className="rounded-2xl border border-green-800 bg-green-900/20 p-4 text-sm leading-relaxed text-green-300">
+                  {notice}
+                </p>
+              )}
+              {error && <p className="px-2 text-sm text-red-400">{error}</p>}
+
+              <p className="pt-4 text-center text-sm text-zinc-500">
+                {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button
+                  onClick={() => { setIsSignup(!isSignup); setError(""); setNotice(""); }}
+                  className="font-medium text-red-400 hover:text-red-300"
+                >
+                  {isSignup ? "Sign in" : "Sign up"}
+                </button>
+              </p>
+            </div>
+          )}
+        </div>
       </main>
+
+      <footer className="pb-6 text-center text-xs text-zinc-600">
+        SathiAI · तपाईंको AI साथी · <Link href="/" className="hover:text-zinc-400">aisathi.io</Link>
+      </footer>
     </div>
   );
 }
