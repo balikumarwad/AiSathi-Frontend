@@ -44,7 +44,6 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,10 +74,7 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/account`,
-            data: {
-              phone: phone.trim() ? `+977${phone.trim().replace(/^\+?977/, "")}` : null,
-              address: address.trim() || null,
-            },
+            data: { address: address.trim() || null },
           },
         });
         if (error) throw error;
@@ -106,6 +102,25 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function signInWithGoogle() {
+    if (!sb) return;
+    setBusy(true);
+    setError("");
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/account` },
+    });
+    if (error) {
+      setBusy(false);
+      setError(
+        error.message.toLowerCase().includes("provider")
+          ? "Google sign-in isn't enabled yet — use email for now."
+          : error.message,
+      );
+    }
+    // On success the browser navigates to Google — no state to reset.
   }
 
   async function sendMagicLink() {
@@ -165,6 +180,31 @@ export default function LoginPage() {
             <div className="space-y-4 text-left">
               {step === "email" && (
                 <>
+                  <button
+                    onClick={signInWithGoogle}
+                    disabled={busy}
+                    className="flex w-full items-center justify-center gap-3 py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
+                    style={{
+                      background: "var(--ev-white)",
+                      color: "#0a0a0a",
+                      border: "none",
+                      borderRadius: "var(--radius-pill)",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                      <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.57 5.57 0 0 1-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24z"/>
+                      <path fill="#FBBC05" d="M5.27 14.29a7.16 7.16 0 0 1 0-4.58V6.62H1.29a12.04 12.04 0 0 0 0 10.76l3.98-3.09z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.97 11.97 0 0 0 12 0 11.99 11.99 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+                    </svg>
+                    Continue with Google
+                  </button>
+
+                  <div className="flex items-center gap-3 py-1 text-xs" style={{ color: "var(--text-faint)" }}>
+                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} /> OR
+                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} />
+                  </div>
+
                   <div>
                     <div className="mb-1.5"><span style={microLabel}>Email</span></div>
                     <input
@@ -219,33 +259,16 @@ export default function LoginPage() {
                     </div>
                   </div>
                   {isSignup && (
-                    <>
-                      <div>
-                        <div className="mb-1.5"><span style={microLabel}>Phone — optional</span></div>
-                        <div className="flex items-center" style={{ ...inputStyle, padding: 0 }}>
-                          <span className="flex-none pl-4 pr-2 text-[15px]" style={{ color: "var(--text-muted)" }}>🇳🇵 +977</span>
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
-                            placeholder="98XXXXXXXX"
-                            className="w-full bg-transparent outline-none"
-                            style={{ padding: "13px 16px 13px 0", color: "var(--text-strong)", fontSize: 15, border: "none" }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mb-1.5"><span style={microLabel}>City / address — optional</span></div>
-                        <input
-                          type="text"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          placeholder="e.g. Kathmandu, Bagmati"
-                          style={inputStyle}
-                        />
-                      </div>
-                    </>
+                    <div>
+                      <div className="mb-1.5"><span style={microLabel}>City / address — optional</span></div>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="e.g. Kathmandu, Bagmati"
+                        style={inputStyle}
+                      />
+                    </div>
                   )}
                   <div>
                     <div className="mb-1.5"><span style={microLabel}>Password</span></div>
