@@ -33,7 +33,7 @@ function VerifyForm() {
   const [error, setError] = useState("");
 
   async function verify() {
-    if (!sb || !email.includes("@") || code.trim().length < 6) return;
+    if (!sb || !email.includes("@") || code.trim().length < 4) return;
     setBusy(true);
     setError("");
     // Signup confirmations use type "signup"; magic-link / re-sent codes use
@@ -76,7 +76,7 @@ function VerifyForm() {
         कोड हाल्नुहोस्
       </div>
       <p className="mb-9 mt-2.5 text-[15px]" style={{ color: "var(--text-body)" }}>
-        We emailed you a 6-digit code. Enter it below and you&apos;re verified — no link needed.
+        We emailed you a one-time code. Enter it below and you&apos;re verified — no link needed.
       </p>
 
       {!sb ? (
@@ -94,16 +94,16 @@ function VerifyForm() {
             />
           </div>
           <div>
-            <div className="mb-1.5"><span style={microLabel}>6-digit code</span></div>
+            <div className="mb-1.5"><span style={microLabel}>Code from your email</span></div>
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={8}
+              maxLength={10}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               onKeyDown={(e) => e.key === "Enter" && verify()}
-              placeholder="000000"
+              placeholder="00000000"
               className="text-center font-[family-name:var(--font-mono)] !text-2xl tracking-[0.4em]"
               style={{ ...inputStyle, fontSize: 24, letterSpacing: "0.4em" }}
             />
@@ -124,7 +124,7 @@ function VerifyForm() {
 
           <button
             onClick={verify}
-            disabled={busy || !email.includes("@") || code.trim().length < 6}
+            disabled={busy || !email.includes("@") || code.trim().length < 4}
             className="w-full p-[15px] text-sm font-bold text-white disabled:opacity-40"
             style={{ background: "var(--accent)", border: "none", borderRadius: "var(--radius-pill)", cursor: "pointer" }}
           >
