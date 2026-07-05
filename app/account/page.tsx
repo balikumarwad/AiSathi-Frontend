@@ -22,8 +22,6 @@ type KeyRow = {
 
 export default function AccountPage() {
   const [session, setSession] = useState<Session | null>(null);
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [keys, setKeys] = useState<KeyRow[]>([]);
   const [newKey, setNewKey] = useState("");
   const [keyName, setKeyName] = useState("my-app");
@@ -50,19 +48,6 @@ export default function AccountPage() {
     });
     return () => sub.subscription.unsubscribe();
   }, [sb, loadKeys]);
-
-  async function signIn() {
-    if (!sb) return;
-    setBusy(true);
-    setError("");
-    const { error } = await sb.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/account` },
-    });
-    setBusy(false);
-    if (error) setError(error.message);
-    else setSent(true);
-  }
 
   async function createKey() {
     if (!session) return;
@@ -108,33 +93,14 @@ export default function AccountPage() {
         )}
 
         {sb && !session && (
-          <div className="mt-8 space-y-4">
-            <p className="text-zinc-400">
-              Sign in with your email — we&apos;ll send you a magic link. No password needed.
-            </p>
-            <div className="flex gap-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && signIn()}
-                placeholder="you@example.com"
-                className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm outline-none focus:border-zinc-600"
-              />
-              <button
-                onClick={signIn}
-                disabled={busy || !email.includes("@")}
-                className="rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium hover:bg-red-500 disabled:opacity-40"
-              >
-                {busy ? "Sending…" : "Send link"}
-              </button>
-            </div>
-            {sent && (
-              <p className="rounded-lg border border-green-800 bg-green-900/20 p-3 text-sm text-green-300">
-                ✉️ Check your inbox — click the link and you&apos;ll land back here, signed in.
-              </p>
-            )}
-            {error && <p className="text-sm text-red-400">{error}</p>}
+          <div className="mt-8">
+            <p className="text-zinc-400">You&apos;re not signed in.</p>
+            <a
+              href="/login"
+              className="mt-4 inline-block rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium hover:bg-red-500"
+            >
+              Sign in / create account →
+            </a>
           </div>
         )}
 
