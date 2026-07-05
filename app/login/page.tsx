@@ -44,6 +44,8 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -71,14 +73,19 @@ export default function LoginPage() {
         const { data, error } = await sb.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: `${window.location.origin}/account` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/account`,
+            data: {
+              phone: phone.trim() ? `+977${phone.trim().replace(/^\+?977/, "")}` : null,
+              address: address.trim() || null,
+            },
+          },
         });
         if (error) throw error;
         if (data.session) router.replace("/account");
-        else
-          setNotice(
-            "✉️ खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.",
-          );
+        // No session yet: confirmation required. Send them straight to the
+        // code page — the email carries both a link and a 6-digit code.
+        else router.push(`/verify?email=${encodeURIComponent(email.trim())}`);
       } else {
         const { error } = await sb.auth.signInWithPassword({
           email: email.trim(),
@@ -211,6 +218,35 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </div>
+                  {isSignup && (
+                    <>
+                      <div>
+                        <div className="mb-1.5"><span style={microLabel}>Phone — optional</span></div>
+                        <div className="flex items-center" style={{ ...inputStyle, padding: 0 }}>
+                          <span className="flex-none pl-4 pr-2 text-[15px]" style={{ color: "var(--text-muted)" }}>🇳🇵 +977</span>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
+                            placeholder="98XXXXXXXX"
+                            className="w-full bg-transparent outline-none"
+                            style={{ padding: "13px 16px 13px 0", color: "var(--text-strong)", fontSize: 15, border: "none" }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-1.5"><span style={microLabel}>City / address — optional</span></div>
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="e.g. Kathmandu, Bagmati"
+                          style={inputStyle}
+                        />
+                      </div>
+                    </>
+                  )}
                   <div>
                     <div className="mb-1.5"><span style={microLabel}>Password</span></div>
                     <div className="relative">
