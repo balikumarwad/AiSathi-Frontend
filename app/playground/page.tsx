@@ -9,7 +9,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import Nav from "@/components/Nav";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type Msg = { role: "user" | "assistant"; content: string; costNpr?: number | null };
 type CatalogModel = {
@@ -79,6 +81,7 @@ export default function Playground() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +92,35 @@ export default function Playground() {
       .then((r) => r.json())
       .then((j) => setModels(j.data ?? []))
       .catch(() => {});
+  }, []);
+
+  // Signed-in users chat with zero setup: if they have no key in this
+  // browser, quietly mint one from their session — same self-serve endpoint
+  // the account page uses. Developers can still paste any key manually.
+  useEffect(() => {
+    const sb = supabaseBrowser();
+    if (!sb) return;
+    let cancelled = false;
+    sb.auth.getSession().then(async ({ data }) => {
+      if (cancelled) return;
+      setSession(data.session);
+      const existing = localStorage.getItem("nepalai_key");
+      if (!data.session || existing) return;
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+        body: JSON.stringify({ name: "chat" }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!cancelled && res.ok && json?.key) {
+        localStorage.setItem("nepalai_key", json.key);
+        setApiKey(json.key);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const refreshBalance = useCallback((key: string) => {
@@ -121,7 +153,7 @@ export default function Playground() {
     const content = input.trim();
     if (!content || busy) return;
     if (!apiKey.trim()) {
-      setError("Add your API key above before sending a message.");
+      setError(session ? "Setting up your account key — try again in a second." : "Sign in or add an API key above before sending a message.");
       return;
     }
     setError("");
@@ -207,20 +239,66 @@ export default function Playground() {
         {/* Controls */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]">
           <div>
-            <label style={microLabel}>AIsathi API key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => saveKey(e.target.value)}
-              placeholder="np-..."
-              style={fieldStyle}
-            />
-            <p className="mt-1.5 text-xs" style={{ color: "var(--text-faint)" }}>
-              Stored only in your browser. Don&apos;t have one?{" "}
-              <a href="/account" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>
-                Create a key ↗
-              </a>
-            </p>
+            {session ? (
+              <>
+                <label style={microLabel}>Account</label>
+                <div className="flex items-center justify-between" style={{ ...fieldStyle, padding: "12px 14px" }}>
+                  <span className="truncate text-sm" style={{ color: "var(--text-body)" }}>
+                    {session.user.email}
+                  </span>
+                  <span className="ml-3 flex-none text-sm font-semibold">
+                    {balance !== null ? `रू ${balance}` : "…"}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-xs" style={{ color: "var(--text-faint)" }}>
+                  Free models cost nothing —{" "}
+                  <a href="/topup" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>
+                    top up
+                  </a>{" "}
+                  to unlock Claude, GPT &amp; more. Developer?{" "}
+                  <a href="/account" className="no-underline" style={{ color: "var(--text-muted)" }}>
+                    API keys →
+                  </a>
+                </p>
+              </>
+            ) : apiKey ? (
+              <>
+                <label style={microLabel}>AIsathi API key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => saveKey(e.target.value)}
+                  placeholder="np-..."
+                  style={fieldStyle}
+                />
+                <p className="mt-1.5 text-xs" style={{ color: "var(--text-faint)" }}>
+                  Stored only in your browser.
+                </p>
+              </>
+            ) : (
+              <>
+                <label style={microLabel}>Start chatting</label>
+                <div className="flex items-center gap-3">
+                  <a
+                    href="/login"
+                    className="flex-none px-6 py-3 text-[13px] font-bold text-white no-underline"
+                    style={{ background: "var(--accent)", borderRadius: "var(--radius-pill)" }}
+                  >
+                    Sign in — it&apos;s free
+                  </a>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => saveKey(e.target.value)}
+                    placeholder="or paste an API key (np-...)"
+                    style={{ ...fieldStyle, flex: 1 }}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs" style={{ color: "var(--text-faint)" }}>
+                  Sign in and chat instantly — free models included, no setup needed.
+                </p>
+              </>
+            )}
           </div>
           <div>
             <label style={microLabel}>Model</label>
@@ -260,8 +338,9 @@ export default function Playground() {
             <div className="m-auto max-w-[380px] text-center">
               <div className="mb-2 text-[17px] font-semibold">Say नमस्ते</div>
               <p className="m-0 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Add your API key and pick a model above, then type your message below to start
-                chatting. Free models cost nothing — paid ones show रू per message.
+                {apiKey
+                  ? "Pick a model above and type your message below. Free models cost nothing — paid ones show रू per message."
+                  : "Sign in (or paste an API key) above, then type your message below to start chatting."}
               </p>
             </div>
           )}
