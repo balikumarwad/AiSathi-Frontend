@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
+/* AIsathi design tokens (from design/SathiAI.dc.html — EVEREST-derived system).
+   Dark-first: near-black page, red accent, hairline borders, sharp radii. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ev-black: #0a0a0a;
+  --ev-ink: #050505;
+  --ev-white: #f5f5f5;
+  --ev-red: #e11d2e;
+  --ev-red-hover: #b91c1c;
+  --ev-red-15: rgba(225, 29, 46, 0.15);
+  --ev-red-60: rgba(225, 29, 46, 0.6);
+  --ev-white-02: rgba(245, 245, 245, 0.02);
+  --ev-white-05: rgba(245, 245, 245, 0.05);
+  --ev-white-10: rgba(245, 245, 245, 0.1);
+  --ev-white-15: rgba(245, 245, 245, 0.15);
+
+  --surface-page: var(--ev-black);
+  --surface-header: rgba(10, 10, 10, 0.85);
+  --surface-inset: var(--ev-white-05);
+
+  --text-strong: var(--ev-white);
+  --text-body: rgba(245, 245, 245, 0.78);
+  --text-muted: rgba(245, 245, 245, 0.55);
+  --text-faint: rgba(245, 245, 245, 0.35);
+
+  --border-hairline: var(--ev-white-10);
+  --border-strong: var(--ev-white-15);
+  --border-accent: var(--ev-red-60);
+
+  --accent: var(--ev-red);
+  --accent-hover: var(--ev-red-hover);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 9999px;
+
+  --background: var(--ev-black);
+  --foreground: var(--ev-white);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
+  background: var(--surface-page);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.sathi-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.sathi-scroll::-webkit-scrollbar-thumb {
+  background: var(--ev-white-15);
+  border-radius: 4px;
 }

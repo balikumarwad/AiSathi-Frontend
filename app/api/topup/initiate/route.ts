@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       );
     }
     amount = Number(plan.price);
-    orderName = `SathiAI — ${plan.display_name}`;
+    orderName = `AIsathi — ${plan.display_name}`;
   } else {
     amount = Number(body.amount_npr);
     if (!Number.isFinite(amount) || amount < MIN_NPR || amount > MAX_NPR) {
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    orderName = `SathiAI credits रू${amount}`;
+    orderName = `AIsathi credits रू${amount}`;
   }
 
   // Rate limit: max 5 pending payments per user (spec §6).

@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Login / signup — ChatGPT-style: one centered card, email first, then the
- * password step. Magic link as the passwordless alternative. Nepali touches
- * throughout. Auth = Supabase (browser only ever holds the public anon key).
+ * Login / signup — implements the AIsathi design (design/SathiAI.dc.html):
+ * Bebas display "Welcome back", red script फेरि स्वागत छ, "Signing in as"
+ * email chip with Change, Show/Hide password, red pill CTA. Real Supabase
+ * auth underneath: password sign-in/up + magic link, confirmation kept ON.
  */
 
 import Link from "next/link";
@@ -13,6 +14,29 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type Step = "email" | "password";
 
+const inputStyle = {
+  width: "100%",
+  padding: "13px 16px",
+  background: "var(--surface-inset)",
+  color: "var(--text-strong)",
+  fontSize: 15,
+  borderRadius: "var(--radius-xs)",
+  border: "1px solid var(--border-strong)",
+  outline: "none",
+} as const;
+
+const pillBtn = {
+  width: "100%",
+  background: "var(--accent)",
+  color: "var(--ev-white)",
+  border: "none",
+  borderRadius: "var(--radius-pill)",
+  padding: 15,
+  font: "700 14px var(--font-body)",
+  letterSpacing: "0.02em",
+  cursor: "pointer",
+} as const;
+
 export default function LoginPage() {
   const router = useRouter();
   const sb = supabaseBrowser();
@@ -20,6 +44,7 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -52,7 +77,7 @@ export default function LoginPage() {
         if (data.session) router.replace("/account");
         else
           setNotice(
-            "✉️ खाता बन्यो! We sent a confirmation email — click the link inside, then sign in. (Delivery can take a few minutes; check spam too.)",
+            "✉️ खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.",
           );
       } else {
         const { error } = await sb.auth.signInWithPassword({
@@ -67,7 +92,9 @@ export default function LoginPage() {
       setError(
         msg === "Email not confirmed"
           ? "इमेल पुष्टि भएको छैन — click the link in your confirmation email first (check spam)."
-          : msg,
+          : msg === "Invalid login credentials"
+            ? "That doesn't look right — check your email and password, or reset below."
+            : msg,
       );
     } finally {
       setBusy(false);
@@ -92,57 +119,74 @@ export default function LoginPage() {
     }
   }
 
-  const input =
-    "w-full rounded-full border border-zinc-700 bg-zinc-900/80 px-5 py-3.5 text-sm outline-none transition focus:border-red-500";
-  const primary =
-    "w-full rounded-full bg-red-600 px-5 py-3.5 text-sm font-semibold transition hover:bg-red-500 disabled:opacity-40";
+  const microLabel = {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: "var(--text-muted)",
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-      {/* Minimal header, ChatGPT-style: just the wordmark */}
+    <div className="flex min-h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <header className="p-6">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          Sathi<span className="text-red-500">AI</span>
+        <Link href="/" className="text-[22px] font-bold tracking-tight">
+          <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
         </Link>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-6 pb-24">
-        <div className="w-full max-w-sm text-center">
-          <div className="text-4xl">🙏</div>
-          <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-bold">
-            {isSignup ? "खाता बनाउनुहोस्" : "फेरि स्वागत छ"}
+      <main className="flex flex-1 flex-col items-center px-6 pb-16 pt-14">
+        <div className="w-full max-w-[420px] text-center">
+          <h1
+            className="m-0 font-[family-name:var(--font-display)] text-[40px] font-normal leading-none tracking-tight"
+          >
+            {isSignup ? "Create account" : "Welcome back"}
           </h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            {isSignup ? "Create your account" : "Welcome back"} — your AI साथी is waiting.
+          <div
+            className="mt-1.5 font-[family-name:var(--font-script)] text-xl"
+            style={{ color: "var(--ev-red)" }}
+          >
+            {isSignup ? "खाता बनाउनुहोस्" : "फेरि स्वागत छ"}
+          </div>
+          <p className="mb-9 mt-2.5 text-[15px]" style={{ color: "var(--text-body)" }}>
+            Your AI assistant, साथी, is ready when you are.
           </p>
 
           {!sb ? (
-            <p className="mt-10 text-sm text-yellow-400">Auth is not configured on this deployment.</p>
+            <p className="text-sm text-yellow-400">Auth is not configured on this deployment.</p>
           ) : (
-            <div className="mt-10 space-y-3 text-left">
+            <div className="space-y-4 text-left">
               {step === "email" && (
                 <>
-                  <input
-                    type="email"
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && continueWithEmail()}
-                    placeholder="Email address / इमेल"
-                    className={input}
-                  />
-                  <button onClick={continueWithEmail} disabled={!email.includes("@")} className={primary}>
-                    जारी राख्नुहोस् — Continue
-                  </button>
-
-                  <div className="flex items-center gap-3 py-2 text-xs text-zinc-600">
-                    <div className="h-px flex-1 bg-zinc-800" /> OR <div className="h-px flex-1 bg-zinc-800" />
+                  <div>
+                    <div className="mb-1.5"><span style={microLabel}>Email</span></div>
+                    <input
+                      type="email"
+                      autoFocus
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && continueWithEmail()}
+                      placeholder="you@example.com"
+                      style={inputStyle}
+                    />
                   </div>
-
+                  <button onClick={continueWithEmail} disabled={!email.includes("@")} style={pillBtn} className="disabled:opacity-40">
+                    Continue — जारी राख्नुहोस्
+                  </button>
+                  <div className="flex items-center gap-3 py-1 text-xs" style={{ color: "var(--text-faint)" }}>
+                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} /> OR
+                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} />
+                  </div>
                   <button
                     onClick={sendMagicLink}
                     disabled={busy || !email.includes("@")}
-                    className="w-full rounded-full border border-zinc-700 px-5 py-3.5 text-sm font-medium transition hover:border-zinc-500 disabled:opacity-40"
+                    className="w-full py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
+                    style={{
+                      background: "transparent",
+                      color: "var(--text-strong)",
+                      border: "1px solid var(--border-strong)",
+                      borderRadius: "var(--radius-pill)",
+                    }}
                   >
                     ✨ {busy ? "Sending…" : "Email me a magic link"}
                   </button>
@@ -151,40 +195,84 @@ export default function LoginPage() {
 
               {step === "password" && (
                 <>
-                  <button
-                    onClick={() => { setStep("email"); setError(""); }}
-                    className="w-full truncate rounded-full border border-zinc-800 px-5 py-3 text-center text-sm text-zinc-400 hover:border-zinc-600"
-                    title="change email"
-                  >
-                    {email} <span className="text-zinc-600">· change</span>
-                  </button>
-                  <input
-                    type="password"
-                    autoFocus
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && submitPassword()}
-                    placeholder={isSignup ? "Choose a password (min 6) / पासवर्ड" : "Password / पासवर्ड"}
-                    className={input}
-                  />
-                  <button onClick={submitPassword} disabled={busy || password.length < 6} className={primary}>
-                    {busy ? "One moment…" : isSignup ? "खाता बनाउनुहोस् — Create account" : "साइन इन — Sign in"}
+                  <div>
+                    <div className="mb-1.5"><span style={microLabel}>Signing in as</span></div>
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ ...inputStyle, padding: "13px 16px" }}
+                    >
+                      <span className="truncate text-[15px]">{email}</span>
+                      <button
+                        onClick={() => { setStep("email"); setError(""); }}
+                        className="ml-3 flex-none text-[13px] font-semibold"
+                        style={{ color: "var(--ev-red)" }}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1.5"><span style={microLabel}>Password</span></div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        autoFocus
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && submitPassword()}
+                        placeholder={isSignup ? "Choose a password (min 6)" : "Enter your password"}
+                        style={{ ...inputStyle, paddingRight: 60 }}
+                      />
+                      <button
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {showPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div
+                      className="flex items-start gap-2 p-3.5 text-left text-[13px] leading-relaxed"
+                      style={{
+                        background: "var(--ev-red-15)",
+                        border: "1px solid var(--border-accent)",
+                        borderRadius: "var(--radius-xs)",
+                        color: "var(--text-strong)",
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
+
+                  <button onClick={submitPassword} disabled={busy || password.length < 6} style={pillBtn} className="disabled:opacity-40">
+                    {busy ? "One moment…" : isSignup ? "Create account — खाता बनाउनुहोस्" : "Sign in — साइन इन"}
                   </button>
                 </>
               )}
 
               {notice && (
-                <p className="rounded-2xl border border-green-800 bg-green-900/20 p-4 text-sm leading-relaxed text-green-300">
+                <p
+                  className="p-4 text-sm leading-relaxed"
+                  style={{
+                    border: "1px solid var(--border-strong)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--surface-inset)",
+                    color: "var(--text-body)",
+                  }}
+                >
                   {notice}
                 </p>
               )}
-              {error && <p className="px-2 text-sm text-red-400">{error}</p>}
 
-              <p className="pt-4 text-center text-sm text-zinc-500">
+              <p className="pt-3 text-center text-sm" style={{ color: "var(--text-muted)" }}>
                 {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button
                   onClick={() => { setIsSignup(!isSignup); setError(""); setNotice(""); }}
-                  className="font-medium text-red-400 hover:text-red-300"
+                  className="font-semibold"
+                  style={{ color: "var(--ev-red)" }}
                 >
                   {isSignup ? "Sign in" : "Sign up"}
                 </button>
@@ -194,8 +282,8 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="pb-6 text-center text-xs text-zinc-600">
-        SathiAI · तपाईंको AI साथी · <Link href="/" className="hover:text-zinc-400">aisathi.io</Link>
+      <footer className="pb-6 text-center text-xs" style={{ color: "var(--text-faint)" }}>
+        AIsathi · तपाईंको AI साथी · <Link href="/" className="hover:underline">aisathi.io</Link>
       </footer>
     </div>
   );

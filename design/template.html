@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="99b117f1-75e8-4171-8990-d254167f196e"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>/* EVEREST Barber webfonts — Google Fonts.
+   Display: Bebas Neue · Script: Give You Glory · Body: Inter
+   Loaded from the Google Fonts CDN (same families the product ships). */
+/* latin-ext */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("7054ef71-599d-4b93-8a0a-97d85bf34be4") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("10466dc0-e558-4794-a1ef-6efb4c16cca7") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Give You Glory';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("dc72a922-3ce1-4278-ae64-1df907d61d8f") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Give You Glory';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ff83be36-b644-47c2-b591-2006e420687a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+</style>
+  <style>/* ============================================================
+   EVEREST Barber — Color tokens
+   Dark-first brand. Near-black canvas, off-white ink, one hot
+   signature red. Everything else is white at low opacity.
+   ============================================================ */
+:root {
+  /* --- Base palette --- */
+  --ev-black: #0a0a0a;        /* canvas / true background */
+  --ev-ink: #050505;          /* deepest black, image mats */
+  --ev-white: #f5f5f5;        /* primary foreground */
+  --ev-red: #e11d2e;          /* signature accent */
+  --ev-red-hover: #b91c1c;    /* red-700, hover/press */
+
+  /* --- White-alpha ramp (borders, muted text, fills) --- */
+  --ev-white-90: rgba(245, 245, 245, 0.9);
+  --ev-white-80: rgba(245, 245, 245, 0.8);
+  --ev-white-70: rgba(245, 245, 245, 0.7);
+  --ev-white-60: rgba(245, 245, 245, 0.6);
+  --ev-white-40: rgba(245, 245, 245, 0.4);
+  --ev-white-30: rgba(245, 245, 245, 0.3);
+  --ev-white-15: rgba(245, 245, 245, 0.15);
+  --ev-white-10: rgba(245, 245, 245, 0.1);
+  --ev-white-05: rgba(245, 245, 245, 0.05);
+  --ev-white-02: rgba(245, 245, 245, 0.02);
+
+  /* --- Red-alpha (subtle accent washes, focus rings) --- */
+  --ev-red-60: rgba(225, 29, 46, 0.6);
+  --ev-red-30: rgba(225, 29, 46, 0.3);
+  --ev-red-15: rgba(225, 29, 46, 0.15);
+
+  /* ============================================================
+     Semantic aliases — reference these in components/screens.
+     ============================================================ */
+  --surface-page: var(--ev-black);
+  --surface-card: transparent;         /* cards are outlined, not filled */
+  --surface-card-hover: var(--ev-white-02);
+  --surface-inset: var(--ev-white-02);  /* map/gallery placeholders */
+  --surface-header: rgba(10, 10, 10, 0.8); /* sticky header, backdrop-blur */
+
+  --text-strong: var(--ev-white);
+  --text-body: var(--ev-white-70);
+  --text-muted: var(--ev-white-60);
+  --text-faint: var(--ev-white-40);
+  --text-accent: var(--ev-red);
+
+  --border-hairline: var(--ev-white-10);
+  --border-strong: var(--ev-white-15);
+  --border-accent: var(--ev-red-60);
+
+  --accent: var(--ev-red);
+  --accent-hover: var(--ev-red-hover);
+  --focus-ring: var(--ev-red);
+}
+</style>
+  <style>/* ============================================================
+   EVEREST Barber — Typography tokens
+   Three-voice system:
+   · Bebas Neue  — tall condensed display, ALL CAPS, wide tracking
+   · Give You Glory — handwritten script, the "Barbers" signature
+   · Inter — body + UI, clean grotesque
+   ============================================================ */
+:root {
+  /* --- Families --- */
+  --font-display: "Bebas Neue", "Oswald", "Arial Narrow", sans-serif;
+  --font-script: "Give You Glory", "Segoe Script", cursive;
+  --font-body: "Inter", Arial, Helvetica, sans-serif;
+
+  /* --- Type scale (display leans huge; body stays calm) --- */
+  --text-hero: clamp(4.5rem, 12vw, 8rem);   /* EVEREST wordmark */
+  --text-display-xl: 3rem;   /* 48px section titles */
+  --text-display-lg: 2.25rem;
+  --text-display-md: 1.5rem; /* price figures */
+  --text-xl: 1.25rem;
+  --text-lg: 1.125rem;
+  --text-base: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* --- Weights (Inter) --- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Line heights --- */
+  --leading-none: 1;
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-relaxed: 1.65;
+
+  /* --- Letter spacing --- */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;      /* UI labels, nav */
+  --tracking-wider: 0.1em;      /* buttons */
+  --tracking-widest: 0.2em;     /* wordmark, footers */
+
+  /* --- Semantic roles --- */
+  --role-wordmark: var(--weight-regular) var(--text-hero)/var(--leading-none) var(--font-display);
+  --role-section-title: var(--weight-regular) var(--text-display-xl)/var(--leading-tight) var(--font-display);
+  --role-price: var(--weight-regular) var(--text-display-md)/var(--leading-none) var(--font-display);
+  --role-signature: var(--weight-regular) var(--text-xl)/var(--leading-snug) var(--font-script);
+  --role-body: var(--weight-regular) var(--text-lg)/var(--leading-relaxed) var(--font-body);
+  --role-label: var(--weight-semibold) var(--text-sm)/var(--leading-snug) var(--font-body);
+}
+</style>
+  <style>/* ============================================================
+   EVEREST Barber — Spacing & layout tokens
+   Standard 4px-based rhythm. Sections breathe: py-24 (6rem) is
+   the signature vertical gap between marketing sections.
+   ============================================================ */
+:root {
+  --space-1: 0.25rem;   /* 4 */
+  --space-2: 0.5rem;    /* 8 */
+  --space-3: 0.75rem;   /* 12 */
+  --space-4: 1rem;      /* 16 */
+  --space-5: 1.25rem;   /* 20 */
+  --space-6: 1.5rem;    /* 24 — page gutter */
+  --space-8: 2rem;      /* 32 */
+  --space-10: 2.5rem;   /* 40 */
+  --space-12: 3rem;     /* 48 */
+  --space-14: 3.5rem;   /* 56 — heading→grid gap */
+  --space-16: 4rem;     /* 64 — footer padding */
+  --space-24: 6rem;     /* 96 — section padding (signature) */
+
+  /* --- Layout --- */
+  --container-max: 72rem;   /* max-w-6xl, 1152px */
+  --page-gutter: var(--space-6);
+  --section-gap: var(--space-24);
+  --grid-gap: var(--space-6);
+}
+</style>
+  <style>/* ============================================================
+   EVEREST Barber — Effects tokens
+   Sharp, near-square corners. Hairline outlines instead of fills.
+   Restrained shadows. Fast color transitions, no bounce.
+   ============================================================ */
+:root {
+  /* --- Radii — deliberately tight; brand reads sharp, not soft --- */
+  --radius-xs: 2px;    /* rounded-sm — buttons, cards, chips */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 9999px;
+
+  /* --- Borders --- */
+  --border-width: 1px;
+  --border-width-accent: 2px;  /* red framed thumbnails */
+
+  /* --- Shadows (used sparingly, on floating framed images) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+  /* --- Blur --- */
+  --blur-header: 8px;   /* backdrop-blur on sticky header */
+
+  /* --- Motion — quick, linear-ish color fades; no spring --- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --duration-fast: 150ms; /* @kind other */
+  --duration-base: 200ms; /* @kind other */
+  --transition-colors: color var(--duration-base) var(--ease-standard),
+                       background-color var(--duration-base) var(--ease-standard),
+                       border-color var(--duration-base) var(--ease-standard);
+}
+</style>
+  <style>/* EVEREST Barber Design System — global entry point.
+   Consumers link THIS file. It only @imports token layers. */
+/* EVEREST Barber webfonts — Google Fonts.
+   Display: Bebas Neue · Script: Give You Glory · Body: Inter
+   Loaded from the Google Fonts CDN (same families the product ships). */
+/* latin-ext */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("7054ef71-599d-4b93-8a0a-97d85bf34be4") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("10466dc0-e558-4794-a1ef-6efb4c16cca7") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Give You Glory';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("dc72a922-3ce1-4278-ae64-1df907d61d8f") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Give You Glory';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ff83be36-b644-47c2-b591-2006e420687a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("4fb091ec-001f-43ee-95c9-9c31a15b19ea") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("e5a0df4e-5eb5-455e-9bfa-fb3c9a335039") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("2eb1a90a-5884-44f1-b7b4-a23a861d8b83") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("22d6b600-ee38-4b98-830c-05ff85bd9713") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("24f03430-f07e-4891-88f0-4251be054742") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("f7e707ce-1751-4b94-b8ef-71ebe5fb8de9") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("c6d77592-dae2-4bc9-b7d3-ec006aa1ebca") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+/* ============================================================
+   EVEREST Barber — Color tokens
+   Dark-first brand. Near-black canvas, off-white ink, one hot
+   signature red. Everything else is white at low opacity.
+   ============================================================ */
+:root {
+  /* --- Base palette --- */
+  --ev-black: #0a0a0a;        /* canvas / true background */
+  --ev-ink: #050505;          /* deepest black, image mats */
+  --ev-white: #f5f5f5;        /* primary foreground */
+  --ev-red: #e11d2e;          /* signature accent */
+  --ev-red-hover: #b91c1c;    /* red-700, hover/press */
+
+  /* --- White-alpha ramp (borders, muted text, fills) --- */
+  --ev-white-90: rgba(245, 245, 245, 0.9);
+  --ev-white-80: rgba(245, 245, 245, 0.8);
+  --ev-white-70: rgba(245, 245, 245, 0.7);
+  --ev-white-60: rgba(245, 245, 245, 0.6);
+  --ev-white-40: rgba(245, 245, 245, 0.4);
+  --ev-white-30: rgba(245, 245, 245, 0.3);
+  --ev-white-15: rgba(245, 245, 245, 0.15);
+  --ev-white-10: rgba(245, 245, 245, 0.1);
+  --ev-white-05: rgba(245, 245, 245, 0.05);
+  --ev-white-02: rgba(245, 245, 245, 0.02);
+
+  /* --- Red-alpha (subtle accent washes, focus rings) --- */
+  --ev-red-60: rgba(225, 29, 46, 0.6);
+  --ev-red-30: rgba(225, 29, 46, 0.3);
+  --ev-red-15: rgba(225, 29, 46, 0.15);
+
+  /* ============================================================
+     Semantic aliases — reference these in components/screens.
+     ============================================================ */
+  --surface-page: var(--ev-black);
+  --surface-card: transparent;         /* cards are outlined, not filled */
+  --surface-card-hover: var(--ev-white-02);
+  --surface-inset: var(--ev-white-02);  /* map/gallery placeholders */
+  --surface-header: rgba(10, 10, 10, 0.8); /* sticky header, backdrop-blur */
+
+  --text-strong: var(--ev-white);
+  --text-body: var(--ev-white-70);
+  --text-muted: var(--ev-white-60);
+  --text-faint: var(--ev-white-40);
+  --text-accent: var(--ev-red);
+
+  --border-hairline: var(--ev-white-10);
+  --border-strong: var(--ev-white-15);
+  --border-accent: var(--ev-red-60);
+
+  --accent: var(--ev-red);
+  --accent-hover: var(--ev-red-hover);
+  --focus-ring: var(--ev-red);
+}
+
+/* ============================================================
+   EVEREST Barber — Typography tokens
+   Three-voice system:
+   · Bebas Neue  — tall condensed display, ALL CAPS, wide tracking
+   · Give You Glory — handwritten script, the "Barbers" signature
+   · Inter — body + UI, clean grotesque
+   ============================================================ */
+:root {
+  /* --- Families --- */
+  --font-display: "Bebas Neue", "Oswald", "Arial Narrow", sans-serif;
+  --font-script: "Give You Glory", "Segoe Script", cursive;
+  --font-body: "Inter", Arial, Helvetica, sans-serif;
+
+  /* --- Type scale (display leans huge; body stays calm) --- */
+  --text-hero: clamp(4.5rem, 12vw, 8rem);   /* EVEREST wordmark */
+  --text-display-xl: 3rem;   /* 48px section titles */
+  --text-display-lg: 2.25rem;
+  --text-display-md: 1.5rem; /* price figures */
+  --text-xl: 1.25rem;
+  --text-lg: 1.125rem;
+  --text-base: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* --- Weights (Inter) --- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Line heights --- */
+  --leading-none: 1;
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-relaxed: 1.65;
+
+  /* --- Letter spacing --- */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;      /* UI labels, nav */
+  --tracking-wider: 0.1em;      /* buttons */
+  --tracking-widest: 0.2em;     /* wordmark, footers */
+
+  /* --- Semantic roles --- */
+  --role-wordmark: var(--weight-regular) var(--text-hero)/var(--leading-none) var(--font-display);
+  --role-section-title: var(--weight-regular) var(--text-display-xl)/var(--leading-tight) var(--font-display);
+  --role-price: var(--weight-regular) var(--text-display-md)/var(--leading-none) var(--font-display);
+  --role-signature: var(--weight-regular) var(--text-xl)/var(--leading-snug) var(--font-script);
+  --role-body: var(--weight-regular) var(--text-lg)/var(--leading-relaxed) var(--font-body);
+  --role-label: var(--weight-semibold) var(--text-sm)/var(--leading-snug) var(--font-body);
+}
+
+/* ============================================================
+   EVEREST Barber — Spacing & layout tokens
+   Standard 4px-based rhythm. Sections breathe: py-24 (6rem) is
+   the signature vertical gap between marketing sections.
+   ============================================================ */
+:root {
+  --space-1: 0.25rem;   /* 4 */
+  --space-2: 0.5rem;    /* 8 */
+  --space-3: 0.75rem;   /* 12 */
+  --space-4: 1rem;      /* 16 */
+  --space-5: 1.25rem;   /* 20 */
+  --space-6: 1.5rem;    /* 24 — page gutter */
+  --space-8: 2rem;      /* 32 */
+  --space-10: 2.5rem;   /* 40 */
+  --space-12: 3rem;     /* 48 */
+  --space-14: 3.5rem;   /* 56 — heading→grid gap */
+  --space-16: 4rem;     /* 64 — footer padding */
+  --space-24: 6rem;     /* 96 — section padding (signature) */
+
+  /* --- Layout --- */
+  --container-max: 72rem;   /* max-w-6xl, 1152px */
+  --page-gutter: var(--space-6);
+  --section-gap: var(--space-24);
+  --grid-gap: var(--space-6);
+}
+
+/* ============================================================
+   EVEREST Barber — Effects tokens
+   Sharp, near-square corners. Hairline outlines instead of fills.
+   Restrained shadows. Fast color transitions, no bounce.
+   ============================================================ */
+:root {
+  /* --- Radii — deliberately tight; brand reads sharp, not soft --- */
+  --radius-xs: 2px;    /* rounded-sm — buttons, cards, chips */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 9999px;
+
+  /* --- Borders --- */
+  --border-width: 1px;
+  --border-width-accent: 2px;  /* red framed thumbnails */
+
+  /* --- Shadows (used sparingly, on floating framed images) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+  /* --- Blur --- */
+  --blur-header: 8px;   /* backdrop-blur on sticky header */
+
+  /* --- Motion — quick, linear-ish color fades; no spring --- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --duration-fast: 150ms; /* @kind other */
+  --duration-base: 200ms; /* @kind other */
+  --transition-colors: color var(--duration-base) var(--ease-standard),
+                       background-color var(--duration-base) var(--ease-standard),
+                       border-color var(--duration-base) var(--ease-standard);
+}
+
+</style>
+  <script src="ce1a3c0f-b181-4fde-87a6-8157594dd00b"></script>
+  <style>
+    :root {
+      --surface-page: #ffffff;
+      --surface-header: rgba(255, 255, 255, 0.88);
+      --surface-inset: rgba(10, 10, 10, 0.045);
+      --surface-card-hover: rgba(10, 10, 10, 0.03);
+      --text-strong: #0a0a0a;
+      --text-body: rgba(10, 10, 10, 0.75);
+      --text-muted: rgba(10, 10, 10, 0.55);
+      --text-faint: rgba(10, 10, 10, 0.42);
+      --border-hairline: rgba(10, 10, 10, 0.12);
+      --border-strong: rgba(10, 10, 10, 0.22);
+      --ev-white-02: rgba(10, 10, 10, 0.02);
+      --ev-white-05: rgba(10, 10, 10, 0.05);
+      --ev-white-10: rgba(10, 10, 10, 0.08);
+      --ev-white-15: rgba(10, 10, 10, 0.12);
+      --ev-ink: #f7f6f4;
+    }
+    body { margin: 0; background: var(--surface-page); }
+    * { box-sizing: border-box; }
+    ::placeholder { color: var(--text-faint); opacity: 1; }
+    .sathi-scroll::-webkit-scrollbar { width: 8px; }
+    .sathi-scroll::-webkit-scrollbar-thumb { background: var(--ev-white-15); border-radius: 4px; }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--surface-page); font-family: var(--font-body); display: flex; flex-direction: column;">
+
+  <!-- ============ HEADER ============ -->
+  <header style="position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; background: var(--surface-header); backdrop-filter: blur(var(--blur-header)); border-bottom: 1px solid var(--border-hairline);">
+    <div style="font: 700 22px var(--font-body); letter-spacing: var(--tracking-tight); color: var(--text-strong); cursor: pointer;" onclick="{{ goHome }}">
+      <span style="color: var(--ev-red);">AI</span>sathi
+    </div>
+    <nav style="display: flex; align-items: center; gap: 28px;">
+      <span onclick="{{ goModels }}" style="{{ navStyle.models }}">Models</span>
+      <span onclick="{{ goChat }}" style="{{ navStyle.chat }}">Playground</span>
+      <span title="Coming soon" style="{{ navStyle.disabled }}">Dashboard</span>
+      <span title="Coming soon" style="{{ navStyle.disabledAccent }}">Top up</span>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 13px; color: var(--text-muted);">{{ userEmail }}</span>
+          <button onclick="{{ handleSignOut }}" style="background: transparent; color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-xs); padding: 8px 16px; font: 600 12px var(--font-body); letter-spacing: var(--tracking-wider); text-transform: uppercase; cursor: pointer; white-space: nowrap;">Sign out</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notSignedIn }}" hint-placeholder-val="{{ true }}">
+        <button onclick="{{ goSignin }}" style="background: var(--accent); color: var(--ev-white); border: none; border-radius: var(--radius-pill); padding: 9px 22px; font: 700 13px var(--font-body); cursor: pointer; white-space: nowrap;">Sign in</button>
+      </sc-if>
+    </nav>
+  </header>
+
+  <!-- ============ SIGN IN SCREEN ============ -->
+  <sc-if value="{{ isSignin }}" hint-placeholder-val="{{ false }}">
+    <main style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 90px 24px 60px;">
+      <div style="width: 100%; max-width: 420px; text-align: center;">
+        <h1 style="font: 400 40px/1 var(--font-display); letter-spacing: var(--tracking-tight); color: var(--text-strong); margin: 0;">Welcome back</h1>
+        <div style="font: var(--role-signature); color: var(--ev-red); margin: 6px 0 2px;">फेरि स्वागत छ</div>
+        <p style="color: var(--text-body); font-size: 15px; margin: 10px 0 36px;">Your AI assistant, साथी, is ready when you are.</p>
+
+        <div style="text-align: left; margin-bottom: 6px;">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted);">Signing in as</span>
+        </div>
+        <sc-if value="{{ editingEmail }}" hint-placeholder-val="{{ false }}">
+          <x-import component-from-global-scope="EVERESTBarberDesignSystem_c05cb2.Input" hint-size="100%,52px" type="email" value="{{ userEmail }}" onchange="{{ handleEmailChange }}" placeholder="you@example.com" style="margin-bottom: 16px;"></x-import>
+        </sc-if>
+        <sc-if value="{{ notEditingEmail }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; background: var(--surface-inset); border: 1px solid var(--border-strong); border-radius: var(--radius-xs); margin-bottom: 16px;">
+            <span style="color: var(--text-strong); font-size: 15px;">{{ userEmail }}</span>
+            <span onclick="{{ startEditEmail }}" style="color: var(--ev-red); font-size: 13px; cursor: pointer; font-weight: 600;">Change</span>
+          </div>
+        </sc-if>
+
+        <div style="position: relative;">
+          <x-import component-from-global-scope="EVERESTBarberDesignSystem_c05cb2.Input" hint-size="100%,68px" label="Password" type="{{ passwordFieldType }}" value="{{ password }}" onchange="{{ handlePasswordChange }}" placeholder="Enter your password" style="margin-bottom: 4px; padding-right: 60px;"></x-import>
+          <span onclick="{{ togglePassword }}" style="position: absolute; right: 14px; bottom: 15px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; letter-spacing: var(--tracking-wide); text-transform: uppercase; line-height: 1;">{{ passwordToggleLabel }}</span>
+        </div>
+        <p style="text-align: left; font-size: 12px; color: var(--text-faint); margin: 6px 0 22px;">Tip: any password of 8+ characters signs you in on this demo.</p>
+
+        <sc-if value="{{ signinError }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 8px; align-items: flex-start; text-align: left; background: var(--ev-red-15); border: 1px solid var(--border-accent); border-radius: var(--radius-xs); padding: 12px 14px; margin-bottom: 18px;">
+            <span style="color: var(--text-strong); font-size: 13px; line-height: 1.45;">{{ signinError }}</span>
+          </div>
+        </sc-if>
+
+        <button onclick="{{ handleSignIn }}" style="width: 100%; background: var(--accent); color: var(--ev-white); border: none; border-radius: var(--radius-pill); padding: 15px; font: 700 14px var(--font-body); letter-spacing: var(--tracking-wide); cursor: pointer;">Sign in</button>
+
+        <p style="margin: 16px 0 0; font-size: 13px;">
+          <span style="color: var(--text-muted); cursor: pointer;" onclick="{{ handleSignIn }}">Forgot password?</span>
+        </p>
+        <p style="margin: 22px 0 0; font-size: 14px; color: var(--text-muted);">Don't have an account? <span style="color: var(--ev-red); font-weight: 600; cursor: pointer;">Sign up</span></p>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- ============ PLAYGROUND / CHAT SCREEN ============ -->
+  <sc-if value="{{ isChat }}" hint-placeholder-val="{{ true }}">
+    <main style="flex: 1; display: flex; flex-direction: column; max-width: 900px; width: 100%; margin: 0 auto; padding: 28px 24px;">
+
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 8px;">
+        <div>
+          <label style="display: block; font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">OpenRouter API key</label>
+          <input type="password" value="{{ apiKey }}" oninput="{{ handleApiKeyChange }}" placeholder="sk-or-v1-..." style="width: 100%; padding: 12px 14px; background: var(--surface-inset); color: var(--text-strong); font-size: 14px; border-radius: var(--radius-xs); border: 1px solid var(--apiKeyBorderColor); outline: none;">
+          <p style="font-size: 12px; color: var(--text-faint); margin: 6px 0 0;">Stored only in your browser, never sent anywhere else. Don't have one? <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--ev-red); text-decoration: none; font-weight: 600;">Get a free key ↗</a></p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Model</label>
+          <select value="{{ model }}" onchange="{{ handleModelChange }}" style="width: 100%; padding: 12px 14px; background: var(--surface-inset); color: var(--text-strong); font-size: 14px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); outline: none;">
+            <sc-for list="{{ modelOptions }}" as="m" hint-placeholder-count="3">
+              <option value="{{ m.id }}">{{ m.label }}</option>
+            </sc-for>
+          </select>
+          <p style="font-size: 12px; color: var(--text-faint); margin: 6px 0 0;">See prices on the <span onclick="{{ goModels }}" style="color: var(--ev-red); cursor: pointer; font-weight: 600;">Models page</span>.</p>
+        </div>
+      </div>
+
+      <div class="sathi-scroll" style="flex: 1; min-height: 420px; max-height: 55vh; overflow-y: auto; background: var(--ev-ink); border: 1px solid var(--border-hairline); border-radius: var(--radius-sm); margin: 14px 0; padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+        <sc-if value="{{ showEmptyState }}" hint-placeholder-val="{{ true }}">
+          <div style="margin: auto; text-align: center; max-width: 380px;">
+            <div style="color: var(--text-strong); font-size: 17px; font-weight: 600; margin-bottom: 8px;">Say नमस्ते</div>
+            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0;">Add your API key and pick a model above, then type your message below to start chatting.</p>
+          </div>
+        </sc-if>
+        <sc-for list="{{ messages }}" as="msg" hint-placeholder-count="0">
+          <div style="{{ msg.wrapStyle }}">
+            <div style="{{ msg.bubbleStyle }}">{{ msg.text }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ isTyping }}" hint-placeholder-val="{{ false }}">
+          <div style="align-self: flex-start; color: var(--text-faint); font-size: 13px; font-style: italic;">साथी is typing…</div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ showComposerHint }}" hint-placeholder-val="{{ false }}">
+        <p style="font-size: 12px; color: var(--ev-red); margin: 0 0 8px;">{{ composerHintText }}</p>
+      </sc-if>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" value="{{ chatInput }}" oninput="{{ handleChatInputChange }}" onkeydown="{{ handleChatKeyDown }}" placeholder="Type a message…" style="flex: 1; padding: 14px 16px; background: var(--surface-inset); color: var(--text-strong); font-size: 14px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); outline: none;">
+        <button onclick="{{ handleSend }}" disabled="{{ sendDisabled }}" style="{{ sendButtonStyle }}">Send</button>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- ============ MODELS SCREEN ============ -->
+  <sc-if value="{{ isModels }}" hint-placeholder-val="{{ false }}">
+    <main style="flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 40px 24px 80px;">
+      <h1 style="font: 400 34px var(--font-display); letter-spacing: var(--tracking-tight); color: var(--text-strong); margin: 0 0 8px;">Models</h1>
+      <p style="color: var(--text-body); font-size: 15px; margin: 0 0 24px; max-width: 640px; line-height: 1.6;">Prices are already converted to Nepali Rupees per million tokens — roughly 750,000 words. FX and our margin are included, so the number you see is what you pay.</p>
+
+      <input type="text" value="{{ modelSearch }}" oninput="{{ handleModelSearchChange }}" placeholder="Search models…" style="width: 100%; padding: 13px 16px; background: var(--surface-inset); color: var(--text-strong); font-size: 14px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); outline: none; margin-bottom: 16px;">
+
+      <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+        <sc-for list="{{ filterChips }}" as="chip" hint-placeholder-count="4">
+          <span onclick="{{ chip.onClick }}" style="{{ chip.style }}">{{ chip.label }}</span>
+        </sc-for>
+      </div>
+
+      <div style="border: 1px solid var(--border-hairline); border-radius: var(--radius-sm); overflow: hidden;">
+        <div style="display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr; padding: 14px 20px; background: var(--ev-white-02); border-bottom: 1px solid var(--border-hairline);">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted);">Model</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted);" title="How much text the model can read at once, in tokens (~0.75 words each).">Context ⓘ</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted);">Input · NPR/1M</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-muted);">Output · NPR/1M</span>
+        </div>
+        <sc-for list="{{ filteredModels }}" as="model" hint-placeholder-count="6">
+          <div style="display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr; padding: 16px 20px; border-bottom: 1px solid var(--border-hairline); align-items: center;">
+            <div>
+              <div style="line-height: 1.4;">
+                <span style="display: inline-block; color: var(--text-strong); font-size: 15px; font-weight: 600;">{{ model.name }}</span>
+                <sc-if value="{{ model.badge }}" hint-placeholder-val="{{ false }}">
+                  <span style="display: inline-block; vertical-align: middle; margin-left: 8px; {{ model.badgeStyle }}">{{ model.badge }}</span>
+                </sc-if>
+              </div>
+              <div style="color: var(--text-faint); font-size: 12px; font-family: monospace; margin-top: 8px;">{{ model.id }}</div>
+            </div>
+            <span style="color: var(--text-body); font-size: 14px;">{{ model.contextLabel }}</span>
+            <span style="color: var(--text-strong); font-size: 14px; font-weight: 600;">{{ model.inputLabel }}</span>
+            <span style="color: var(--text-strong); font-size: 14px; font-weight: 600;">{{ model.outputLabel }}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 14px;">No models match "{{ modelSearch }}". Try a different search or clear the filter.</div>
+        </sc-if>
+      </div>
+    </main>
+  </sc-if>
+
+  <footer style="text-align: center; padding: 24px; color: var(--text-faint); font-size: 12px; border-top: 1px solid var(--border-hairline);">
+    AIsathi · तपाईंको AI साथी · aisathi.io
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+const MODELS = [
+  { id: "poolside/laguna-xs-2.1:free", name: "Poolside: Laguna XS 2.1", freeVariant: true, context: 262144, input: 0, output: 0, tags: ["free", "text"] },
+  { id: "poolside/laguna-xs-2.1", name: "Poolside: Laguna XS 2.1", context: 262144, input: 10.5, output: 21, tags: ["cheap", "text"], badge: "Best value" },
+  { id: "anthropic/claude-sonnet-5", name: "Anthropic: Claude Sonnet 5", context: 1000000, input: 350, output: 1750, tags: ["text", "premium"] },
+  { id: "google/gemini-3.1-flash-lite-image", name: "Google: Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)", context: 65536, input: 43.75, output: 262.5, tags: ["vision"] },
+  { id: "sakana/fugu-ultra", name: "Sakana: Fugu Ultra", context: 1000000, input: 875, output: 5250, tags: ["text", "premium"] },
+  { id: "google/gemini-3.1-flash-image", name: "Google: Nano Banana 2 (Gemini 3.1 Flash Image)", context: 131072, input: 87.5, output: 525, tags: ["vision"] },
+  { id: "google/gemini-3-pro-image", name: "Google: Nano Banana Pro (Gemini 3 Pro Image)", context: 65536, input: 350, output: 2100, tags: ["vision", "premium"] },
+  { id: "cohere/north-mini-code:free", name: "Cohere: North Mini Code", freeVariant: true, context: 256000, input: 0, output: 0, tags: ["free", "text"] },
+  { id: "z-ai/glm-5.2", name: "Z.ai: GLM 5.2", context: 1048576, input: 127.4, output: 400.4, tags: ["cheap", "text"] },
+  { id: "openrouter/fusion", name: "OpenRouter: Fusion", context: 1000000, input: 175, output: 525, tags: ["text"] },
+];
+
+function fmtContext(n) {
+  return n.toLocaleString("en-US");
+}
+function fmtPrice(n) {
+  if (n === 0) return "Free";
+  return "₨" + (Number.isInteger(n) ? n : n.toFixed(2));
+}
+
+class Component extends DCLogic {
+  state = {
+    screen: "chat",
+    signedIn: false,
+    userEmail: "neupaneoscar143@gmail.com",
+    editingEmail: false,
+    password: "",
+    showPassword: false,
+    signinError: "",
+    apiKey: "",
+    model: MODELS[0].id,
+    messages: [],
+    chatInput: "",
+    isTyping: false,
+    chatError: "",
+    modelSearch: "",
+    modelFilter: "all",
+  };
+
+  goHome = () => this.setState({ screen: "chat" });
+  goChat = () => this.setState({ screen: "chat" });
+  goModels = () => this.setState({ screen: "models" });
+  goSignin = () => this.setState({ screen: "signin", signinError: "" });
+
+  handleEmailChange = (e) => this.setState({ userEmail: e.target.value });
+  startEditEmail = () => this.setState({ editingEmail: true });
+  handlePasswordChange = (e) => this.setState({ password: e.target.value, signinError: "" });
+  togglePassword = () => this.setState((s) => ({ showPassword: !s.showPassword }));
+
+  handleSignIn = () => {
+    const { password } = this.state;
+    if (password.length >= 8) {
+      this.setState({ signedIn: true, screen: "chat", signinError: "", password: "" });
+    } else {
+      this.setState({ signinError: "That password doesn't look right. It needs at least 8 characters — try again or reset it." });
+    }
+  };
+
+  handleSignOut = () => this.setState({ signedIn: false, screen: "chat" });
+
+  handleApiKeyChange = (e) => this.setState({ apiKey: e.target.value, chatError: "" });
+  handleModelChange = (e) => this.setState({ model: e.target.value });
+  handleChatInputChange = (e) => this.setState({ chatInput: e.target.value });
+  handleChatKeyDown = (e) => {
+    if (e.key === "Enter") this.handleSend();
+  };
+
+  handleSend = () => {
+    const { apiKey, chatInput, messages } = this.state;
+    if (!chatInput.trim()) return;
+    if (!apiKey.trim()) {
+      this.setState({ chatError: "Add your API key above before sending a message." });
+      return;
+    }
+    const userMsg = { role: "user", text: chatInput.trim() };
+    this.setState({ messages: [...messages, userMsg], chatInput: "", isTyping: true, chatError: "" });
+    setTimeout(() => {
+      this.setState((s) => ({
+        messages: [...s.messages, { role: "assistant", text: "नमस्ते! This is a prototype reply — in the real app, " + s.model + " would answer here." }],
+        isTyping: false,
+      }));
+    }, 900);
+  };
+
+  handleModelSearchChange = (e) => this.setState({ modelSearch: e.target.value });
+  setModelFilter = (f) => this.setState({ modelFilter: f });
+
+  renderVals() {
+    const s = this.state;
+    const navBase = { cursor: "pointer", fontSize: "14px", fontWeight: 500, transition: "var(--transition-colors)" };
+    const navStyle = {
+      models: { ...navBase, color: s.screen === "models" ? "var(--text-strong)" : "var(--text-muted)" },
+      chat: { ...navBase, color: s.screen === "chat" ? "var(--text-strong)" : "var(--text-muted)" },
+      disabled: { ...navBase, color: "var(--text-faint)", cursor: "default" },
+      disabledAccent: { ...navBase, color: "var(--text-faint)", cursor: "default" },
+    };
+    const cssify = (o) => Object.entries(o).map(([k, v]) => k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase()) + ":" + v).join(";");
+
+    const modelOptions = MODELS.map((m) => ({ id: m.id, label: m.name + (m.freeVariant ? " (free)" : "") }));
+
+    const sendDisabled = !s.chatInput.trim();
+    const sendButtonStyle = cssify({
+      background: sendDisabled ? "var(--ev-white-10)" : "var(--accent)",
+      color: sendDisabled ? "var(--text-faint)" : "var(--ev-white)",
+      border: "none",
+      borderRadius: "var(--radius-xs)",
+      padding: "14px 28px",
+      font: "700 14px var(--font-body)",
+      cursor: sendDisabled ? "not-allowed" : "pointer",
+      transition: "var(--transition-colors)",
+    });
+
+    const messages = s.messages.map((m) => ({
+      text: m.text,
+      wrapStyle: cssify({ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }),
+      bubbleStyle: cssify({
+        maxWidth: "72%",
+        padding: "10px 15px",
+        borderRadius: "var(--radius-sm)",
+        fontSize: "14px",
+        lineHeight: "1.5",
+        background: m.role === "user" ? "var(--accent)" : "var(--ev-white-05)",
+        color: m.role === "user" ? "var(--ev-white)" : "var(--text-strong)",
+        border: m.role === "user" ? "none" : "1px solid var(--border-hairline)",
+      }),
+    }));
+
+    const filters = [
+      { key: "all", label: "All" },
+      { key: "free", label: "Free" },
+      { key: "cheap", label: "Cheap" },
+      { key: "vision", label: "Vision" },
+      { key: "premium", label: "Premium" },
+    ];
+    const filterChips = filters.map((f) => ({
+      label: f.label,
+      onClick: () => this.setModelFilter(f.key),
+      style: cssify({
+        padding: "7px 16px",
+        borderRadius: "var(--radius-pill)",
+        fontSize: "13px",
+        fontWeight: 600,
+        cursor: "pointer",
+        border: "1px solid " + (s.modelFilter === f.key ? "var(--ev-red)" : "var(--border-strong)"),
+        background: s.modelFilter === f.key ? "var(--ev-red-15)" : "transparent",
+        color: s.modelFilter === f.key ? "var(--ev-white)" : "var(--text-muted)",
+      }),
+    }));
+
+    const q = s.modelSearch.trim().toLowerCase();
+    const filteredModels = MODELS.filter((m) => {
+      const matchesQuery = !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
+      const matchesFilter = s.modelFilter === "all" || m.tags.includes(s.modelFilter);
+      return matchesQuery && matchesFilter;
+    }).map((m) => ({
+      id: m.id,
+      name: m.name,
+      contextLabel: fmtContext(m.context),
+      inputLabel: fmtPrice(m.input),
+      outputLabel: fmtPrice(m.output),
+      badge: m.badge || (m.freeVariant ? "Free" : ""),
+      badgeStyle: cssify({
+        fontSize: "10px",
+        fontWeight: 700,
+        letterSpacing: "0.05em",
+        textTransform: "uppercase",
+        padding: "2px 7px",
+        borderRadius: "var(--radius-xs)",
+        border: "1px solid var(--border-accent)",
+        color: "var(--ev-red)",
+        whiteSpace: "nowrap",
+        flexShrink: "0",
+      }),
+    }));
+
+    return {
+      screen: s.screen,
+      isSignin: s.screen === "signin",
+      isChat: s.screen === "chat",
+      isModels: s.screen === "models",
+      signedIn: s.signedIn,
+      notSignedIn: !s.signedIn,
+      userEmail: s.userEmail,
+      editingEmail: s.editingEmail,
+      notEditingEmail: !s.editingEmail,
+      password: s.password,
+      passwordFieldType: s.showPassword ? "text" : "password",
+      passwordToggleLabel: s.showPassword ? "Hide" : "Show",
+      signinError: s.signinError,
+      apiKey: s.apiKey,
+      apiKeyBorderColor: "var(--border-strong)",
+      model: s.model,
+      modelOptions,
+      chatInput: s.chatInput,
+      messages,
+      showEmptyState: s.messages.length === 0,
+      isTyping: s.isTyping,
+      showComposerHint: !!s.chatError,
+      composerHintText: s.chatError,
+      sendDisabled,
+      sendButtonStyle,
+      modelSearch: s.modelSearch,
+      filterChips,
+      filteredModels,
+      noResults: filteredModels.length === 0,
+      navStyle,
+      goHome: this.goHome,
+      goChat: this.goChat,
+      goModels: this.goModels,
+      goSignin: this.goSignin,
+      handleSignOut: this.handleSignOut,
+      handleEmailChange: this.handleEmailChange,
+      startEditEmail: this.startEditEmail,
+      handlePasswordChange: this.handlePasswordChange,
+      togglePassword: this.togglePassword,
+      handleSignIn: this.handleSignIn,
+      handleApiKeyChange: this.handleApiKeyChange,
+      handleModelChange: this.handleModelChange,
+      handleChatInputChange: this.handleChatInputChange,
+      handleChatKeyDown: this.handleChatKeyDown,
+      handleSend: this.handleSend,
+      handleModelSearchChange: this.handleModelSearchChange,
+    };
+  }
+}
+
+</script>
+
+
+</body></html>

@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { Bebas_Neue, Geist_Mono, Give_You_Glory, Inter } from "next/font/google";
 import "./globals.css";
 
-// Typography system: Space Grotesk for display (headlines — geometric,
-// slightly techy, reads beautifully at 6rem+), Inter for body, Geist Mono
-// for code. All self-hosted at build time via next/font (no external requests).
-const display = Space_Grotesk({
+// AIsathi design system typography: Bebas Neue for display (tall condensed
+// headlines), Inter for body, Give You Glory for the handwritten script
+// accents, Geist Mono for code. Self-hosted at build time via next/font.
+const display = Bebas_Neue({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: "400",
 });
 
 const body = Inter({
   variable: "--font-body",
   subsets: ["latin"],
+});
+
+const script = Give_You_Glory({
+  variable: "--font-script",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 const mono = Geist_Mono({
@@ -22,9 +28,9 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SathiAI — Any AI model. Pay in NPR.",
+  title: "AIsathi — Any AI model. Pay in NPR.",
   description:
-    "SathiAI: one API for hundreds of AI models. Top up with eSewa, Khalti or card. Built for Nepal.",
+    "AIsathi: one API for hundreds of AI models. Top up with eSewa, Khalti or card. Built for Nepal.",
 };
 
 export default function RootLayout({
@@ -35,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${script.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
         {children}

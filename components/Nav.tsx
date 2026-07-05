@@ -1,11 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
+const LINKS = [
+  { href: "/models", label: "Models" },
+  { href: "/playground", label: "Playground" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/topup", label: "Top up" },
+];
+
 export default function Nav() {
   const [email, setEmail] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const sb = supabaseBrowser();
@@ -18,32 +27,52 @@ export default function Nav() {
   }, []);
 
   return (
-    <nav className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-      <Link href="/" className="text-lg font-bold tracking-tight">
-        Sathi<span className="text-red-500">AI</span>
+    <header
+      className="sticky top-0 z-20 flex items-center justify-between px-8 py-4 backdrop-blur-md"
+      style={{
+        background: "var(--surface-header)",
+        borderBottom: "1px solid var(--border-hairline)",
+      }}
+    >
+      <Link href="/" className="text-[22px] font-bold tracking-tight" style={{ color: "var(--text-strong)" }}>
+        <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
       </Link>
-      <div className="flex items-center gap-6 text-sm text-zinc-400">
-        <Link href="/models" className="hover:text-white">Models</Link>
-        <Link href="/playground" className="hover:text-white">Playground</Link>
-        <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
-        <Link href="/topup" className="font-medium text-purple-400 hover:text-purple-300">Top up</Link>
-        {email ? (
+      <nav className="flex items-center gap-7 text-sm font-medium">
+        {LINKS.map((l) => (
           <Link
-            href="/account"
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs hover:border-zinc-500"
-            title={email}
+            key={l.href}
+            href={l.href}
+            className="transition-colors hover:text-white max-sm:hidden"
+            style={{ color: pathname === l.href ? "var(--text-strong)" : "var(--text-muted)" }}
           >
-            {email.split("@")[0]}
+            {l.label}
           </Link>
+        ))}
+        {email ? (
+          <div className="flex items-center gap-2.5">
+            <span className="text-[13px] max-sm:hidden" style={{ color: "var(--text-muted)" }}>{email}</span>
+            <Link
+              href="/account"
+              className="whitespace-nowrap px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors hover:border-zinc-400"
+              style={{
+                color: "var(--text-strong)",
+                border: "1px solid var(--border-strong)",
+                borderRadius: "var(--radius-xs)",
+              }}
+            >
+              Account
+            </Link>
+          </div>
         ) : (
           <Link
             href="/login"
-            className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-red-500"
+            className="whitespace-nowrap px-5 py-2 text-[13px] font-bold text-white transition-colors"
+            style={{ background: "var(--accent)", borderRadius: "var(--radius-pill)" }}
           >
             Sign in
           </Link>
         )}
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }

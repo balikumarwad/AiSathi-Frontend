@@ -123,7 +123,7 @@ export async function POST(req: Request) {
         {
           error: {
             message:
-              "Insufficient credits. Top up your SathiAI balance — or use a free model (रू0/M in the catalog).",
+              "Insufficient credits. Top up your AIsathi balance — or use a free model (रू0/M in the catalog).",
             code: 402,
           },
           balance_npr: Number(bal),

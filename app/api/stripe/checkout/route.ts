@@ -107,7 +107,7 @@ export async function POST(req: Request) {
           price_data: {
             currency: plan.currency.toLowerCase(),
             unit_amount: Math.round(Number(plan.price) * 100),
-            product_data: { name: `SathiAI — ${plan.display_name}` },
+            product_data: { name: `AIsathi — ${plan.display_name}` },
           },
         },
       ],

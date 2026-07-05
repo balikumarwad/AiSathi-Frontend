@@ -127,7 +127,7 @@ export default function Home() {
           </Link>
         </div>
         <footer className="border-t border-zinc-900 py-8 text-center text-xs text-zinc-600">
-          SathiAI · aisathi.io · Kathmandu ↔ the world
+          AIsathi · तपाईंको AI साथी · aisathi.io · Kathmandu ↔ the world
         </footer>
       </section>
     </div>
