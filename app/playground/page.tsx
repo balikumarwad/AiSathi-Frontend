@@ -22,6 +22,18 @@ type CatalogModel = {
   pricing?: { prompt_npr_per_m: number; completion_npr_per_m: number };
 };
 
+/**
+ * Every playground request carries this system prompt so all 340 models
+ * behave consistently: clear English by default, Nepali only when the user
+ * chooses it, tidy markdown.
+ */
+const SYSTEM_PROMPT =
+  "You are AIsathi, a friendly AI assistant from Nepal (aisathi.io). " +
+  "Always respond in clear, simple English by default — even if the question mixes languages. " +
+  "Only respond in Nepali if the user writes fully in Nepali or explicitly asks for Nepali. " +
+  "Be helpful and direct. Use markdown: headings for structure, bullet lists for steps, code blocks for code. " +
+  "Keep answers focused — thorough when needed, never padded.";
+
 const SUGGESTIONS = [
   { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
   { icon: "🥟", text: "Explain how AI works using a momo-making analogy" },
@@ -174,8 +186,9 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
 
   const ql = q.trim().toLowerCase();
   const match = (m: CatalogModel) => !ql || m.id.toLowerCase().includes(ql) || (m.name ?? "").toLowerCase().includes(ql);
-  const free = models.filter(isFree).filter(match);
-  const paid = models.filter((m) => !isFree(m)).filter(match);
+  const AUTO: CatalogModel = { id: "openrouter/auto", name: "✨ Auto — picks the best AI for your question" };
+  const free = models.filter(isFree).filter(match).filter((m) => m.id !== AUTO.id);
+  const paid = models.filter((m) => !isFree(m)).filter(match).filter((m) => m.id !== AUTO.id);
 
   const groupLabel = {
     padding: "8px 16px 4px", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
@@ -217,6 +230,12 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
             style={{ background: "transparent", borderBottom: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
           />
           <div className="sathi-scroll max-h-72 overflow-y-auto pb-1">
+            {match(AUTO) && (
+              <>
+                <div style={groupLabel}>Recommended</div>
+                {row(AUTO)}
+              </>
+            )}
             {free.length > 0 && <div style={groupLabel}>🆓 Free — works without credits</div>}
             {free.slice(0, 30).map(row)}
             {paid.length > 0 && <div style={groupLabel}>⚡ Paid — रू in / out per 1M tokens</div>}
@@ -371,7 +390,8 @@ export default function Playground() {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const apiMessages = history.map((m) =>
+      const apiMessages: unknown[] = [{ role: "system", content: SYSTEM_PROMPT }];
+      history.forEach((m) => apiMessages.push(
         m.images?.length
           ? {
               role: m.role,
@@ -381,7 +401,7 @@ export default function Playground() {
               ],
             }
           : { role: m.role, content: m.content },
-      );
+      ));
       const res = await fetch("/api/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
