@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
 
-const CURL = `curl https://sathiai.io/api/v1/chat/completions \\
+const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
   -H "Authorization: Bearer np-your-key" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -134,7 +134,7 @@ export default function Home() {
           </Link>
         </div>
         <footer className="border-t border-zinc-900 py-8 text-center text-xs text-zinc-600">
-          SathiAI · sathiai.io · Kathmandu ↔ the world
+          SathiAI · aisathi.io · Kathmandu ↔ the world
         </footer>
       </section>
     </div>
