@@ -269,6 +269,8 @@ export default function Playground() {
   const [error, setError] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [usage, setUsage] = useState<{ pct: number; left: number } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(0); // highest tier dismissed
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -305,6 +307,18 @@ export default function Playground() {
     sb.auth.getSession().then(async ({ data }) => {
       if (cancelled) return;
       setSession(data.session);
+      setBannerDismissed(Number(localStorage.getItem("aisathi_usage_dismissed") ?? 0));
+      // Credits-used banner (Claude-style): % of everything ever topped up.
+      if (data.session) {
+        fetch("/api/account/usage", { headers: { Authorization: `Bearer ${data.session.access_token}` } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (!j || cancelled) return;
+            const total = Number(j.total_spent_npr) + Number(j.balance_npr);
+            if (total > 0) setUsage({ pct: Math.round((j.total_spent_npr / total) * 100), left: j.balance_npr });
+          })
+          .catch(() => {});
+      }
       const existing = localStorage.getItem("nepalai_key");
       if (!data.session || existing) return;
       const res = await fetch("/api/keys", {
@@ -509,6 +523,38 @@ export default function Playground() {
   const firstName = fullName?.trim().split(/\s+/)[0];
   const g = greeting(firstName);
   const waiting = busy && messages.length > 0 && messages[messages.length - 1].role === "user";
+
+  // Usage banner tiers: 50% (heads-up, amber) / 80% (urgent, red). Dismissing
+  // hides the current tier; crossing the next tier brings it back.
+  const tier = usage ? (usage.pct >= 80 ? 80 : usage.pct >= 50 ? 50 : 0) : 0;
+  const showBanner = tier > 0 && bannerDismissed < tier;
+  function dismissBanner() {
+    setBannerDismissed(tier);
+    localStorage.setItem("aisathi_usage_dismissed", String(tier));
+  }
+  const usageBanner = showBanner && usage && (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 text-[13px]"
+      style={{
+        background: tier >= 80 ? "var(--ev-red-15)" : "rgba(217, 160, 50, 0.12)",
+        borderBottom: `1px solid ${tier >= 80 ? "var(--border-accent)" : "rgba(217, 160, 50, 0.35)"}`,
+        color: "var(--text-body)",
+      }}
+    >
+      <span className="min-w-0 flex-1 truncate">
+        You&apos;ve used <strong>{usage.pct}%</strong> of your credits · रू{usage.left} left
+      </span>
+      <a href="/dashboard" className="flex-none font-semibold underline underline-offset-2" style={{ color: "var(--text-strong)" }}>
+        View usage
+      </a>
+      <a href="/topup" className="flex-none rounded-full px-3 py-1 text-xs font-bold text-white no-underline" style={{ background: "var(--accent)" }}>
+        Top up
+      </a>
+      <button onClick={dismissBanner} className="flex-none px-1" style={{ color: "var(--text-faint)" }} title="Dismiss">
+        ×
+      </button>
+    </div>
+  );
 
   const currentModel = models.find((m) => m.id === model);
   const visionMismatch = images.length > 0 && currentModel && !currentModel.vision;
@@ -718,6 +764,7 @@ export default function Playground() {
         )}
 
         <main className="flex min-w-0 flex-1 flex-col">
+          {usageBanner}
           {/* Chat header (only when a conversation is open) */}
           {messages.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
