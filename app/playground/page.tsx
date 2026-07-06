@@ -273,6 +273,8 @@ export default function Playground() {
   const [bannerDismissed, setBannerDismissed] = useState(0); // highest tier dismissed
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -387,6 +389,82 @@ export default function Playground() {
       .map((c) => (c.id === id ? { ...c, messages: msgs, updated: Date.now() } : c))
       .sort((a, b) => b.updated - a.updated);
   }
+
+  /* ---- voice input (browser speech recognition; Chrome/Edge) ---- */
+  function toggleMic() {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    type SpeechRec = {
+      lang: string; continuous: boolean; interimResults: boolean;
+      onresult: (e: { resultIndex: number; results: { [i: number]: { isFinal: boolean; 0: { transcript: string } }; length: number } }) => void;
+      onend: () => void; onerror: () => void; start: () => void; stop: () => void;
+    };
+    const w = window as unknown as { webkitSpeechRecognition?: new () => SpeechRec; SpeechRecognition?: new () => SpeechRec };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) {
+      setError("Voice input needs Chrome or Edge.");
+      return;
+    }
+    const rec = new Ctor();
+    rec.lang = "en-US";
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      let text = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) text += e.results[i][0].transcript;
+      }
+      if (text) setInput((cur) => (cur ? cur + " " : "") + text.trim());
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
+
+  /* ---- slash commands ---- */
+  const slashOpen = input.startsWith("/") && !input.includes("\n");
+  const slashQuery = slashOpen ? input.slice(1).toLowerCase() : "";
+  type Cmd = { cmd: string; hint: string; run: () => void };
+  const bestFreeCmd = models.find((m) => isFree(m) && m.vision) ?? models.find(isFree);
+  const COMMANDS: Cmd[] = [
+    { cmd: "new", hint: "Start a new chat", run: () => { setInput(""); startNewChat(); } },
+    ...(bestFreeCmd ? [{ cmd: "free", hint: `Switch to a free model (${bestFreeCmd.id.split("/").pop()})`, run: () => { setModel(bestFreeCmd.id); setInput(""); } }] : []),
+    { cmd: "auto", hint: "Switch to ✨ Auto — best model per question", run: () => { setModel("openrouter/auto"); setInput(""); } },
+    { cmd: "model ", hint: "Switch model by name — e.g. /model claude", run: () => {} },
+    ...(chat ? [{ cmd: "export", hint: "Download this chat as Markdown", run: () => { setInput(""); exportChat(); } }] : []),
+  ];
+  const slashMatches = COMMANDS.filter((c) => c.cmd.trim().startsWith(slashQuery.split(" ")[0]));
+  function runSlash(raw?: string) {
+    const text = (raw ?? input).slice(1).trim();
+    const [word, ...rest] = text.split(/\s+/);
+    if (word === "model" && rest.length) {
+      const q = rest.join(" ").toLowerCase();
+      const found = models.find((m) => m.id.toLowerCase().includes(q) || (m.name ?? "").toLowerCase().includes(q));
+      if (found) { setModel(found.id); setInput(""); }
+      else setError(`No model matches "${rest.join(" ")}"`);
+      return true;
+    }
+    const hit = COMMANDS.find((c) => c.cmd.trim() === word);
+    if (hit && hit.cmd !== "model ") { hit.run(); return true; }
+    return false;
+  }
+
+  /* ---- global "/" focuses the composer ---- */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement;
+      if (e.key === "/" && t.tagName !== "TEXTAREA" && t.tagName !== "INPUT" && !t.isContentEditable) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   function attachImages(files: FileList | null) {
     if (!files) return;
@@ -609,7 +687,21 @@ export default function Playground() {
           )}
         </div>
       )}
-      <div className="flex flex-col gap-2 p-3" style={{ background: "#141414", border: "1px solid var(--border-strong)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+      <div className="relative flex flex-col gap-2 p-3" style={{ background: "#141414", border: "1px solid var(--border-strong)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+        {slashOpen && slashMatches.length > 0 && (
+          <div className="absolute bottom-full left-3 z-30 mb-2 w-80 max-w-[85vw] overflow-hidden" style={{ background: "#131313", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
+            {slashMatches.map((c) => (
+              <button
+                key={c.cmd}
+                onClick={() => { if (c.cmd === "model ") setInput("/model "); else c.run(); inputRef.current?.focus(); }}
+                className="flex w-full items-baseline gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+              >
+                <span className="font-[family-name:var(--font-mono)] text-sm font-semibold" style={{ color: "var(--ev-red)" }}>/{c.cmd.trim()}</span>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>{c.hint}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {images.length > 0 && (
           <div className="flex gap-2 px-1">
             {images.map((src, i) => (
@@ -637,7 +729,12 @@ export default function Playground() {
             e.target.style.height = Math.min(e.target.scrollHeight, 180) + "px";
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (input.startsWith("/") && runSlash()) return;
+              send();
+            }
+            if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur();
           }}
           onPaste={(e) => {
             const items = Array.from(e.clipboardData?.items ?? []).filter((x) => x.type.startsWith("image/"));
@@ -648,7 +745,7 @@ export default function Playground() {
               attachImages(dt.files);
             }
           }}
-          placeholder={apiKey ? "साथीलाई सोध्नुहोस् — ask your साथी anything…" : "Sign in to start chatting…"}
+          placeholder={apiKey ? "Ask your साथी anything…  ( / for commands )" : "Sign in to start chatting…"}
           disabled={!apiKey && !session}
           className="max-h-44 w-full resize-none bg-transparent px-2 pt-1 text-[15px] outline-none placeholder:text-zinc-600"
           style={{ color: "var(--text-strong)" }}
@@ -663,6 +760,18 @@ export default function Playground() {
             title="Attach image (or paste one)"
           >
             📎
+          </button>
+          <button
+            onClick={toggleMic}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-white/5"
+            style={{
+              border: `1px solid ${listening ? "var(--ev-red)" : "var(--border-hairline)"}`,
+              color: listening ? "var(--ev-red)" : "var(--text-muted)",
+              background: listening ? "var(--ev-red-15)" : "transparent",
+            }}
+            title={listening ? "Stop dictating" : "Dictate with your voice"}
+          >
+            {listening ? "⏺" : "🎤"}
           </button>
           <ModelPicker models={models} model={model} onPick={setModel} />
           {balance !== null && (
