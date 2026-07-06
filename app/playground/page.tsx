@@ -19,6 +19,7 @@ type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
   id: string;
   name?: string;
+  vision?: boolean;
   pricing?: { prompt_npr_per_m: number; completion_npr_per_m: number };
 };
 
@@ -203,7 +204,9 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
       style={{ background: m.id === model ? "var(--ev-red-15)" : "transparent" }}
     >
       <span className="min-w-0">
-        <span className="block truncate text-sm" style={{ color: "var(--text-strong)" }}>{m.name ?? m.id}</span>
+        <span className="block truncate text-sm" style={{ color: "var(--text-strong)" }}>
+          {m.name ?? m.id} {m.vision && <span title="Understands images">📷</span>}
+        </span>
         <span className="block truncate font-[family-name:var(--font-mono)] text-[11px]" style={{ color: "var(--text-faint)" }}>{m.id}</span>
       </span>
       <span className="flex-none text-xs font-semibold" style={{ color: isFree(m) ? "#4ade80" : "var(--text-muted)" }}>{fmtPrice(m)}</span>
@@ -507,9 +510,59 @@ export default function Playground() {
   const g = greeting(firstName);
   const waiting = busy && messages.length > 0 && messages[messages.length - 1].role === "user";
 
+  const currentModel = models.find((m) => m.id === model);
+  const visionMismatch = images.length > 0 && currentModel && !currentModel.vision;
+  const bestVision = models.find((m) => m.id === "openai/gpt-4o-mini" && m.vision) ?? models.find((m) => m.vision);
+  const bestFree = models.find((m) => isFree(m) && m.vision) ?? models.find(isFree);
+  const outOfCredits = /insufficient credits/i.test(error);
+
   const composer = (
     <div className="w-full">
-      {error && <p className="mb-2 text-xs" style={{ color: "var(--ev-red)" }}>{error}</p>}
+      {error && outOfCredits ? (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-3 p-3.5 text-[13px]"
+          style={{ background: "var(--ev-red-15)", border: "1px solid var(--border-accent)", borderRadius: "var(--radius-md)" }}
+        >
+          <span className="min-w-0 flex-1">
+            <strong>Out of credits</strong> — this model charges per message. Chat free instead, or top up to unlock every model.
+          </span>
+          {bestFree && (
+            <button
+              onClick={() => { setModel(bestFree.id); setError(""); }}
+              className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
+              style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
+            >
+              🆓 Use a free model
+            </button>
+          )}
+          <a
+            href="/topup"
+            className="flex-none rounded-full px-4 py-1.5 text-xs font-bold text-white no-underline"
+            style={{ background: "var(--accent)" }}
+          >
+            Top up →
+          </a>
+        </div>
+      ) : error ? (
+        <p className="mb-2 text-xs" style={{ color: "var(--ev-red)" }}>{error}</p>
+      ) : null}
+      {visionMismatch && (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-3 p-3 text-[13px]"
+          style={{ background: "rgba(250, 204, 21, 0.08)", border: "1px solid rgba(250, 204, 21, 0.3)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
+        >
+          <span className="min-w-0 flex-1">📷 <strong>{model.split("/").pop()}</strong> can&apos;t see images.</span>
+          {bestVision && (
+            <button
+              onClick={() => setModel(bestVision.id)}
+              className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
+              style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
+            >
+              Switch to {bestVision.id.split("/").pop()} 📷
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-2 p-3" style={{ background: "#141414", border: "1px solid var(--border-strong)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
         {images.length > 0 && (
           <div className="flex gap-2 px-1">
@@ -566,7 +619,15 @@ export default function Playground() {
             📎
           </button>
           <ModelPicker models={models} model={model} onPick={setModel} />
-          {balance !== null && <span className="hidden text-xs sm:inline" style={{ color: "var(--text-faint)" }}>रू {balance}</span>}
+          {balance !== null && (
+            balance < 10 ? (
+              <a href="/topup" className="hidden text-xs font-semibold no-underline sm:inline" style={{ color: "var(--ev-red)" }} title="Balance is low — top up">
+                रू {balance} · top up
+              </a>
+            ) : (
+              <span className="hidden text-xs sm:inline" style={{ color: "var(--text-faint)" }}>रू {balance}</span>
+            )
+          )}
           <div className="flex-1" />
           {busy ? (
             <button onClick={() => abortRef.current?.abort()} className="flex h-9 w-9 items-center justify-center rounded-xl text-sm" style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }} title="Stop">
