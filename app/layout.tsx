@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Bebas_Neue, Geist_Mono, Give_You_Glory, Inter } from "next/font/google";
 import "./globals.css";
+
+// Microsoft Clarity project id (public analytics tag — ships to the browser).
+const CLARITY_ID = "xijrot3a41";
 
 // AIsathi design system typography: Bebas Neue for display (tall condensed
 // headlines), Inter for body, Give You Glory for the handwritten script
@@ -62,6 +66,14 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
         {children}
+        {/* Microsoft Clarity — session recordings + heatmaps (audit item). */}
+        <Script id="ms-clarity" strategy="afterInteractive">
+          {`(function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "${CLARITY_ID}");`}
+        </Script>
       </body>
     </html>
   );
