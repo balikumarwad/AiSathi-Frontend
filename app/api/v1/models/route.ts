@@ -16,13 +16,14 @@ export async function GET() {
       name?: string;
       context_length?: number;
       pricing?: { prompt?: string; completion?: string };
-      architecture?: { input_modalities?: string[] };
+      architecture?: { input_modalities?: string[]; output_modalities?: string[] };
     }>;
     const data = models.map((m) => ({
       id: m.id,
       name: m.name ?? m.id,
       context_length: m.context_length ?? null,
       vision: (m.architecture?.input_modalities ?? []).includes("image"),
+      image_out: (m.architecture?.output_modalities ?? []).includes("image"),
       pricing: {
         prompt_npr_per_m: displayNprPerMillion(m.pricing?.prompt ?? 0),
         completion_npr_per_m: displayNprPerMillion(m.pricing?.completion ?? 0),

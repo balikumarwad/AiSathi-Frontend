@@ -15,12 +15,13 @@ import Nav from "@/components/Nav";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { mergeChats, pullChats, pushChat, removeChat } from "@/lib/chatSync";
 
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
   id: string;
   name?: string;
   vision?: boolean;
+  image_out?: boolean;
   pricing?: { prompt_npr_per_m: number; completion_npr_per_m: number };
 };
 
@@ -38,10 +39,76 @@ const SYSTEM_PROMPT =
 
 const SUGGESTIONS = [
   { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
-  { icon: "🥟", text: "Explain how AI works using a momo-making analogy" },
-  { icon: "💻", text: "Write a Python function and explain it line by line" },
+  { icon: "🎨", text: "Create an image of a rhino galloping past Everest at sunrise" },
+  { icon: "📄", text: "Write a professional cover letter for a software engineer job" },
   { icon: "🧳", text: "Plan a perfect 3-day trip to Pokhara on a budget" },
 ];
+
+/**
+ * Creator router — the playground's lightweight agentic layer. Every message
+ * is classified by intent and dispatched to the right specialist pipeline:
+ * image → an image-output model (modalities:["image","text"]), doc → a
+ * document-writer prompt on the Smart tier with PDF export, video → honest
+ * "not yet" (no upstream video models exist), everything else → normal chat.
+ */
+function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
+  const t = text.toLowerCase();
+  const wantsMake = /\b(make|create|generate|design|draft|prepare|produce|write|banau\w*)\b/.test(t);
+  if (wantsMake && /\b(video|animation|reel|clip|short film)\b/.test(t)) return "video";
+  if ((wantsMake && /\b(image|photo|picture|logo|poster|banner|wallpaper|illustration|thumbnail|tasbir)\b/.test(t)) || /\b(draw|sketch)\b/.test(t)) return "image";
+  if (wantsMake && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
+  return "chat";
+}
+
+const DOC_PROMPT =
+  "You are AIsathi's professional document writer. Produce the COMPLETE document the user asked for in clean, well-structured markdown: " +
+  "a clear title heading, organized sections, and professional wording. Output ONLY the document itself — no commentary before or after. " +
+  "If key details are missing (names, dates, addresses), use sensible placeholders like [Your Name].";
+
+/* ---- markdown → print-ready HTML (for the PDF download of doc messages) ---- */
+
+function mdToHtml(md: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s: string) =>
+    s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  let html = "";
+  md.split("```").forEach((seg, i) => {
+    if (i % 2 === 1) {
+      html += `<pre><code>${esc(seg.replace(/^\w+\n/, ""))}</code></pre>`;
+      return;
+    }
+    for (const para of seg.split(/\n{2,}/)) {
+      const lines = para.split("\n").filter(Boolean);
+      if (!lines.length) continue;
+      const h = lines[0].match(/^(#{1,4})\s+(.*)$/);
+      if (h && lines.length === 1) {
+        html += `<h${h[1].length}>${inline(esc(h[2]))}</h${h[1].length}>`;
+        continue;
+      }
+      if (lines.every((l) => /^\s*([-*•]|\d+[.)])\s+/.test(l))) {
+        html += "<ul>" + lines.map((l) => `<li>${inline(esc(l.replace(/^\s*([-*•]|\d+[.)])\s+/, "")))}</li>`).join("") + "</ul>";
+        continue;
+      }
+      html += `<p>${lines.map((l) => inline(esc(l))).join("<br/>")}</p>`;
+    }
+  });
+  return html;
+}
+
+function downloadPdf(title: string, md: string) {
+  const w = window.open("", "_blank", "width=820,height=1000");
+  if (!w) return;
+  w.document.write(`<!doctype html><html><head><title>${title.replace(/</g, "")}</title><style>
+    body{font-family:Georgia,'Times New Roman',serif;max-width:720px;margin:48px auto;padding:0 32px;color:#111;line-height:1.65;}
+    h1{font-size:26px;border-bottom:2px solid #e11d2e;padding-bottom:8px;}h2{font-size:20px;margin-top:28px;}h3{font-size:17px;}
+    pre{background:#f4f4f4;padding:14px;border-radius:6px;overflow-x:auto;font-size:13px;}code{font-family:Consolas,monospace;}
+    ul{padding-left:22px;}li{margin:4px 0;}
+    footer{margin-top:48px;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:10px;}
+  </style></head><body>${mdToHtml(md)}<footer>Created with AIsathi — aisathi.io</footer></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
+}
 
 function isFree(m: CatalogModel) {
   return !!m.pricing && m.pricing.prompt_npr_per_m === 0 && m.pricing.completion_npr_per_m === 0;
@@ -217,7 +284,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
     >
       <span className="min-w-0">
         <span className="block truncate text-sm" style={{ color: "var(--text-strong)" }}>
-          {m.name ?? m.id} {m.vision && <span title="Understands images">📷</span>}
+          {m.name ?? m.id} {m.vision && <span title="Understands images">📷</span>} {m.image_out && <span title="Generates images">🎨</span>}
         </span>
         <span className="block truncate font-[family-name:var(--font-mono)] text-[11px]" style={{ color: "var(--text-faint)" }}>{m.id}</span>
       </span>
@@ -554,12 +621,13 @@ export default function Playground() {
   }
 
   /* ---- send / stream / regenerate ---- */
-  async function run(history: Msg[], id: string, all: Chat[]) {
+  async function run(history: Msg[], id: string, all: Chat[], opts?: { model?: string; system?: string; doc?: boolean }) {
+    const useModel = opts?.model ?? model;
     setBusy(true);
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const apiMessages: unknown[] = [{ role: "system", content: SYSTEM_PROMPT }];
+      const apiMessages: unknown[] = [{ role: "system", content: opts?.system ?? SYSTEM_PROMPT }];
       history.forEach((m) => apiMessages.push(
         m.images?.length
           ? {
@@ -576,7 +644,7 @@ export default function Playground() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         // max_tokens caps the reply so expensive models can't run away and
         // upstream credit reservations stay small. ~3000 words is plenty for chat.
-        body: JSON.stringify({ model, messages: apiMessages, stream: true, max_tokens: 4096 }),
+        body: JSON.stringify({ model: useModel, messages: apiMessages, stream: true, max_tokens: 4096 }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
@@ -609,13 +677,13 @@ export default function Playground() {
             const delta = j.choices?.[0]?.delta?.content;
             if (delta) {
               reply += delta;
-              all = updateChat(id, [...history, { role: "assistant", content: reply, model }], all);
+              all = updateChat(id, [...history, { role: "assistant", content: reply, model: useModel }], all);
               setChats(all);
             }
           } catch { /* partial line */ }
         }
       }
-      persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model }], all));
+      persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model: useModel, doc: opts?.doc }], all));
     } catch (e) {
       if ((e as Error).name !== "AbortError") setError(String(e));
     } finally {
@@ -623,6 +691,64 @@ export default function Playground() {
       abortRef.current = null;
       inputRef.current?.focus();
     }
+  }
+
+  /** Image agent: non-streaming request to an image-output model; returned
+   *  images render in the reply and download on click. Attached images pass
+   *  through too, so "make this photo into a logo" edits work. */
+  async function runImage(history: Msg[], id: string, all: Chat[]) {
+    setBusy(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      const imgModel =
+        models.find((m) => m.id === "google/gemini-3.1-flash-image")?.id ??
+        models.find((m) => m.image_out && !/preview|lite/.test(m.id) && m.id !== "openrouter/auto")?.id ??
+        models.find((m) => m.image_out && m.id !== "openrouter/auto")?.id;
+      if (!imgModel) {
+        setError("No image-generation model is available right now.");
+        return;
+      }
+      const ctx = history.slice(-6).map((m) =>
+        m.images?.length
+          ? { role: m.role, content: [{ type: "text", text: m.content }, ...m.images.map((url) => ({ type: "image_url", image_url: { url } }))] }
+          : { role: m.role, content: m.content },
+      );
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: imgModel, messages: ctx, modalities: ["image", "text"], max_tokens: 4096 }),
+        signal: ac.signal,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(json?.error?.message ?? `Error ${res.status}`);
+        return;
+      }
+      const reply = json?.choices?.[0]?.message;
+      const outImgs: string[] = (reply?.images ?? [])
+        .map((im: { image_url?: { url?: string } }) => im?.image_url?.url)
+        .filter(Boolean);
+      if (json?.nepalai?.balance_npr != null) setBalance(json.nepalai.balance_npr);
+      persist(updateChat(id, [...history, {
+        role: "assistant",
+        content: reply?.content || (outImgs.length ? "Here you go! 🎨 Click the image to download." : "The model returned no image — try describing it differently."),
+        images: outImgs.length ? outImgs : undefined,
+        costNpr: json?.nepalai?.cost_npr ?? null,
+        model: imgModel,
+      }], all));
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError(String(e));
+    } finally {
+      setBusy(false);
+      abortRef.current = null;
+      inputRef.current?.focus();
+    }
+  }
+
+  function docModel() {
+    const smart = "anthropic/claude-sonnet-5";
+    return (balance ?? 0) > 5 && models.some((m) => m.id === smart) ? smart : model;
   }
 
   async function send(text?: string) {
@@ -649,6 +775,26 @@ export default function Playground() {
     const next: Msg[] = [...base, { role: "user", content: content || "What is in this image?", images: imgs.length ? imgs : undefined }];
     all = updateChat(id, next, all);
     persist(all);
+
+    // Creator router: dispatch to the specialist pipeline for this intent.
+    const intent = content ? detectIntent(content) : "chat";
+    if (intent === "video") {
+      persist(updateChat(id, [...next, {
+        role: "assistant",
+        content:
+          "🎬 Video generation isn't available on AIsathi yet — none of the model providers we route to offer video output through the gateway today. It's on the roadmap!\n\nMeanwhile I can create an **image** of this — just say *\"make an image of ...\"* 🎨",
+        model: "aisathi/router",
+      }], all));
+      return;
+    }
+    if (intent === "image") {
+      await runImage(next, id, all);
+      return;
+    }
+    if (intent === "doc") {
+      await run(next, id, all, { model: docModel(), system: DOC_PROMPT, doc: true });
+      return;
+    }
     await run(next, id, all);
   }
 
@@ -1021,6 +1167,16 @@ export default function Playground() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src="/icon.svg" alt="" className="h-7 w-7 flex-none rounded-full" />
                           <div className="min-w-0 flex-1 pt-0.5">
+                            {m.images?.length ? (
+                              <div className="mb-2 flex flex-wrap gap-2">
+                                {m.images.map((src, xi) => (
+                                  <a key={xi} href={src} download={`aisathi-${Date.now()}-${xi}.png`} title="Click to download">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={src} alt="generated" className="max-h-80 max-w-full rounded-xl object-contain transition-opacity hover:opacity-90" style={{ border: "1px solid var(--border-strong)" }} />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : null}
                             <div className="text-[15px] leading-relaxed">
                               <Content text={m.content} />
                               {busy && i === messages.length - 1 && (
@@ -1029,6 +1185,15 @@ export default function Playground() {
                             </div>
                             <div className="mt-2 flex items-center gap-3 text-[11px]" style={{ color: "var(--text-faint)" }}>
                               {m.costNpr != null && <span>{m.costNpr === 0 ? "free · रू0" : `रू ${m.costNpr}`} · {(m.model ?? model).split("/").pop()}</span>}
+                              {m.doc && !busy && (
+                                <button
+                                  onClick={() => downloadPdf(chat?.title ?? "document", m.content)}
+                                  className="font-semibold"
+                                  style={{ color: "var(--ev-red)" }}
+                                >
+                                  ⬇ Download PDF
+                                </button>
+                              )}
                               {!busy && (
                                 <span className="flex gap-3 opacity-0 transition-opacity group-hover:opacity-100">
                                   <button onClick={() => copyMessage(i, m.content)} className="font-semibold hover:text-white">
