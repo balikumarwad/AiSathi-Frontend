@@ -34,8 +34,12 @@ export default function Nav() {
         borderBottom: "1px solid var(--border-hairline)",
       }}
     >
-      <Link href="/" className="text-[22px] font-bold tracking-tight" style={{ color: "var(--text-strong)" }}>
-        <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
+      <Link href="/" className="flex items-center gap-2.5 text-[22px] font-bold tracking-tight" style={{ color: "var(--text-strong)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/rhino.svg" alt="" className="h-6 w-auto" />
+        <span>
+          <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
+        </span>
       </Link>
       <nav className="flex items-center gap-7 text-sm font-medium">
         {LINKS.map((l) => (

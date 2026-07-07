@@ -115,6 +115,8 @@ export default function Home() {
       {/* ============ CTA ============ */}
       <section className="border-t border-zinc-900">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/rhino.svg" alt="AIsathi rhino" className="mx-auto mb-8 h-20 w-auto opacity-90 sm:h-24" />
           <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।
           </h2>
