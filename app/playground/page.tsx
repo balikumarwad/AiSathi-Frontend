@@ -338,7 +338,8 @@ export default function Playground() {
       const saved = JSON.parse(localStorage.getItem("aisathi_chats") ?? "[]") as Chat[];
       setChats(saved);
       chatsRef.current = saved;
-      if (saved[0]) setChatId(saved[0].id);
+      // Always open a fresh "New chat" on visit — past chats stay in the
+      // sidebar to reopen manually (like starting ChatGPT/Claude anew).
     } catch { /* fresh start */ }
     fetch("/api/v1/models")
       .then((r) => r.json())
@@ -388,7 +389,7 @@ export default function Playground() {
             setChats(merged);
             chatsRef.current = merged;
             try { localStorage.setItem("aisathi_chats", JSON.stringify(merged.slice(0, 30))); } catch { /* full */ }
-            setChatId((cur) => cur || (merged[0]?.id ?? ""));
+            // Don't auto-open a synced chat either — keep the fresh New chat view.
           })
           .catch(() => {});
       }
