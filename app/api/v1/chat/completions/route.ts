@@ -54,19 +54,31 @@ async function authenticate(req: Request): Promise<KeyContext | NextResponse> {
   return { mode: "db", userId: keyRow.user_id, keyId: keyRow.id };
 }
 
-/** Free tier: models whose upstream price is $0 are usable with an empty balance. */
-async function isFreeModel(model: string) {
+/**
+ * Look up a model's upstream per-token USD prices from the catalog.
+ * `known` is false when the catalog is unreachable or the model isn't listed —
+ * callers treat that as "priced, but unknown" (a minimal positive balance is
+ * still required) rather than free.
+ */
+async function modelPricing(model: string): Promise<{
+  known: boolean;
+  promptUsd: number;
+  completionUsd: number;
+}> {
   try {
     const models = (await upstreamModels()) as Array<{
       id: string;
       pricing?: { prompt?: string; completion?: string };
     }>;
     const m = models.find((x) => x.id === model);
-    return (
-      !!m && (Number(m.pricing?.prompt) || 0) === 0 && (Number(m.pricing?.completion) || 0) === 0
-    );
+    if (!m?.pricing) return { known: false, promptUsd: 0, completionUsd: 0 };
+    return {
+      known: true,
+      promptUsd: Number(m.pricing.prompt) || 0,
+      completionUsd: Number(m.pricing.completion) || 0,
+    };
   } catch {
-    return false;
+    return { known: false, promptUsd: 0, completionUsd: 0 };
   }
 }
 
@@ -117,9 +129,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // Bound the cost of any single request: clamp completion length to a ceiling
+  // so the worst case is predictable. A streamed answer can't be un-sent once it
+  // starts, so this cap plus the worst-case gate below is what protects us.
+  const MAX_COMPLETION_TOKENS = 8192;
+  {
+    const reqMax = Number(body.max_tokens);
+    body.max_tokens =
+      Number.isFinite(reqMax) && reqMax > 0
+        ? Math.min(reqMax, MAX_COMPLETION_TOKENS)
+        : MAX_COMPLETION_TOKENS;
+  }
+
   const db = supabaseAdmin();
 
-  // Balance gate (db mode only).
+  // Balance gate (db mode only): require enough to cover the WORST-CASE cost of
+  // this request (whole prompt + capped completion), not merely a positive
+  // balance. A `<= 0` gate let a sliver of credit unlock an arbitrarily large
+  // stream we can't refuse mid-flight.
   if (auth.mode === "db" && db) {
     const { data: bal, error } = await db.rpc("credit_balance", { p_user: auth.userId });
     if (error) {
@@ -128,23 +155,44 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
-    if (Number(bal) <= 0 && !(await isFreeModel(String(body.model)))) {
-      return NextResponse.json(
-        {
-          error: {
-            message:
-              "Insufficient credits. Top up your AIsathi balance — or use a free model (रू0/M in the catalog).",
-            code: 402,
+    const price = await modelPricing(String(body.model));
+    const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
+    if (!isFree) {
+      // Rough prompt-token estimate (~4 chars/token) — good enough to gate on.
+      const estPromptTok = Math.ceil(JSON.stringify(body.messages).length / 4);
+      const worstUsd =
+        estPromptTok * price.promptUsd + Number(body.max_tokens) * price.completionUsd;
+      const worstNpr = usdToNpr(worstUsd);
+      // Unknown/zero-priced-but-not-free models still need *some* credit.
+      const required = Math.max(worstNpr, 0.0001);
+      if (Number(bal) < required) {
+        return NextResponse.json(
+          {
+            error: {
+              message:
+                "Insufficient credits for this request. Top up your AIsathi balance — or use a free model (रू0/M in the catalog).",
+              code: 402,
+            },
+            balance_npr: Number(bal),
+            estimated_cost_npr: worstNpr,
           },
-          balance_npr: Number(bal),
-        },
-        { status: 402 },
-      );
+          { status: 402 },
+        );
+      }
     }
   }
 
   const wantStream = body.stream === true;
-  const upstreamBody = { ...body, stream: wantStream, usage: { include: true } };
+  // `usage:{include:true}` asks OpenRouter for the cost field; for STREAMS the
+  // OpenAI-standard `stream_options.include_usage` is what actually makes the
+  // final usage chunk (tokens + cached_tokens) show up — without it a streamed
+  // response can arrive with no usage, and we'd bill nothing.
+  const upstreamBody = {
+    ...body,
+    stream: wantStream,
+    usage: { include: true },
+    ...(wantStream ? { stream_options: { include_usage: true } } : {}),
+  };
 
   let upstream: Response;
   try {
@@ -171,6 +219,8 @@ export async function POST(req: Request) {
       billed = true;
       const promptTok = Number(usage?.prompt_tokens) || 0;
       const completionTok = Number(usage?.completion_tokens) || 0;
+      const cachedTok =
+        Number(((usage?.prompt_tokens_details ?? {}) as { cached_tokens?: number }).cached_tokens) || 0;
       const upstreamUsd =
         Number(usage?.cost) ||
         (usage ? await estimateUsd(String(body.model), promptTok, completionTok) : 0);
@@ -179,13 +229,22 @@ export async function POST(req: Request) {
       if (auth.mode === "db" && db && usage) {
         let dedErr = null;
         if (costNpr > 0) {
-          const { data: newBal, error } = await db.rpc("deduct_credits", {
-            p_user: auth.userId,
-            p_amount_npr: costNpr,
-            p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, stream: true },
+          // The answer has already been streamed — it can't be refused now. So
+          // settle unconditionally: append the debit even if it drives the
+          // balance negative. An overspend is then recorded (not swallowed), and
+          // the user's NEXT request is blocked by the worst-case gate above,
+          // instead of the stream being effectively served for free.
+          const { error } = await db.from("credit_transactions").insert({
+            user_id: auth.userId,
+            amount_npr: -costNpr,
+            kind: "usage",
+            meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, cached_tokens: cachedTok, stream: true },
           });
           dedErr = error;
-          if (!dedErr) balanceNpr = round4(Number(newBal));
+          if (!dedErr) {
+            const { data: b } = await db.rpc("credit_balance", { p_user: auth.userId });
+            balanceNpr = round4(Number(b));
+          }
         }
         await db.from("usage_log").insert({
           user_id: auth.userId,
@@ -199,7 +258,7 @@ export async function POST(req: Request) {
         });
         await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", auth.keyId);
       }
-      return { cost_npr: costNpr, balance_npr: balanceNpr, dev_mode: auth.mode === "dev" };
+      return { cost_npr: costNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" };
     };
 
     const transform = new TransformStream<Uint8Array, Uint8Array>({
@@ -273,6 +332,7 @@ export async function POST(req: Request) {
   const usage = payload.usage ?? {};
   const promptTok = Number(usage.prompt_tokens) || 0;
   const completionTok = Number(usage.completion_tokens) || 0;
+  const cachedTok = Number(usage.prompt_tokens_details?.cached_tokens) || 0;
   const upstreamUsd =
     Number(usage.cost) || (await estimateUsd(String(body.model), promptTok, completionTok));
   const costNpr = usdToNpr(upstreamUsd);
@@ -283,7 +343,7 @@ export async function POST(req: Request) {
       const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
         p_user: auth.userId,
         p_amount_npr: costNpr,
-        p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok },
+        p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, cached_tokens: cachedTok },
       });
       if (dedErr) {
         // Race: balance ran out between the gate and the deduction.
@@ -312,6 +372,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ...payload,
-    nepalai: { cost_npr: costNpr, balance_npr: balanceNpr, dev_mode: auth.mode === "dev" },
+    nepalai: { cost_npr: costNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" },
   });
 }
