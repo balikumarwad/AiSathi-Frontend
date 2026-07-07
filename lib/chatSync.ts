@@ -1,0 +1,67 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Playground chat sync — localStorage stays the fast local cache, Supabase
+ * (RLS-scoped `chats` table) is the cross-device source of truth for
+ * signed-in users. Merge rule: per chat id, newest `updated` wins.
+ */
+
+export type SyncMsg = {
+  role: "user" | "assistant";
+  content: string;
+  images?: string[];
+  costNpr?: number | null;
+  model?: string;
+};
+export type SyncChat = { id: string; title: string; messages: SyncMsg[]; updated: number };
+
+/** Base64 image payloads are megabytes each — replace with a count marker. */
+function lean(messages: SyncMsg[]): SyncMsg[] {
+  return messages.map((m) => {
+    if (!m.images?.length) return m;
+    const { images: _drop, ...rest } = m;
+    return { ...rest, content: m.content || "(sent an image)" };
+  });
+}
+
+export async function pushChat(sb: SupabaseClient, userId: string, c: SyncChat) {
+  await sb.from("chats").upsert(
+    {
+      id: c.id,
+      user_id: userId,
+      title: c.title,
+      messages: lean(c.messages),
+      updated_at: new Date(c.updated).toISOString(),
+    },
+    { onConflict: "user_id,id" },
+  );
+}
+
+export async function pullChats(sb: SupabaseClient): Promise<SyncChat[]> {
+  const { data, error } = await sb
+    .from("chats")
+    .select("id,title,messages,updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    id: r.id as string,
+    title: (r.title as string) ?? "New chat",
+    messages: (r.messages ?? []) as SyncMsg[],
+    updated: new Date(r.updated_at as string).getTime(),
+  }));
+}
+
+export async function removeChat(sb: SupabaseClient, id: string) {
+  await sb.from("chats").delete().eq("id", id);
+}
+
+export function mergeChats<T extends SyncChat>(local: T[], remote: SyncChat[]): T[] {
+  const map = new Map<string, SyncChat>();
+  for (const c of remote) map.set(c.id, c);
+  for (const c of local) {
+    const r = map.get(c.id);
+    if (!r || c.updated > r.updated) map.set(c.id, c);
+  }
+  return [...map.values()].sort((a, b) => b.updated - a.updated).slice(0, 50) as T[];
+}

@@ -13,6 +13,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Nav from "@/components/Nav";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { mergeChats, pullChats, pushChat, removeChat } from "@/lib/chatSync";
 
 type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
@@ -172,6 +173,17 @@ function Content({ text }: { text: string }) {
 
 /* ---------------- model picker (opens upward, inside composer) ---------------- */
 
+/**
+ * Tier presets (handbook §3 Level 3): casual users pick by feel, not from
+ * 340 raw model names. Mappings live here so the underlying model can be
+ * swapped without users noticing — margin management by indirection.
+ */
+const TIERS = [
+  { tier: "⚡ Fast", desc: "Quick everyday answers — cheapest", id: "google/gemini-3.1-flash-lite" },
+  { tier: "🧠 Smart", desc: "Best balance — Claude Sonnet", id: "anthropic/claude-sonnet-5" },
+  { tier: "🚀 Genius", desc: "Frontier intelligence — Claude Fable", id: "anthropic/claude-fable-5" },
+];
+
 function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model: string; onPick: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -233,6 +245,28 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
             style={{ background: "transparent", borderBottom: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
           />
           <div className="sathi-scroll max-h-72 overflow-y-auto pb-1">
+            {!ql && (
+              <>
+                <div style={groupLabel}>Choose by feel</div>
+                {TIERS.map((t) => {
+                  const m = models.find((x) => x.id === t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { onPick(t.id); setOpen(false); setQ(""); }}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+                      style={{ background: t.id === model ? "var(--ev-red-15)" : "transparent" }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>{t.tier}</span>
+                        <span className="block truncate text-[11px]" style={{ color: "var(--text-faint)" }}>{t.desc}</span>
+                      </span>
+                      {m && <span className="flex-none text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{fmtPrice(m)}</span>}
+                    </button>
+                  );
+                })}
+              </>
+            )}
             {match(AUTO) && (
               <>
                 <div style={groupLabel}>Recommended</div>
@@ -279,6 +313,10 @@ export default function Playground() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Cross-device sync (signed-in users): refs avoid stale closures in persist.
+  const sessionRef = useRef<Session | null>(null);
+  const chatsRef = useRef<Chat[]>([]);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const chat = chats.find((c) => c.id === chatId) ?? null;
   const messages = chat?.messages ?? [];
@@ -289,6 +327,7 @@ export default function Playground() {
     try {
       const saved = JSON.parse(localStorage.getItem("aisathi_chats") ?? "[]") as Chat[];
       setChats(saved);
+      chatsRef.current = saved;
       if (saved[0]) setChatId(saved[0].id);
     } catch { /* fresh start */ }
     fetch("/api/v1/models")
@@ -299,7 +338,17 @@ export default function Playground() {
 
   const persist = useCallback((next: Chat[]) => {
     setChats(next);
+    chatsRef.current = next;
     try { localStorage.setItem("aisathi_chats", JSON.stringify(next.slice(0, 30))); } catch { /* full */ }
+    // Debounced server sync of the most recently touched chat.
+    const s = sessionRef.current;
+    const sb = supabaseBrowser();
+    if (!s || !sb || next.length === 0) return;
+    const newest = next.reduce((a, b) => (a.updated > b.updated ? a : b));
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      pushChat(sb, s.user.id, newest).catch(() => { /* offline is fine, local copy stays */ });
+    }, 1200);
   }, []);
 
   useEffect(() => {
@@ -309,7 +358,30 @@ export default function Playground() {
     sb.auth.getSession().then(async ({ data }) => {
       if (cancelled) return;
       setSession(data.session);
+      sessionRef.current = data.session;
       setBannerDismissed(Number(localStorage.getItem("aisathi_usage_dismissed") ?? 0));
+      // Pull server chats and merge with local (newest per id wins), then
+      // backfill any local-only/newer chats upward — history follows the
+      // account across devices, like ChatGPT/Claude.
+      if (data.session) {
+        const uid = data.session.user.id;
+        pullChats(sb)
+          .then((remote) => {
+            if (cancelled) return;
+            const local = chatsRef.current;
+            const merged = mergeChats(local, remote);
+            const remoteStamp = new Map(remote.map((r) => [r.id, r.updated]));
+            local
+              .filter((c) => c.messages.length > 0 && (c.updated > (remoteStamp.get(c.id) ?? 0)))
+              .slice(0, 20)
+              .forEach((c) => pushChat(sb, uid, c).catch(() => {}));
+            setChats(merged);
+            chatsRef.current = merged;
+            try { localStorage.setItem("aisathi_chats", JSON.stringify(merged.slice(0, 30))); } catch { /* full */ }
+            setChatId((cur) => cur || (merged[0]?.id ?? ""));
+          })
+          .catch(() => {});
+      }
       // Credits-used banner (Claude-style): % of everything ever topped up.
       if (data.session) {
         fetch("/api/account/usage", { headers: { Authorization: `Bearer ${data.session.access_token}` } })
@@ -360,6 +432,8 @@ export default function Playground() {
     const next = chats.filter((c) => c.id !== id);
     persist(next);
     if (chatId === id) setChatId(next[0]?.id ?? "");
+    const sb = supabaseBrowser();
+    if (sb && sessionRef.current) removeChat(sb, id).catch(() => {});
   }
 
   function renameChat(id: string) {
