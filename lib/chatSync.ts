@@ -24,6 +24,23 @@ function lean(messages: SyncMsg[]): SyncMsg[] {
   });
 }
 
+/**
+ * Publish a read-only snapshot of a chat and return its unguessable slug.
+ * Anyone with the slug can view it at /share/<slug> (public SELECT RLS).
+ */
+export async function publishChat(sb: SupabaseClient, userId: string, c: SyncChat): Promise<string> {
+  const slug =
+    Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+  const { error } = await sb.from("shared_chats").insert({
+    id: slug,
+    user_id: userId,
+    title: c.title,
+    messages: lean(c.messages),
+  });
+  if (error) throw error;
+  return slug;
+}
+
 export async function pushChat(sb: SupabaseClient, userId: string, c: SyncChat) {
   await sb.from("chats").upsert(
     {

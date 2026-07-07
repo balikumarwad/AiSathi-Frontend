@@ -93,18 +93,18 @@ export default function Home() {
           <Nav />
         </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 text-center">
+        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 text-center 2xl:max-w-6xl">
           <p className="mb-6 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-4 py-1.5 text-xs tracking-widest text-zinc-300 backdrop-blur">
             <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
           </p>
-          <h1 className="font-[family-name:var(--font-display)] text-5xl font-bold leading-[1.05] sm:text-7xl md:text-8xl">
+          <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-bold leading-[1.05] sm:text-7xl md:text-8xl 2xl:text-[8.5rem]">
             Any AI model.
             <br />
             <span className="bg-gradient-to-r from-red-500 via-rose-400 to-purple-500 bg-clip-text text-transparent">
               Pay in <span lang="ne">रुपैयाँ</span>.
             </span>
           </h1>
-          <p className="mt-8 max-w-2xl text-lg text-zinc-300 sm:text-xl">
+          <p className="mt-8 max-w-2xl text-lg text-zinc-300 sm:text-xl 2xl:max-w-3xl 2xl:text-2xl">
             One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
             Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
           </p>
@@ -224,8 +224,8 @@ export default function Home() {
           Fair question. If you have a USD credit card and only want one provider, go direct.
           Here's what AIsathi changes:
         </p>
-        <div className="mt-12 overflow-hidden rounded-2xl border border-zinc-800">
-          <table className="w-full text-sm">
+        <div className="mt-12 overflow-x-auto rounded-2xl border border-zinc-800">
+          <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-950 text-left">
                 <th className="px-5 py-4 font-medium text-zinc-500"></th>

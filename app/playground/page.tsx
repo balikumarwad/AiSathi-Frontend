@@ -9,11 +9,12 @@
  *  - streaming, per-message रू cost, free tier, auto-key for signed-in users
  */
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Nav from "@/components/Nav";
+import Content from "@/components/Markdown";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { mergeChats, pullChats, pushChat, removeChat } from "@/lib/chatSync";
+import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/chatSync";
 
 type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
@@ -41,6 +42,14 @@ const SUGGESTIONS = [
   { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
   { icon: "🎨", text: "Create an image of a rhino galloping past Everest at sunrise" },
   { icon: "📄", text: "Write a professional cover letter for a software engineer job" },
+  { icon: "🧳", text: "Plan a perfect 3-day trip to Pokhara on a budget" },
+];
+
+// Text-first prompts for the anonymous demo (free models, no image/doc tools).
+const DEMO_SUGGESTIONS = [
+  { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
+  { icon: "💡", text: "Explain how AI works, using a momo-making analogy" },
+  { icon: "🌐", text: "Translate 'Where is the nearest bus stop?' into Nepali" },
   { icon: "🧳", text: "Plan a perfect 3-day trip to Pokhara on a budget" },
 ];
 
@@ -125,117 +134,6 @@ function greeting(name?: string) {
   const [np, en] =
     h < 12 ? ["शुभ प्रभात", "Good morning"] : h < 17 ? ["नमस्ते", "Good afternoon"] : ["शुभ सन्ध्या", "Good evening"];
   return { np, en: name ? `${en}, ${name}` : en };
-}
-
-/* ---------------- markdown-lite renderer (no deps, no raw HTML) ---------------- */
-
-function Inline({ text }: { text: string }) {
-  // tokens: `code`, **bold**, *italic*, [label](url)
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (!p) return null;
-        if (p.startsWith("`") && p.endsWith("`"))
-          return (
-            <code key={i} className="rounded px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[0.85em]" style={{ background: "rgba(255,255,255,0.08)" }}>
-              {p.slice(1, -1)}
-            </code>
-          );
-        if (p.startsWith("**") && p.endsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
-        if (p.startsWith("*") && p.endsWith("*") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
-        const link = p.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
-        if (link)
-          return (
-            <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="underline decoration-1 underline-offset-2" style={{ color: "var(--ev-red)" }}>
-              {link[1]}
-            </a>
-          );
-        return <Fragment key={i}>{p}</Fragment>;
-      })}
-    </>
-  );
-}
-
-function Prose({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/);
-  return (
-    <>
-      {blocks.map((block, bi) => {
-        const lines = block.split("\n").filter((l) => l.length > 0);
-        if (lines.length === 0) return null;
-        // heading
-        const h = lines[0].match(/^(#{1,4})\s+(.*)$/);
-        if (h && lines.length === 1) {
-          const size = ["text-xl font-bold", "text-lg font-bold", "text-base font-bold", "text-[15px] font-semibold"][h[1].length - 1];
-          return <div key={bi} className={`mb-2 mt-4 ${size}`}><Inline text={h[2]} /></div>;
-        }
-        // list block
-        if (lines.every((l) => /^\s*([-*•]|\d+[.)])\s+/.test(l))) {
-          return (
-            <ul key={bi} className="my-2 space-y-1.5 pl-1">
-              {lines.map((l, li) => {
-                const numbered = l.match(/^\s*(\d+)[.)]\s+(.*)$/);
-                const bullet = l.match(/^\s*[-*•]\s+(.*)$/);
-                return (
-                  <li key={li} className="flex gap-2.5">
-                    <span className="flex-none pt-px text-sm" style={{ color: "var(--ev-red)" }}>
-                      {numbered ? `${numbered[1]}.` : "•"}
-                    </span>
-                    <span><Inline text={numbered ? numbered[2] : bullet![1]} /></span>
-                  </li>
-                );
-              })}
-            </ul>
-          );
-        }
-        // paragraph (preserve single newlines)
-        return (
-          <p key={bi} className="my-2 first:mt-0 last:mb-0">
-            {lines.map((l, li) => (
-              <Fragment key={li}>
-                {li > 0 && <br />}
-                <Inline text={l} />
-              </Fragment>
-            ))}
-          </p>
-        );
-      })}
-    </>
-  );
-}
-
-function CodeBlock({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-  const lang = code.match(/^([a-z0-9+-]+)\n/i)?.[1] ?? "";
-  const body = code.replace(/^[a-z0-9+-]*\n/i, "");
-  return (
-    <div className="group/code relative my-3">
-      <div className="flex items-center justify-between rounded-t-md px-4 py-1.5 text-[11px]" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-faint)" }}>
-        <span className="font-[family-name:var(--font-mono)]">{lang || "code"}</span>
-        <button
-          onClick={() => { navigator.clipboard.writeText(body); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-          className="font-semibold transition-colors hover:text-white"
-        >
-          {copied ? "✓ copied" : "copy"}
-        </button>
-      </div>
-      <pre className="overflow-x-auto rounded-b-md p-4 font-[family-name:var(--font-mono)] text-xs leading-relaxed" style={{ background: "rgba(0,0,0,0.55)", border: "1px solid var(--border-hairline)", borderTop: "none" }}>
-        {body}
-      </pre>
-    </div>
-  );
-}
-
-function Content({ text }: { text: string }) {
-  const parts = text.split("```");
-  return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? <CodeBlock key={i} code={part} /> : part.trim() ? <Prose key={i} text={part} /> : null,
-      )}
-    </>
-  );
 }
 
 /* ---------------- model picker (opens upward, inside composer) ---------------- */
@@ -356,6 +254,11 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
 
 /* ---------------- page ---------------- */
 
+// Signed-out visitors get this many free messages before we ask them to sign
+// up — the "try before you buy" front door. Server enforces free-models-only
+// plus an IP cap; this client counter is the honest-path UX.
+const DEMO_CAP = 5;
+
 const newChatId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 export default function Playground() {
@@ -374,7 +277,9 @@ export default function Playground() {
   const [bannerDismissed, setBannerDismissed] = useState(0); // highest tier dismissed
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
+  const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
   const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -389,8 +294,31 @@ export default function Playground() {
   const messages = chat?.messages ?? [];
   const chatCost = messages.reduce((s, m) => s + (m.costNpr ?? 0), 0);
 
+  // Demo mode: signed out AND no pasted key. Free-model, capped, no billing.
+  const demoMode = !session && !apiKey.trim();
+  const demoLeft = Math.max(0, DEMO_CAP - demoUsed);
+
+  /** Ordered free models to try for the anonymous demo lane. The free pool is
+   *  heavily rate-limited, so run() falls through this list until one responds.
+   *  Leads with models that reliably return normal (non-reasoning) content. */
+  function demoModels(): string[] {
+    const frees = models.filter(isFree);
+    const byPref = (re: RegExp) => frees.filter((m) => re.test(m.id)).map((m) => m.id);
+    const ordered = [
+      ...byPref(/gpt-oss-120b/i),
+      ...byPref(/llama-3\.3-70b/i),
+      ...byPref(/gemma-4/i),
+      ...byPref(/llama/i),
+      "openrouter/free",
+      ...frees.map((m) => m.id),
+    ];
+    const uniq = [...new Set(ordered)].slice(0, 5);
+    return uniq.length ? uniq : [model];
+  }
+
   useEffect(() => {
     setApiKey(localStorage.getItem("nepalai_key") ?? "");
+    setDemoUsed(Number(localStorage.getItem("aisathi_demo_used") ?? 0));
     try {
       const saved = JSON.parse(localStorage.getItem("aisathi_chats") ?? "[]") as Chat[];
       setChats(saved);
@@ -525,6 +453,23 @@ export default function Playground() {
     URL.revokeObjectURL(a.href);
   }
 
+  /** Publish the current chat and copy a public read-only link. Signed-in only. */
+  async function shareChat() {
+    if (!chat || !session || shared === "sharing") return;
+    const sb = supabaseBrowser();
+    if (!sb) return;
+    setShared("sharing");
+    try {
+      const slug = await publishChat(sb, session.user.id, { id: chat.id, title: chat.title, messages: chat.messages, updated: chat.updated });
+      await navigator.clipboard.writeText(`${location.origin}/share/${slug}`);
+      setShared("copied");
+      setTimeout(() => setShared("idle"), 2200);
+    } catch {
+      setShared("idle");
+      setError("Couldn't create a share link — please try again.");
+    }
+  }
+
   function updateChat(id: string, msgs: Msg[], all: Chat[]): Chat[] {
     return all
       .map((c) => (c.id === id ? { ...c, messages: msgs, updated: Date.now() } : c))
@@ -621,8 +566,9 @@ export default function Playground() {
   }
 
   /* ---- send / stream / regenerate ---- */
-  async function run(history: Msg[], id: string, all: Chat[], opts?: { model?: string; system?: string; doc?: boolean }) {
-    const useModel = opts?.model ?? model;
+  async function run(history: Msg[], id: string, all: Chat[], opts?: { model?: string; system?: string; doc?: boolean; key?: string; fallbacks?: string[] }) {
+    const useKey = opts?.key ?? apiKey;
+    const candidates = [opts?.model ?? model, ...(opts?.fallbacks ?? [])];
     setBusy(true);
     const ac = new AbortController();
     abortRef.current = ac;
@@ -639,17 +585,28 @@ export default function Playground() {
             }
           : { role: m.role, content: m.content },
       ));
-      const res = await fetch("/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        // max_tokens caps the reply so expensive models can't run away and
-        // upstream credit reservations stay small. ~3000 words is plenty for chat.
-        body: JSON.stringify({ model: useModel, messages: apiMessages, stream: true, max_tokens: 4096 }),
-        signal: ac.signal,
-      });
-      if (!res.ok || !res.body) {
-        const json = await res.json().catch(() => null);
-        const msg = json?.error?.message ?? `Error ${res.status}`;
+      // Try each candidate model until one returns an OK stream. The failure
+      // (e.g. a free model rate-limited upstream) happens before any tokens
+      // stream, so the fallback is invisible to the user.
+      let res: Response | null = null;
+      let useModel = candidates[0];
+      let lastJson: { error?: { message?: string } } | null = null;
+      for (let i = 0; i < candidates.length; i++) {
+        useModel = candidates[i];
+        res = await fetch("/api/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${useKey}` },
+          // max_tokens caps the reply so expensive models can't run away and
+          // upstream credit reservations stay small. ~3000 words is plenty.
+          body: JSON.stringify({ model: useModel, messages: apiMessages, stream: true, max_tokens: 4096 }),
+          signal: ac.signal,
+        });
+        if (res.ok && res.body) break;
+        lastJson = await res.json().catch(() => null);
+        res = null; // try next candidate
+      }
+      if (!res || !res.body) {
+        const msg = lastJson?.error?.message ?? "The model is busy right now — please try again.";
         setError(/image|vision|multimodal/i.test(String(msg)) ? `${msg} — tip: pick a vision-capable model (e.g. gpt-4o-mini, gemini).` : msg);
         return;
       }
@@ -754,10 +711,16 @@ export default function Playground() {
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if ((!content && images.length === 0) || busy) return;
-    if (!apiKey.trim()) {
-      setError(session ? "Setting up your account key — try again in a second." : "Sign in to start chatting.");
+
+    // Signed-out visitor: run the free demo lane until the cap, then invite signup.
+    if (demoMode) {
+      if (demoLeft <= 0) { setError("__DEMO_LIMIT__"); return; }
+      if (images.length) { setError("Sign up free to chat with images — the demo is text-only."); return; }
+    } else if (!apiKey.trim()) {
+      setError("Setting up your account — try again in a second.");
       return;
     }
+
     setError("");
     setInput("");
     const imgs = images;
@@ -775,6 +738,17 @@ export default function Playground() {
     const next: Msg[] = [...base, { role: "user", content: content || "What is in this image?", images: imgs.length ? imgs : undefined }];
     all = updateChat(id, next, all);
     persist(all);
+
+    // Demo lane: force a free model, skip the creator router (images/docs need
+    // credits), and count the message toward the cap.
+    if (demoMode) {
+      const used = Number(localStorage.getItem("aisathi_demo_used") ?? 0) + 1;
+      localStorage.setItem("aisathi_demo_used", String(used));
+      setDemoUsed(used);
+      const cands = demoModels();
+      await run(next, id, all, { key: "demo", model: cands[0], fallbacks: cands.slice(1) });
+      return;
+    }
 
     // Creator router: dispatch to the specialist pipeline for this intent.
     const intent = content ? detectIntent(content) : "chat";
@@ -862,7 +836,19 @@ export default function Playground() {
 
   const composer = (
     <div className="w-full">
-      {error && outOfCredits ? (
+      {error === "__DEMO_LIMIT__" ? (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-3 p-3.5 text-[13px]"
+          style={{ background: "var(--ev-red-15)", border: "1px solid var(--border-accent)", borderRadius: "var(--radius-md)" }}
+        >
+          <span className="min-w-0 flex-1">
+            <strong>That&apos;s your {DEMO_CAP} free messages 🎉</strong> — sign up free to keep chatting. Unlimited free models, no card needed.
+          </span>
+          <a href="/login" className="flex-none rounded-full px-4 py-1.5 text-xs font-bold text-white no-underline" style={{ background: "var(--accent)" }}>
+            Sign up free →
+          </a>
+        </div>
+      ) : error && outOfCredits ? (
         <div
           className="mb-2 flex flex-wrap items-center gap-3 p-3.5 text-[13px]"
           style={{ background: "var(--ev-red-15)", border: "1px solid var(--border-accent)", borderRadius: "var(--radius-md)" }}
@@ -889,6 +875,18 @@ export default function Playground() {
         </div>
       ) : error ? (
         <p className="mb-2 text-xs" style={{ color: "var(--ev-red)" }}>{error}</p>
+      ) : demoMode ? (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-3 px-3.5 py-2 text-[13px]"
+          style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
+        >
+          <span className="min-w-0 flex-1">
+            ✨ You&apos;re trying AIsathi free — <strong>{demoLeft}</strong> {demoLeft === 1 ? "message" : "messages"} left. Sign up for unlimited chats, images &amp; every model.
+          </span>
+          <a href="/login" className="flex-none font-semibold underline underline-offset-2" style={{ color: "var(--text-strong)" }}>
+            Sign up free →
+          </a>
+        </div>
       ) : null}
       {visionMismatch && (
         <div
@@ -965,8 +963,12 @@ export default function Playground() {
               attachImages(dt.files);
             }
           }}
-          placeholder={apiKey ? "Ask your साथी anything…  ( / for commands )" : "Sign in to start chatting…"}
-          disabled={!apiKey && !session}
+          placeholder={
+            apiKey ? "Ask your साथी anything…  ( / for commands )"
+            : demoMode ? `Ask anything — ${demoLeft} free ${demoLeft === 1 ? "message" : "messages"}, no sign-up…`
+            : "Setting up your account…"
+          }
+          disabled={!apiKey && !session && demoLeft <= 0}
           className="max-h-44 w-full resize-none bg-transparent px-2 pt-1 text-[15px] outline-none placeholder:text-zinc-600"
           style={{ color: "var(--text-strong)" }}
         />
@@ -1108,6 +1110,11 @@ export default function Playground() {
                   this chat: रू{chatCost.toFixed(4)}
                 </span>
               )}
+              {session && (
+                <button onClick={shareChat} disabled={shared === "sharing"} className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: shared === "copied" ? "var(--ev-red)" : "var(--text-muted)" }} title="Create a public link to this conversation">
+                  {shared === "copied" ? "✓ Link copied" : shared === "sharing" ? "…" : "🔗 Share"}
+                </button>
+              )}
               <button onClick={exportChat} className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }} title="Download this chat as Markdown">
                 ⬇ Export
               </button>
@@ -1126,11 +1133,11 @@ export default function Playground() {
                 <h1 className="mt-1 font-[family-name:var(--font-display)] text-4xl font-normal tracking-tight sm:text-5xl">{g.en}</h1>
                 <div className="mt-8 text-left">{composer}</div>
                 <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {SUGGESTIONS.map((s) => (
+                  {(demoMode ? DEMO_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button
                       key={s.text}
                       onClick={() => send(s.text)}
-                      disabled={!apiKey && !session}
+                      disabled={!apiKey && !session && demoLeft <= 0}
                       className="flex items-center gap-3 px-4 py-3 text-left text-[13px] transition-colors hover:bg-white/5 disabled:opacity-40"
                       style={{ border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
                     >
@@ -1138,10 +1145,11 @@ export default function Playground() {
                     </button>
                   ))}
                 </div>
-                {!session && !apiKey && (
+                {demoMode && (
                   <p className="mt-6 text-sm" style={{ color: "var(--text-muted)" }}>
-                    <a href="/login" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>Sign in free</a>
-                    {" "}— chat with free models instantly, no setup.
+                    Just start typing — {DEMO_CAP} free messages, no sign-up. Or{" "}
+                    <a href="/login" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>sign up free</a>
+                    {" "}for unlimited chats &amp; every model.
                   </p>
                 )}
               </div>

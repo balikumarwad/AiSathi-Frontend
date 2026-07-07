@@ -20,7 +20,13 @@ export const runtime = "nodejs";
 
 type KeyContext =
   | { mode: "dev" }
+  | { mode: "demo"; ip: string }
   | { mode: "db"; userId: string; keyId: string };
+
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for") ?? "";
+  return fwd.split(",")[0].trim() || req.headers.get("x-real-ip") || "anon";
+}
 
 async function authenticate(req: Request): Promise<KeyContext | NextResponse> {
   const token = bearerFrom(req);
@@ -32,6 +38,10 @@ async function authenticate(req: Request): Promise<KeyContext | NextResponse> {
   }
   const devKey = process.env.NEPALAI_DEV_KEY;
   if (devKey && token === devKey) return { mode: "dev" };
+
+  // Anonymous try-before-signup: Bearer "demo" unlocks free models only, with
+  // an IP rate limit and no billing. Lets visitors feel the product instantly.
+  if (token === "demo") return { mode: "demo", ip: clientIp(req) };
 
   const db = supabaseAdmin();
   if (!db) {
@@ -104,12 +114,26 @@ export async function POST(req: Request) {
   const auth = await authenticate(req);
   if (auth instanceof NextResponse) return auth;
 
-  // Abuse cap: 60 requests/min per key (dev mode keyed as one bucket).
-  const rlId = auth.mode === "db" ? auth.keyId : "dev";
+  // Abuse cap: 60 requests/min per key (dev mode keyed as one bucket; demo
+  // keyed per IP).
+  const rlId = auth.mode === "db" ? auth.keyId : auth.mode === "demo" ? `demo:${auth.ip}` : "dev";
   if (!allow(rlId, 60, 60_000)) {
     return NextResponse.json(
       { error: { message: "Rate limit exceeded — max 60 requests/minute per key.", code: 429 } },
       { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
+  // Demo mode also gets an hourly per-IP cap so the anonymous free lane can't
+  // be scripted; honest visitors are additionally capped client-side.
+  if (auth.mode === "demo" && !allow(`demoHr:${auth.ip}`, 25, 3_600_000)) {
+    return NextResponse.json(
+      {
+        error: {
+          message: "You've reached the free demo limit for now. Sign up free to keep chatting — it takes 20 seconds.",
+          code: 429,
+        },
+      },
+      { status: 429, headers: { "Retry-After": "3600" } },
     );
   }
 
@@ -139,6 +163,25 @@ export async function POST(req: Request) {
       Number.isFinite(reqMax) && reqMax > 0
         ? Math.min(reqMax, MAX_COMPLETION_TOKENS)
         : MAX_COMPLETION_TOKENS;
+  }
+
+  // Demo lane: free models only (zero upstream cost), with a small completion
+  // cap so the anonymous free pool isn't drained. Paid models nudge to signup.
+  if (auth.mode === "demo") {
+    const price = await modelPricing(String(body.model));
+    const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
+    if (!isFree) {
+      return NextResponse.json(
+        {
+          error: {
+            message: "This model needs credits. Sign up free to use 26+ free models — or top up for GPT, Claude & Gemini.",
+            code: 402,
+          },
+        },
+        { status: 402 },
+      );
+    }
+    body.max_tokens = Math.min(Number(body.max_tokens) || 1024, 1024);
   }
 
   const db = supabaseAdmin();
