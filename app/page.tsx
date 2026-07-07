@@ -1,6 +1,7 @@
 import Link from "next/link";
 import HeroVideo from "@/components/HeroVideo";
 import Nav from "@/components/Nav";
+import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
   -H "Authorization: Bearer np-your-key" \\
@@ -14,24 +15,78 @@ const MODELS = [
   "GPT-5.2", "Claude Sonnet 5", "Gemini 3 Flash", "Llama 4", "DeepSeek V3.2", "Claude Haiku 4.5",
 ];
 
+/* Honest signals only — no invented user counts (audit item 1). */
+const TRUST = [
+  ["340+", "live models"],
+  ["रू0", "to start — free models"],
+  ["eSewa · Khalti · card", "local payments"],
+  ["🇳🇵", "built in Nepal"],
+];
+
+const COMPARISON: [string, string, string][] = [
+  ["Payment", "eSewa, Khalti, or any card — in NPR", "USD credit card only"],
+  ["Accounts", "One login for every model", "Separate account per provider"],
+  ["Models", "GPT, Claude, Gemini, Llama + 340 more", "One vendor's models"],
+  ["Starting cost", "Free models, no card needed", "$5+ minimum, card upfront"],
+  ["Switching models", "Change one word in your request", "Rewrite your integration"],
+];
+
+const USE_CASES = [
+  { icon: "⚡", title: "Everyday questions", pick: "Fast", detail: "Homework, translations, quick answers. From रू44 per million tokens." },
+  { icon: "🧠", title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
+  { icon: "🚀", title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
+  { icon: "🎨", title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
+];
+
+const FAQ: [string, string][] = [
+  [
+    "Is AIsathi a real, working product?",
+    "Yes. AIsathi is live — every chat message is metered and billed to the paisa through our credit ledger, and the playground, API, and dashboard all run on the same production gateway. Try a free model right now without paying anything.",
+  ],
+  [
+    "How do payments work?",
+    "You top up credits in Nepali rupees via Khalti or eSewa (or an international card via Stripe). Credits are spent per token at the NPR prices shown on the models page — no subscription required, no hidden FX fees.",
+  ],
+  [
+    "What happens to my chats and prompts?",
+    "Signed-in chats are stored in your account so they sync across devices — only you can read them. Prompts are passed to the model provider you chose to generate the answer. We never sell your data and never use your chats to train models. See our privacy policy.",
+  ],
+  [
+    "What's free, exactly?",
+    "26+ models are completely free to chat with after signup — no card, no top-up. Free models are best-effort (they can be busy at peak times). Paid models unlock when you add credits.",
+  ],
+  [
+    "Which AI models do you support?",
+    "340+ models through one gateway: OpenAI (GPT-5.x), Anthropic (Claude Fable, Sonnet, Haiku), Google (Gemini), Meta (Llama), DeepSeek, Mistral and more — including image-generation models. The models page shows live NPR prices for all of them.",
+  ],
+  [
+    "Can I get a refund?",
+    "If something went wrong with a top-up (double charge, failed credit), contact us and we'll fix it. For unused credits, write to us within 7 days of purchase and we'll work it out.",
+  ],
+  [
+    "Are there rate limits?",
+    "Yes — 60 requests per minute per API key, and free models have daily caps set upstream. If you hit a limit, the response tells you exactly how long to wait.",
+  ],
+  [
+    "I'm a developer — is the API really OpenAI-compatible?",
+    "Yes. Point any OpenAI SDK at https://aisathi.io/api/v1 with your np- key and your existing code works, including streaming. See the docs for copy-paste examples.",
+  ],
+];
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        {/* High-res background video, loaded AFTER first paint so it never
-            blocks the page (components/HeroVideo). Aurora carries the scene
-            until it fades in. */}
         <HeroVideo />
 
-        {/* Animated aurora fallback / underlay */}
+        {/* Animated aurora fallback / underlay (respects reduced motion) */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] -translate-x-1/2 rounded-full bg-red-600/20 blur-[120px] animate-pulse" />
+          <div className="absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] -translate-x-1/2 rounded-full bg-red-600/20 blur-[120px] animate-pulse motion-reduce:animate-none" />
           <div className="absolute bottom-0 left-0 h-[50vh] w-[50vw] rounded-full bg-purple-700/20 blur-[100px]" />
           <div className="absolute right-0 top-1/3 h-[40vh] w-[40vw] rounded-full bg-blue-700/15 blur-[100px]" />
         </div>
 
-        {/* Dark gradient so text always wins over the video */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black" />
 
         <div className="relative z-10">
@@ -40,33 +95,43 @@ export default function Home() {
 
         <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="mb-6 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-4 py-1.5 text-xs tracking-widest text-zinc-300 backdrop-blur">
-            तपाईंको AI साथी — YOUR AI COMPANION
+            <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
           </p>
           <h1 className="font-[family-name:var(--font-display)] text-5xl font-bold leading-[1.05] sm:text-7xl md:text-8xl">
             Any AI model.
             <br />
             <span className="bg-gradient-to-r from-red-500 via-rose-400 to-purple-500 bg-clip-text text-transparent">
-              Pay in रुपैयाँ.
+              Pay in <span lang="ne">रुपैयाँ</span>.
             </span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg text-zinc-300 sm:text-xl">
-            One API for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
+            One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
             Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+
+          {/* One dominant CTA; secondary de-emphasized (audit item 3) */}
+          <div className="mt-10 flex flex-col items-center gap-4">
             <Link
               href="/playground"
-              className="rounded-full bg-red-600 px-8 py-3.5 font-medium shadow-lg shadow-red-900/40 transition hover:bg-red-500 hover:shadow-red-800/50"
+              className="rounded-full bg-red-600 px-10 py-4 text-lg font-semibold shadow-lg shadow-red-900/40 transition hover:bg-red-500 hover:shadow-red-800/50"
             >
-              Try the playground →
+              Start free — no card needed →
             </Link>
-            <Link
-              href="/models"
-              className="rounded-full border border-zinc-600 bg-black/40 px-8 py-3.5 font-medium backdrop-blur transition hover:border-zinc-400"
-            >
-              Browse models
+            <Link href="/models" className="text-sm text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
+              or browse all 340+ models & prices
             </Link>
           </div>
+
+          {/* Trust bar (audit item 1) */}
+          <dl className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {TRUST.map(([big, small]) => (
+              <div key={small} className="text-center">
+                <dt className="sr-only">{small}</dt>
+                <dd className="font-[family-name:var(--font-display)] text-xl text-zinc-100">{big}</dd>
+                <dd className="text-[11px] uppercase tracking-wider text-zinc-500">{small}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
 
         {/* Model ticker */}
@@ -87,16 +152,115 @@ export default function Home() {
         <div className="mt-16 grid gap-6 sm:grid-cols-3">
           {[
             ["🇳🇵", "Local payments", "Top up credits with eSewa or Khalti in seconds — or card via Stripe from anywhere."],
-            ["🧾", "NPR pricing", "Transparent per-token prices in rupees. Plans from रू399. No FX surprises."],
+            ["🧾", "NPR pricing", "Transparent per-token prices in rupees. Start free. No FX surprises."],
             ["🔌", "Drop-in API", "OpenAI-compatible. Point any SDK at our base URL — your code doesn't change."],
           ].map(([icon, title, body]) => (
             <div
               key={title}
               className="group rounded-2xl border border-zinc-800 bg-zinc-950 p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
             >
-              <div className="text-3xl">{icon}</div>
+              <div className="text-3xl" aria-hidden>{icon}</div>
               <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-semibold">{title}</div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ PRICING (audit item 2) ============ */}
+      <section id="pricing" className="mx-auto max-w-6xl px-6 pb-24">
+        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
+          Simple, honest pricing
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+          No subscription needed. Pay only for the tokens you use, in rupees.
+        </p>
+        <div className="mt-14 grid gap-6 sm:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
+            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
+            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
+              <li>✓ 26+ free models, unlimited chats*</li>
+              <li>✓ Full playground — history, images in, voice</li>
+              <li>✓ No card, no top-up required</li>
+            </ul>
+            <p className="mt-4 text-[11px] text-zinc-600">*Free models are best-effort with daily caps.</p>
+          </div>
+          <div className="relative rounded-2xl border border-red-800/60 bg-zinc-950 p-8 shadow-lg shadow-red-950/20">
+            <div className="absolute -top-3 left-8 rounded-full bg-red-600 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
+            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pay as you go</div>
+            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">from <span lang="ne">रू</span>200</div>
+            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
+              <li>✓ Every model — GPT, Claude, Gemini, images</li>
+              <li>✓ Fast models from <span lang="ne">रू</span>44 / 1M tokens</li>
+              <li>✓ Claude Sonnet 5 at <span lang="ne">रू</span>350 / 1M input</li>
+              <li>✓ Top up via Khalti, eSewa, or card</li>
+            </ul>
+            <Link href="/models" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+              See live prices for all models →
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Developers & teams</div>
+            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">Same rates</div>
+            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
+              <li>✓ OpenAI-compatible API + streaming</li>
+              <li>✓ Multiple API keys, usage dashboard</li>
+              <li>✓ One NPR balance across your whole team</li>
+            </ul>
+            <Link href="/docs" className="mt-5 inline-block text-sm font-semibold text-zinc-300 hover:text-white">
+              Read the docs →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ WHY NOT GO DIRECT (audit item 5) ============ */}
+      <section className="mx-auto max-w-4xl px-6 pb-24">
+        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
+          Why not just use OpenAI directly?
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+          Fair question. If you have a USD credit card and only want one provider, go direct.
+          Here's what AIsathi changes:
+        </p>
+        <div className="mt-12 overflow-hidden rounded-2xl border border-zinc-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800 bg-zinc-950 text-left">
+                <th className="px-5 py-4 font-medium text-zinc-500"></th>
+                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-red-400">AIsathi</th>
+                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-zinc-500">Going direct</th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map(([label, us, them]) => (
+                <tr key={label} className="border-b border-zinc-900 last:border-0">
+                  <td className="px-5 py-4 font-semibold text-zinc-300">{label}</td>
+                  <td className="px-5 py-4 text-zinc-300">{us}</td>
+                  <td className="px-5 py-4 text-zinc-500">{them}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ============ WHICH MODEL? (audit item 6) ============ */}
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
+          Which model should I use?
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+          Don't overthink it — the playground has these as one-click presets.
+        </p>
+        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {USE_CASES.map((u) => (
+            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-zinc-600">
+              <div className="text-3xl" aria-hidden>{u.icon}</div>
+              <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
+              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-red-400">→ {u.pick}</div>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{u.detail}</p>
             </div>
           ))}
         </div>
@@ -107,9 +271,33 @@ export default function Home() {
         <h2 className="font-[family-name:var(--font-display)] text-sm font-medium uppercase tracking-[0.3em] text-zinc-500">
           One URL change and you&apos;re in
         </h2>
-        <pre className="mt-6 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
-          {CURL}
-        </pre>
+        <div className="relative mt-6">
+          <CopyButton text={CURL} />
+          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
+            {CURL}
+          </pre>
+        </div>
+        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+          Full API documentation →
+        </Link>
+      </section>
+
+      {/* ============ FAQ (audit item 8) ============ */}
+      <section className="mx-auto max-w-3xl px-6 pb-24">
+        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
+          Questions, answered
+        </h2>
+        <div className="mt-12 space-y-3">
+          {FAQ.map(([q, a]) => (
+            <details key={q} className="group rounded-xl border border-zinc-800 bg-zinc-950 px-6 py-4 transition hover:border-zinc-700">
+              <summary className="cursor-pointer list-none text-[15px] font-semibold text-zinc-200 marker:content-none">
+                <span className="mr-2 inline-block text-red-500 transition-transform group-open:rotate-90">›</span>
+                {q}
+              </summary>
+              <p className="mt-3 pl-5 text-sm leading-relaxed text-zinc-400">{a}</p>
+            </details>
+          ))}
+        </div>
       </section>
 
       {/* ============ CTA ============ */}
@@ -122,21 +310,33 @@ export default function Home() {
               className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-red-500 to-red-800 shadow-[0_0_60px_rgba(225,29,46,0.45)] sm:h-24 sm:w-24"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rhino.svg" alt="AIsathi rhino" className="relative h-20 w-auto sm:h-24" />
+            <img src="/rhino.svg" alt="The AIsathi rhino — Nepal's one-horned rhino, our mascot" className="relative h-20 w-auto sm:h-24" />
           </div>
-          <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
+          <h2 lang="ne" className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।
           </h2>
-          <p className="mt-4 text-lg text-zinc-400">Make a friend. Start with रू200.</p>
+          <p className="mt-4 text-lg text-zinc-400">Make a friend. Free models are waiting.</p>
           <Link
-            href="/topup"
+            href="/playground"
             className="mt-10 inline-block rounded-full bg-gradient-to-r from-red-600 to-purple-600 px-10 py-4 font-medium shadow-xl shadow-purple-950/40 transition hover:from-red-500 hover:to-purple-500"
           >
-            Top up & go →
+            Start chatting free →
           </Link>
         </div>
-        <footer className="border-t border-zinc-900 py-8 text-center text-xs text-zinc-600">
-          AIsathi · तपाईंको AI साथी · aisathi.io · Kathmandu ↔ the world
+        <footer className="border-t border-zinc-900 px-6 py-10">
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center text-xs text-zinc-600">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+              <Link href="/docs" className="hover:text-zinc-400">Docs</Link>
+              <Link href="/models" className="hover:text-zinc-400">Models</Link>
+              <Link href="/#pricing" className="hover:text-zinc-400">Pricing</Link>
+              <Link href="/privacy" className="hover:text-zinc-400">Privacy</Link>
+              <Link href="/terms" className="hover:text-zinc-400">Terms</Link>
+              <a href="mailto:neupaneoscar143@gmail.com" className="hover:text-zinc-400">Contact</a>
+            </nav>
+            <div>
+              AIsathi · <span lang="ne">तपाईंको AI साथी</span> · aisathi.io · Kathmandu ↔ the world
+            </div>
+          </div>
         </footer>
       </section>
     </div>

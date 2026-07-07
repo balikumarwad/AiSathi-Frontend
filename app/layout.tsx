@@ -28,9 +28,26 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://aisathi.io"),
   title: "AIsathi — Any AI model. Pay in NPR.",
   description:
-    "AIsathi: one API for hundreds of AI models. Top up with eSewa, Khalti or card. Built for Nepal.",
+    "Chat with and build on hundreds of AI models — GPT, Claude, Gemini. Top up with eSewa, Khalti or card. Free models to start. Built for Nepal.",
+  openGraph: {
+    title: "AIsathi — Any AI model. Pay in NPR.",
+    description:
+      "Hundreds of AI models behind one login. Pay in rupees with eSewa, Khalti, or card — free models to start.",
+    url: "https://aisathi.io",
+    siteName: "AIsathi",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "AIsathi — the rhino galloping past the rising sun" }],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AIsathi — Any AI model. Pay in NPR.",
+    description: "Hundreds of AI models behind one login. Pay in rupees — free models to start.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({

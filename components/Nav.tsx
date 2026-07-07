@@ -8,6 +8,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 const LINKS = [
   { href: "/models", label: "Models" },
   { href: "/playground", label: "Playground" },
+  { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/topup", label: "Top up" },
 ];
