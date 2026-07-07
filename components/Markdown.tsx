@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { ArtifactCard, classifyArtifact, type Artifact } from "@/components/Artifacts";
 
 /**
  * Markdown-lite renderer (no deps, no raw HTML) shared by the playground and
@@ -103,13 +104,22 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-export default function Content({ text }: { text: string }) {
+export default function Content({ text, onArtifact }: { text: string; onArtifact?: (a: Artifact) => void }) {
   const parts = text.split("```");
   return (
     <>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? <CodeBlock key={i} code={part} /> : part.trim() ? <Prose key={i} text={part} /> : null,
-      )}
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part.trim() ? <Prose key={i} text={part} /> : null;
+        // Fenced code: promote substantial HTML/SVG/long code to an artifact
+        // card when a handler is provided (the playground); otherwise show code.
+        if (onArtifact) {
+          const lang = part.match(/^([a-z0-9+-]+)\n/i)?.[1] ?? "";
+          const body = part.replace(/^[a-z0-9+-]*\n/i, "");
+          const art = classifyArtifact(lang, body);
+          if (art) return <ArtifactCard key={i} art={art} onOpen={() => onArtifact(art)} />;
+        }
+        return <CodeBlock key={i} code={part} />;
+      })}
     </>
   );
 }

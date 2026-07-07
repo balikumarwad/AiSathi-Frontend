@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Nav from "@/components/Nav";
 import Content from "@/components/Markdown";
+import { ArtifactPanel, extractArtifacts, type Artifact } from "@/components/Artifacts";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/chatSync";
 import { addMemory, deleteMemory, loadMemories, type Memory } from "@/lib/memory";
@@ -295,6 +296,7 @@ export default function Playground() {
   const [memoryToast, setMemoryToast] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const memoriesRef = useRef<Memory[]>([]);
+  const [artifact, setArtifact] = useState<Artifact | null>(null); // open live-preview artifact
   const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -742,6 +744,9 @@ export default function Playground() {
         }
       }
       persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model: useModel, doc: opts?.doc }], all));
+      // Claude-style: auto-open the latest substantial artifact in the side panel.
+      const arts = extractArtifacts(reply);
+      if (arts.length) setArtifact(arts[arts.length - 1]);
     } catch (e) {
       if ((e as Error).name !== "AbortError") setError(String(e));
     } finally {
@@ -1390,7 +1395,7 @@ export default function Playground() {
                               </div>
                             ) : null}
                             <div className="text-[15px] leading-relaxed">
-                              <Content text={m.content} />
+                              <Content text={m.content} onArtifact={setArtifact} />
                               {busy && i === messages.length - 1 && (
                                 <span className="ml-1 inline-block h-4 w-2 animate-pulse align-text-bottom" style={{ background: "var(--text-muted)" }} />
                               )}
@@ -1438,7 +1443,21 @@ export default function Playground() {
             </>
           )}
         </main>
+
+        {/* Artifact side panel (desktop) — live preview of generated HTML/SVG/code. */}
+        {artifact && (
+          <aside className="hidden w-[46%] max-w-3xl flex-none md:block" style={{ borderLeft: "1px solid var(--border-hairline)" }}>
+            <ArtifactPanel art={artifact} onClose={() => setArtifact(null)} />
+          </aside>
+        )}
       </div>
+
+      {/* Artifact overlay (mobile) */}
+      {artifact && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <ArtifactPanel art={artifact} onClose={() => setArtifact(null)} />
+        </div>
+      )}
     </div>
   );
 }
