@@ -15,8 +15,10 @@ import Nav from "@/components/Nav";
 import Content from "@/components/Markdown";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/chatSync";
+import { addMemory, deleteMemory, loadMemories, type Memory } from "@/lib/memory";
 
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean };
+type DocRef = { name: string; pages: number };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
   id: string;
@@ -68,6 +70,13 @@ function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
   if (wantsMake && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
   return "chat";
 }
+
+// Runs quietly after each signed-in turn on a free model to capture durable
+// facts about the user (ChatGPT-style memory). Output is parsed as JSON.
+const MEMORY_EXTRACT_PROMPT =
+  "You extract durable, long-term facts about the USER that are worth remembering across future chats — their name, location, job or role, languages, stable preferences, and ongoing projects. " +
+  "Ignore anything transient, hypothetical, or specific to the current task. Write each fact as a short third-person statement (e.g. \"Lives in Pokhara\", \"Prefers replies in Nepali\"). " +
+  "Return ONLY a JSON array of at most 3 strings. If there is nothing worth remembering, return [].";
 
 const DOC_PROMPT =
   "You are AIsathi's professional document writer. Produce the COMPLETE document the user asked for in clean, well-structured markdown: " +
@@ -280,6 +289,12 @@ export default function Playground() {
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
+  const [docs, setDocs] = useState<{ name: string; text: string; pages: number }[]>([]); // pending PDF attachments
+  const [docBusy, setDocBusy] = useState(false); // reading a PDF
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [memoryToast, setMemoryToast] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const memoriesRef = useRef<Memory[]>([]);
   const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -377,6 +392,10 @@ export default function Playground() {
           })
           .catch(() => {});
       }
+      // Load persistent memory so it can be injected into the system prompt.
+      if (data.session) {
+        loadMemories(sb).then((m) => { if (!cancelled) { setMemories(m); memoriesRef.current = m; } }).catch(() => {});
+      }
       // Credits-used banner (Claude-style): % of everything ever topped up.
       if (data.session) {
         fetch("/api/account/usage", { headers: { Authorization: `Bearer ${data.session.access_token}` } })
@@ -413,6 +432,7 @@ export default function Playground() {
   }, []);
   useEffect(() => { refreshBalance(apiKey); }, [apiKey, refreshBalance]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chats, chatId]);
+  useEffect(() => { memoriesRef.current = memories; }, [memories]);
 
   /* ---- chat ops ---- */
   function startNewChat() {
@@ -552,17 +572,92 @@ export default function Playground() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  function attachImages(files: FileList | null) {
+  async function attachFiles(files: FileList | null) {
     if (!files) return;
-    for (const f of Array.from(files).slice(0, 3 - images.length)) {
-      if (!f.type.startsWith("image/") || f.size > 4 * 1024 * 1024) {
-        setError("Images only, max 4MB each.");
-        continue;
+    for (const f of Array.from(files)) {
+      const isImg = f.type.startsWith("image/");
+      const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+      if (isImg) {
+        if (f.size > 4 * 1024 * 1024) { setError("Images max 4MB each."); continue; }
+        const reader = new FileReader();
+        reader.onload = () => setImages((cur) => [...cur, String(reader.result)].slice(0, 3));
+        reader.readAsDataURL(f);
+      } else if (isPdf) {
+        if (f.size > 20 * 1024 * 1024) { setError("PDFs max 20MB."); continue; }
+        setError("");
+        setDocBusy(true);
+        try {
+          const { extractPdfText } = await import("@/lib/pdf");
+          const { text, pages } = await extractPdfText(f);
+          if (!text) setError(`"${f.name}" has no selectable text — it may be a scanned image.`);
+          setDocs((cur) => [...cur, { name: f.name, text, pages }].slice(0, 3));
+        } catch {
+          setError(`Couldn't read "${f.name}".`);
+        } finally {
+          setDocBusy(false);
+        }
+      } else {
+        setError("Attach images or PDFs only.");
       }
-      const reader = new FileReader();
-      reader.onload = () => setImages((cur) => [...cur, String(reader.result)].slice(0, 3));
-      reader.readAsDataURL(f);
     }
+  }
+
+  /** Quietly capture durable facts about the user after a turn (ChatGPT-style
+   *  memory). Runs on a FREE model so it never costs the user anything; any
+   *  failure (e.g. free pool busy) is silently skipped. */
+  async function extractMemory(userText: string) {
+    if (!session || !apiKey || userText.trim().length < 12) return;
+    const sb = supabaseBrowser();
+    if (!sb) return;
+    try {
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "openrouter/free",
+          messages: [
+            { role: "system", content: MEMORY_EXTRACT_PROMPT },
+            { role: "user", content: userText.slice(0, 2000) },
+          ],
+          max_tokens: 150,
+        }),
+      });
+      if (!res.ok) return;
+      const j = await res.json();
+      const raw: string = j.choices?.[0]?.message?.content ?? "[]";
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) return;
+      const facts: unknown = JSON.parse(match[0]);
+      if (!Array.isArray(facts)) return;
+      const existing = new Set(memoriesRef.current.map((m) => m.content.toLowerCase()));
+      const fresh = (facts as unknown[])
+        .filter((f): f is string => typeof f === "string" && f.trim().length > 2 && f.length < 160)
+        .map((f) => f.trim())
+        .filter((f) => !existing.has(f.toLowerCase()))
+        .slice(0, 3);
+      if (!fresh.length) return;
+      const added: Memory[] = [];
+      for (const f of fresh) {
+        const m = await addMemory(sb, session.user.id, f);
+        if (m) added.push(m);
+      }
+      if (added.length) {
+        setMemories((cur) => [...cur, ...added]);
+        setMemoryToast(true);
+        setTimeout(() => setMemoryToast(false), 2800);
+      }
+    } catch { /* best-effort */ }
+  }
+
+  /** System prompt for normal chat, with the user's persistent memory injected. */
+  function systemWithMemory(): string {
+    const mem = memoriesRef.current;
+    if (!mem.length) return SYSTEM_PROMPT;
+    return (
+      SYSTEM_PROMPT +
+      "\n\nThings you remember about this user (use naturally when relevant; do not recite them back):\n" +
+      mem.map((m) => `- ${m.content}`).join("\n")
+    );
   }
 
   /* ---- send / stream / regenerate ---- */
@@ -573,18 +668,23 @@ export default function Playground() {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const apiMessages: unknown[] = [{ role: "system", content: opts?.system ?? SYSTEM_PROMPT }];
-      history.forEach((m) => apiMessages.push(
-        m.images?.length
-          ? {
-              role: m.role,
-              content: [
-                { type: "text", text: m.content },
-                ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
-              ],
-            }
-          : { role: m.role, content: m.content },
-      ));
+      const apiMessages: unknown[] = [{ role: "system", content: opts?.system ?? systemWithMemory() }];
+      history.forEach((m) => {
+        // Attached-document text rides along as context on the user turn so the
+        // model can read and answer about the PDF.
+        const textContent = m.docText ? `${m.docText}\n\n${m.content}` : m.content;
+        apiMessages.push(
+          m.images?.length
+            ? {
+                role: m.role,
+                content: [
+                  { type: "text", text: textContent },
+                  ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
+                ],
+              }
+            : { role: m.role, content: textContent },
+        );
+      });
       // Try each candidate model until one returns an OK stream. The failure
       // (e.g. a free model rate-limited upstream) happens before any tokens
       // stream, so the fallback is invisible to the user.
@@ -710,12 +810,12 @@ export default function Playground() {
 
   async function send(text?: string) {
     const content = (text ?? input).trim();
-    if ((!content && images.length === 0) || busy) return;
+    if ((!content && images.length === 0 && docs.length === 0) || busy || docBusy) return;
 
     // Signed-out visitor: run the free demo lane until the cap, then invite signup.
     if (demoMode) {
       if (demoLeft <= 0) { setError("__DEMO_LIMIT__"); return; }
-      if (images.length) { setError("Sign up free to chat with images — the demo is text-only."); return; }
+      if (images.length || docs.length) { setError("Sign up free to chat with images and PDFs — the demo is text-only."); return; }
     } else if (!apiKey.trim()) {
       setError("Setting up your account — try again in a second.");
       return;
@@ -725,19 +825,38 @@ export default function Playground() {
     setInput("");
     const imgs = images;
     setImages([]);
+    const attached = docs;
+    setDocs([]);
     if (inputRef.current) inputRef.current.style.height = "auto";
+
+    const docText = attached.length
+      ? attached.map((d) => `--- Attached document: ${d.name} (${d.pages} pages) ---\n${d.text}`).join("\n\n")
+      : undefined;
+    const defaultPrompt = attached.length
+      ? `Summarize ${attached.map((d) => d.name).join(", ")}.`
+      : "What is in this image?";
+    const titleSeed = content || (attached.length ? attached[0].name : "Image chat");
 
     let id = chatId;
     let all = chats;
     if (!chat) {
       id = newChatId();
-      all = [{ id, title: (content || "Image chat").slice(0, 42), messages: [], updated: Date.now() }, ...chats];
+      all = [{ id, title: titleSeed.slice(0, 42), messages: [], updated: Date.now() }, ...chats];
       setChatId(id);
     }
     const base = all.find((c) => c.id === id)!.messages;
-    const next: Msg[] = [...base, { role: "user", content: content || "What is in this image?", images: imgs.length ? imgs : undefined }];
+    const next: Msg[] = [...base, {
+      role: "user",
+      content: content || defaultPrompt,
+      images: imgs.length ? imgs : undefined,
+      attachments: attached.length ? attached.map((d) => ({ name: d.name, pages: d.pages })) : undefined,
+      docText,
+    }];
     all = updateChat(id, next, all);
     persist(all);
+
+    // Capture durable facts in the background (signed-in, non-demo). Free model.
+    if (session && content) void extractMemory(content);
 
     // Demo lane: force a free model, skip the creator router (images/docs need
     // credits), and count the message toward the cap.
@@ -937,6 +1056,23 @@ export default function Playground() {
             ))}
           </div>
         )}
+        {(docs.length > 0 || docBusy) && (
+          <div className="flex flex-wrap gap-2 px-1">
+            {docs.map((d, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
+                <span aria-hidden>📄</span>
+                <span className="max-w-[160px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
+                <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                <button onClick={() => setDocs(docs.filter((_, x) => x !== i))} className="font-bold" style={{ color: "var(--text-faint)" }}>×</button>
+              </div>
+            ))}
+            {docBusy && (
+              <span className="flex items-center gap-2 px-2 py-1.5 text-xs italic" style={{ color: "var(--text-faint)" }}>
+                <span className="thinking-shimmer">Reading PDF…</span>
+              </span>
+            )}
+          </div>
+        )}
         <textarea
           ref={inputRef}
           rows={1}
@@ -960,7 +1096,7 @@ export default function Playground() {
               e.preventDefault();
               const dt = new DataTransfer();
               items.forEach((x) => { const f = x.getAsFile(); if (f) dt.items.add(f); });
-              attachImages(dt.files);
+              attachFiles(dt.files);
             }
           }}
           placeholder={
@@ -973,13 +1109,13 @@ export default function Playground() {
           style={{ color: "var(--text-strong)" }}
         />
         <div className="flex items-center gap-2">
-          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { attachImages(e.target.files); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" accept="image/*,application/pdf,.pdf" multiple hidden onChange={(e) => { attachFiles(e.target.files); e.target.value = ""; }} />
           <button
             onClick={() => fileRef.current?.click()}
-            disabled={images.length >= 3}
+            disabled={images.length >= 3 && docs.length >= 3}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-white/5 disabled:opacity-30"
             style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}
-            title="Attach image (or paste one)"
+            title="Attach image or PDF (or paste an image)"
           >
             📎
           </button>
@@ -1063,6 +1199,16 @@ export default function Playground() {
           </div>
         ))}
       </div>
+      {session && (
+        <button
+          onClick={() => setMemoryOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-white/5"
+          style={{ borderTop: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}
+        >
+          <span aria-hidden>🧠</span> Memory
+          <span className="ml-auto" style={{ color: "var(--text-faint)" }}>{memories.length || ""}</span>
+        </button>
+      )}
       <div className="p-4 text-xs" style={{ borderTop: "1px solid var(--border-hairline)", color: "var(--text-faint)" }}>
         {session ? (
           <>
@@ -1076,9 +1222,59 @@ export default function Playground() {
     </>
   );
 
+  const memoryModal = memoryOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setMemoryOpen(false)}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl" style={{ background: "#141414", border: "1px solid var(--border-strong)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
+          <div className="flex items-center gap-2 font-semibold"><span aria-hidden>🧠</span> What AIsathi remembers</div>
+          <button onClick={() => setMemoryOpen(false)} style={{ color: "var(--text-faint)" }}>✕</button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto p-3">
+          {memories.length === 0 ? (
+            <p className="px-2 py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+              Nothing yet. As you chat, AIsathi remembers durable facts about you — your name, work, preferences — and uses them across all your conversations.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {memories.map((m) => (
+                <li key={m.id} className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--surface-inset)" }}>
+                  <span className="min-w-0 flex-1" style={{ color: "var(--text-body)" }}>{m.content}</span>
+                  <button
+                    onClick={() => {
+                      const sb = supabaseBrowser();
+                      if (sb) deleteMemory(sb, m.id).catch(() => {});
+                      setMemories((cur) => cur.filter((x) => x.id !== m.id));
+                    }}
+                    className="flex-none opacity-0 transition-opacity group-hover:opacity-100"
+                    style={{ color: "var(--text-faint)" }}
+                    title="Forget this"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="px-5 py-3 text-[11px]" style={{ borderTop: "1px solid var(--border-hairline)", color: "var(--text-faint)" }}>
+          Memories are private to your account and injected into every chat. Delete any anytime.
+        </div>
+      </div>
+    </div>
+  );
+
+  const memoryToastEl = memoryToast && (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg" style={{ background: "#141414", border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}>
+      🧠 Memory updated
+    </div>
+  );
+
   return (
     <div className="flex h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
+      {memoryModal}
+      {memoryToastEl}
       <div className="flex min-h-0 flex-1">
         {/* Desktop sidebar */}
         <aside className="hidden w-64 flex-none flex-col md:flex" style={{ borderRight: "1px solid var(--border-hairline)", background: "#0d0d0d" }}>
@@ -1165,6 +1361,13 @@ export default function Playground() {
                           {m.images?.map((src, xi) => (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img key={xi} src={src} alt="sent" className="max-h-48 max-w-[60%] rounded-xl object-contain" style={{ border: "1px solid var(--border-strong)" }} />
+                          ))}
+                          {m.attachments?.map((d, xi) => (
+                            <div key={xi} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
+                              <span aria-hidden>📄</span>
+                              <span className="max-w-[200px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
+                              <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                            </div>
                           ))}
                           <div className="max-w-[80%] px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--ev-white-05)", border: "1px solid var(--border-hairline)", borderRadius: "16px 16px 4px 16px" }}>
                             <Content text={m.content} />
