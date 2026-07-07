@@ -944,9 +944,8 @@ export default function Playground() {
                         </div>
                       ) : (
                         <div key={i} className="group flex gap-3.5">
-                          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: "var(--accent)" }}>
-                            AI
-                          </div>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/icon.svg" alt="" className="h-7 w-7 flex-none rounded-full" />
                           <div className="min-w-0 flex-1 pt-0.5">
                             <div className="text-[15px] leading-relaxed">
                               <Content text={m.content} />
@@ -972,10 +971,10 @@ export default function Playground() {
                       ),
                     )}
                     {waiting && (
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/rhino-loader.svg" alt="" className="h-10 w-auto flex-none" />
-                        <span className="text-sm italic" style={{ color: "var(--text-faint)" }}>साथी सोच्दै छ…</span>
+                        <img src="/rhino-loader.svg" alt="" className="h-9 w-auto flex-none" />
+                        <span className="thinking-shimmer text-sm font-medium">साथी सोच्दै छ…</span>
                       </div>
                     )}
                   </div>

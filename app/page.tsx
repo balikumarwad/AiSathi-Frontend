@@ -115,8 +115,15 @@ export default function Home() {
       {/* ============ CTA ============ */}
       <section className="border-t border-zinc-900">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/rhino.svg" alt="AIsathi rhino" className="mx-auto mb-8 h-20 w-auto opacity-90 sm:h-24" />
+          {/* Rhino crossing a crimson sun — the brand lockup, big. */}
+          <div className="relative mx-auto mb-8 w-fit">
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-red-500 to-red-800 shadow-[0_0_60px_rgba(225,29,46,0.45)] sm:h-24 sm:w-24"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/rhino.svg" alt="AIsathi rhino" className="relative h-20 w-auto sm:h-24" />
+          </div>
           <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।
           </h2>

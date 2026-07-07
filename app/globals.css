@@ -64,3 +64,18 @@ body {
   background: var(--ev-white-15);
   border-radius: 4px;
 }
+
+/* Claude-style "thinking" shimmer: a light band sweeps through the text
+   while the rhino gallops next to it. */
+@keyframes sathi-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.thinking-shimmer {
+  background: linear-gradient(90deg, var(--text-faint) 30%, var(--text-strong) 50%, var(--text-faint) 70%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sathi-shimmer 1.8s linear infinite;
+}
