@@ -120,7 +120,7 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "preview" && canPreview ? (
           <iframe
-            sandbox="allow-scripts allow-popups allow-forms allow-modals"
+            sandbox="allow-scripts allow-popups allow-forms"
             srcDoc={srcDoc}
             className="h-full w-full border-0 bg-white"
             title={art.title}
