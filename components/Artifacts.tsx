@@ -10,7 +10,8 @@ import { ArrowUpRight, Check, Copy, Download, FileText, Globe, Image as ImageIco
  * (sandboxed iframe) and a Preview/Code toggle, plus copy and download.
  */
 
-export type Artifact = { id: string; title: string; kind: "html" | "svg" | "code"; lang: string; code: string };
+// "pdf" artifacts carry a data URL in `code` and render in a native viewer.
+export type Artifact = { id: string; title: string; kind: "html" | "svg" | "code" | "pdf"; lang: string; code: string };
 
 function hash(s: string): string {
   let h = 0;
@@ -65,14 +66,22 @@ export function ArtifactCard({ art, onOpen }: { art: Artifact; onOpen: () => voi
 }
 
 export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => void }) {
-  const canPreview = art.kind === "html" || art.kind === "svg";
+  const isPdf = art.kind === "pdf";
+  const canPreview = art.kind === "html" || art.kind === "svg" || isPdf;
+  const hasCode = !isPdf;
   const [tab, setTab] = useState<"preview" | "code">(canPreview ? "preview" : "code");
   const [copied, setCopied] = useState(false);
 
   const download = () => {
+    const a = document.createElement("a");
+    if (isPdf) {
+      a.href = art.code; // data URL
+      a.download = `${art.title || "document"}.pdf`;
+      a.click();
+      return;
+    }
     const ext = art.kind === "html" ? "html" : art.kind === "svg" ? "svg" : (art.lang || "txt");
     const blob = new Blob([art.code], { type: "text/plain" });
-    const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `aisathi-artifact.${ext}`;
     a.click();
@@ -100,27 +109,31 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
     <div className="flex h-full flex-col" style={{ background: "#0d0d0d" }}>
       <header className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
         <span className="min-w-0 flex-1 truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>{art.title}</span>
-        {canPreview && (
+        {canPreview && hasCode && (
           <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ border: "1px solid var(--border-hairline)" }}>
             {tabBtn("preview", "Preview")}
             {tabBtn("code", "Code")}
           </div>
         )}
-        <button
-          onClick={() => { navigator.clipboard.writeText(art.code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-          className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5"
-          style={{ color: "var(--text-muted)" }}
-          title="Copy"
-        >
-          {copied ? <Check size={15} /> : <Copy size={15} />}
-        </button>
+        {hasCode && (
+          <button
+            onClick={() => { navigator.clipboard.writeText(art.code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5"
+            style={{ color: "var(--text-muted)" }}
+            title="Copy"
+          >
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+          </button>
+        )}
         <button onClick={download} className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5" style={{ color: "var(--text-muted)" }} title="Download">
           <Download size={15} />
         </button>
         <button onClick={onClose} className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5" style={{ color: "var(--text-faint)" }} title="Close"><X size={15} /></button>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
-        {tab === "preview" && canPreview ? (
+        {isPdf ? (
+          <iframe src={art.code} className="h-full w-full border-0 bg-white" title={art.title} />
+        ) : tab === "preview" && canPreview ? (
           <iframe
             sandbox="allow-scripts allow-popups allow-forms"
             srcDoc={srcDoc}

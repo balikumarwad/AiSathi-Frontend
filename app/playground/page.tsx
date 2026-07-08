@@ -23,7 +23,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/chatSync";
 import { addMemory, deleteMemory, loadMemories, type Memory } from "@/lib/memory";
 
-type DocRef = { name: string; pages: number };
+type DocRef = { name: string; pages: number; url?: string };
 type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
@@ -40,11 +40,12 @@ type CatalogModel = {
  * chooses it, tidy markdown.
  */
 const SYSTEM_PROMPT =
-  "You are AIsathi, a friendly AI assistant from Nepal (aisathi.io). " +
-  "Always respond in clear, simple English by default — even if the question mixes languages. " +
-  "Only respond in Nepali if the user writes fully in Nepali or explicitly asks for Nepali. " +
-  "Be helpful and direct. Use markdown: headings for structure, bullet lists for steps, code blocks for code. " +
-  "Keep answers focused — thorough when needed, never padded.";
+  "You are AIsathi, a helpful, knowledgeable AI assistant from Nepal (aisathi.io). " +
+  "Give complete, genuinely useful answers: think the problem through, cover the important angles, and include concrete examples, step-by-step instructions, or working code where they help. Aim for the depth of a thoughtful expert — not a one-line reply — while staying on-point and never padding. " +
+  "Structure longer answers with markdown: a short lead, headings or bullet lists, code blocks with a language tag, and a brief takeaway when it helps. " +
+  "If a request is ambiguous, make a sensible assumption and say so instead of refusing; if you are unsure of a fact, be honest about it. " +
+  "When the user attaches a document or image, use its contents directly to answer. " +
+  "Respond in clear, simple English by default even when the question mixes languages; reply in Nepali only when the user writes fully in Nepali or explicitly asks for Nepali.";
 
 const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
   { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
@@ -345,8 +346,9 @@ export default function Playground() {
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
-  const [docs, setDocs] = useState<{ name: string; text: string; pages: number }[]>([]); // pending PDF attachments
+  const [docs, setDocs] = useState<{ name: string; text: string; pages: number; url: string }[]>([]); // pending PDF attachments
   const [docBusy, setDocBusy] = useState(false); // reading a PDF
+  const [docStatus, setDocStatus] = useState("Reading PDF…"); // attach/OCR progress label
   const [memories, setMemories] = useState<Memory[]>([]);
   const [memoryToast, setMemoryToast] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -641,14 +643,25 @@ export default function Playground() {
         reader.onload = () => setImages((cur) => [...cur, String(reader.result)].slice(0, 3));
         reader.readAsDataURL(f);
       } else if (isPdf) {
-        if (f.size > 20 * 1024 * 1024) { setError("PDFs max 20MB."); continue; }
+        if (f.size > 50 * 1024 * 1024) { setError("PDFs max 50MB."); continue; }
         setError("");
+        setDocStatus("Reading PDF…");
         setDocBusy(true);
         try {
-          const { extractPdfText } = await import("@/lib/pdf");
-          const { text, pages } = await extractPdfText(f);
-          if (!text) setError(`"${f.name}" has no selectable text — it may be a scanned image.`);
-          setDocs((cur) => [...cur, { name: f.name, text, pages }].slice(0, 3));
+          const pdf = await import("@/lib/pdf");
+          const url = await pdf.fileToDataUrl(f);
+          const { text: extracted, pages, scanned } = await pdf.extractPdfText(f);
+          let text = extracted;
+          // Scanned PDF (no selectable text) -> OCR the pages.
+          if (scanned || !text) {
+            setDocStatus("Scanned PDF — running OCR…");
+            try {
+              const ocr = await pdf.ocrPdf(f, 15, (p, n) => setDocStatus(`Running OCR — page ${p}/${n}…`));
+              if (ocr.text) text = ocr.text;
+              else setError(`"${f.name}" is a scan and OCR found no text.`);
+            } catch { setError(`Couldn't OCR "${f.name}".`); }
+          }
+          setDocs((cur) => [...cur, { name: f.name, text, pages, url }].slice(0, 3));
         } catch {
           setError(`Couldn't read "${f.name}".`);
         } finally {
@@ -1044,7 +1057,7 @@ export default function Playground() {
       role: "user",
       content: content || defaultPrompt,
       images: imgs.length ? imgs : undefined,
-      attachments: attached.length ? attached.map((d) => ({ name: d.name, pages: d.pages })) : undefined,
+      attachments: attached.length ? attached.map((d) => ({ name: d.name, pages: d.pages, url: d.url })) : undefined,
       docText,
     }];
     all = updateChat(id, next, all);
@@ -1265,12 +1278,13 @@ export default function Playground() {
                 <FileText size={14} aria-hidden />
                 <span className="max-w-[160px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
                 <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                <button onClick={() => setArtifact({ id: `pdf-${i}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>
                 <button onClick={() => setDocs(docs.filter((_, x) => x !== i))} className="font-bold" style={{ color: "var(--text-faint)" }}>×</button>
               </div>
             ))}
             {docBusy && (
               <span className="flex items-center gap-2 px-2 py-1.5 text-xs italic" style={{ color: "var(--text-faint)" }}>
-                <span className="thinking-shimmer">Reading PDF…</span>
+                <span className="thinking-shimmer">{docStatus}</span>
               </span>
             )}
           </div>
@@ -1569,6 +1583,7 @@ export default function Playground() {
                               <FileText size={14} aria-hidden />
                               <span className="max-w-[200px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
                               <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                              {d.url && <button onClick={() => setArtifact({ id: `pdf-m-${xi}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url! })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>}
                             </div>
                           ))}
                           <div className="max-w-[80%] px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--ev-white-05)", border: "1px solid var(--border-hairline)", borderRadius: "16px 16px 4px 16px" }}>

@@ -18,12 +18,17 @@ export type SyncChat = { id: string; title: string; messages: SyncMsg[]; updated
 /** Base64 image payloads are megabytes each — replace with a count marker. */
 function lean(messages: SyncMsg[]): SyncMsg[] {
   return messages.map((m) => {
-    // Drop heavy per-message payloads before syncing to the DB: base64 images
-    // and extracted PDF text (kept only in the live session / local cache).
-    const heavy = m as SyncMsg & { docText?: string };
-    if (!m.images?.length && !heavy.docText) return m;
-    const { images: _drop, docText: _drop2, ...rest } = heavy;
-    return { ...rest, content: m.content || "(attachment)" };
+    // Drop heavy per-message payloads before syncing to the DB: base64 images,
+    // extracted PDF text, and PDF data URLs (kept only in the live/local cache).
+    const heavy = m as SyncMsg & { docText?: string; attachments?: { name: string; pages: number; url?: string }[] };
+    const hasHeavy = !!m.images?.length || !!heavy.docText || !!heavy.attachments?.some((a) => a.url);
+    if (!hasHeavy) return m;
+    const { images: _drop, docText: _drop2, attachments, ...rest } = heavy;
+    return {
+      ...rest,
+      content: m.content || "(attachment)",
+      ...(attachments ? { attachments: attachments.map(({ url: _u, ...a }) => a) } : {}),
+    };
   });
 }
 
