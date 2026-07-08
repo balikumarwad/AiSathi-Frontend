@@ -360,6 +360,7 @@ export default function Playground() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null); // editing a user message
   const [editText, setEditText] = useState("");
   const [chatQuery, setChatQuery] = useState(""); // sidebar conversation search
+  const [followups, setFollowups] = useState<string[]>([]); // suggested next questions
   const [listening, setListening] = useState(false);
   const [webMode, setWebMode] = useState<"off" | "auto" | "on">("off"); // web search: off / auto-detect / always
   const [lang, setLang] = useState<"en" | "ne">("en"); // reply language toggle
@@ -738,6 +739,33 @@ export default function Playground() {
   /** Quietly capture durable facts about the user after a turn (ChatGPT-style
    *  memory). Runs on a FREE model so it never costs the user anything; any
    *  failure (e.g. free pool busy) is silently skipped. */
+  /** Suggest 3 short follow-up questions after a reply (free model, best-effort). */
+  async function generateFollowups(userText: string, replyText: string) {
+    const authKey = apiKey || "demo";
+    if (!replyText || replyText.length < 20) return;
+    try {
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authKey}` },
+        body: JSON.stringify({
+          model: "openrouter/free",
+          messages: [
+            { role: "system", content: "Suggest exactly 3 short, natural follow-up questions the user might ask next, based on the conversation. Each under 9 words, phrased as the user would type. Return ONLY a JSON array of 3 strings." + (langRef.current === "ne" ? " Write them in Nepali." : "") },
+            { role: "user", content: `User asked: ${userText.slice(0, 500)}\n\nAssistant replied: ${replyText.slice(0, 1500)}` },
+          ],
+          max_tokens: 120,
+        }),
+      });
+      if (!res.ok) return;
+      const j = await res.json();
+      const raw: string = j.choices?.[0]?.message?.content ?? "[]";
+      const arr: unknown = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] ?? "[]");
+      if (!Array.isArray(arr)) return;
+      const clean = arr.filter((s): s is string => typeof s === "string" && s.trim().length > 2 && s.length < 80).slice(0, 3);
+      if (clean.length) setFollowups(clean);
+    } catch { /* best-effort */ }
+  }
+
   async function extractMemory(userText: string) {
     if (!session || !apiKey || userText.trim().length < 12) return;
     const sb = supabaseBrowser();
@@ -896,6 +924,9 @@ export default function Playground() {
       // Claude-style: auto-open the latest substantial artifact in the side panel.
       const arts = extractArtifacts(reply);
       if (arts.length) setArtifact(arts[arts.length - 1]);
+      // Suggest follow-up questions for the latest reply.
+      const lastUserMsg = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+      if (reply) void generateFollowups(lastUserMsg, reply);
     } catch (e) {
       if ((e as Error).name !== "AbortError") setError(String(e));
     } finally {
@@ -1112,6 +1143,7 @@ export default function Playground() {
 
     setError("");
     setInput("");
+    setFollowups([]);
     const imgs = images;
     setImages([]);
     const attached = docs;
@@ -1824,6 +1856,21 @@ export default function Playground() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/rhino-loader.svg" alt="" className="h-9 w-auto flex-none" />
                         <span className="thinking-shimmer text-sm font-medium">साथी सोच्दै छ…</span>
+                      </div>
+                    )}
+                    {/* Suggested follow-up questions after the latest reply. */}
+                    {!busy && followups.length > 0 && messages[messages.length - 1]?.role === "assistant" && (
+                      <div className="ml-11 flex flex-col items-start gap-1.5 pt-1">
+                        {followups.map((f, fi) => (
+                          <button
+                            key={fi}
+                            onClick={() => send(f)}
+                            className="rounded-full px-3.5 py-1.5 text-left text-[13px] transition-colors hover:bg-white/5"
+                            style={{ border: "1px solid var(--border-hairline)", color: "var(--text-body)" }}
+                          >
+                            {f}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
