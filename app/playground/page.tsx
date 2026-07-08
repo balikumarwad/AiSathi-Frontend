@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Globe, Languages, Lightbulb, Link2,
-  Menu, Mic, Mountain, Palette, Paperclip, Plane, Rocket, RotateCcw, Sparkles, Square, X, Zap,
+  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Nav from "@/components/Nav";
@@ -351,6 +351,8 @@ export default function Playground() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
+  const [editingIdx, setEditingIdx] = useState<number | null>(null); // editing a user message
+  const [editText, setEditText] = useState("");
   const [listening, setListening] = useState(false);
   const [webSearch, setWebSearch] = useState(false); // live web search in normal chat
   const [lang, setLang] = useState<"en" | "ne">("en"); // reply language toggle
@@ -1086,7 +1088,7 @@ export default function Playground() {
     }
   }
 
-  async function send(text?: string) {
+  async function send(text?: string, editIndex?: number) {
     const content = (text ?? input).trim();
     if ((!content && images.length === 0 && docs.length === 0) || busy || docBusy) return;
 
@@ -1121,6 +1123,9 @@ export default function Playground() {
       id = newChatId();
       all = [{ id, title: titleSeed.slice(0, 42), messages: [], updated: Date.now() }, ...chats];
       setChatId(id);
+    } else if (editIndex != null) {
+      // Edit & branch: drop the edited message and everything after it, then resend.
+      all = updateChat(chat.id, chat.messages.slice(0, editIndex), chats);
     }
     const base = all.find((c) => c.id === id)!.messages;
     const next: Msg[] = [...base, {
@@ -1185,6 +1190,16 @@ export default function Playground() {
     const all = updateChat(chat.id, msgs, chats);
     persist(all);
     await run(msgs, chat.id, all);
+  }
+
+  /** Save an edited user message and re-run from that point (branch). */
+  async function submitEdit() {
+    if (editingIdx == null || busy) return;
+    const idx = editingIdx;
+    const text = editText.trim();
+    setEditingIdx(null);
+    if (!text) return;
+    await send(text, idx);
   }
 
   function copyMessage(i: number, text: string) {
@@ -1683,7 +1698,7 @@ export default function Playground() {
                   <div className="space-y-8">
                     {messages.map((m, i) =>
                       m.role === "user" ? (
-                        <div key={i} className="flex flex-col items-end gap-2">
+                        <div key={i} className="group flex flex-col items-end gap-2">
                           {m.images?.map((src, xi) => (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img key={xi} src={src} alt="sent" className="max-h-48 max-w-[60%] rounded-xl object-contain" style={{ border: "1px solid var(--border-strong)" }} />
@@ -1696,9 +1711,39 @@ export default function Playground() {
                               {d.url && <button onClick={() => setArtifact({ id: `pdf-m-${xi}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url! })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>}
                             </div>
                           ))}
-                          <div className="max-w-[80%] px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--ev-white-05)", border: "1px solid var(--border-hairline)", borderRadius: "16px 16px 4px 16px" }}>
-                            <Content text={m.content} />
-                          </div>
+                          {editingIdx === i ? (
+                            <div className="w-full max-w-[85%]">
+                              <textarea
+                                autoFocus
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitEdit(); } if (e.key === "Escape") setEditingIdx(null); }}
+                                rows={3}
+                                className="w-full resize-none rounded-xl p-3 text-[15px] outline-none"
+                                style={{ background: "var(--ev-white-05)", border: "1px solid var(--border-accent)", color: "var(--text-strong)" }}
+                              />
+                              <div className="mt-1.5 flex justify-end gap-3 text-xs">
+                                <button onClick={() => setEditingIdx(null)} className="font-semibold" style={{ color: "var(--text-muted)" }}>Cancel</button>
+                                <button onClick={submitEdit} className="font-semibold" style={{ color: "var(--ev-red)" }}>Save &amp; resend</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="max-w-[80%] px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--ev-white-05)", border: "1px solid var(--border-hairline)", borderRadius: "16px 16px 4px 16px" }}>
+                                <Content text={m.content} />
+                              </div>
+                              {!busy && (
+                                <button
+                                  onClick={() => { setEditingIdx(i); setEditText(m.content); }}
+                                  className="flex items-center gap-1 text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100"
+                                  style={{ color: "var(--text-faint)" }}
+                                  title="Edit this message and re-run from here"
+                                >
+                                  <Pencil size={11} /> edit
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div key={i} className="group flex gap-3.5">
