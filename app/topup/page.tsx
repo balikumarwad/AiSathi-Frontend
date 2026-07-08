@@ -7,6 +7,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Nav from "@/components/Nav";
 
@@ -111,7 +112,7 @@ function TopupInner() {
           {error && <p className="text-red-400">{error}</p>}
           {result && result.status === "completed" && (
             <>
-              <p className="text-2xl">✅ Payment verified</p>
+              <p className="flex items-center gap-2 text-2xl"><CheckCircle2 className="text-green-400" /> Payment verified</p>
               {result.credited_npr !== undefined && (
                 <p className="mt-3 text-zinc-300">
                   Credited <b>रू {result.credited_npr.toLocaleString()}</b>
@@ -130,8 +131,8 @@ function TopupInner() {
       ) : (
         <div className="mt-8 space-y-4">
           {stripeResult === "success" && (
-            <div className="rounded-lg border border-green-800 bg-green-900/20 p-3 text-sm text-green-300">
-              ✅ Stripe payment received — credits appear once the webhook settles (usually seconds).
+            <div className="flex items-center gap-2 rounded-lg border border-green-800 bg-green-900/20 p-3 text-sm text-green-300">
+              <CheckCircle2 size={16} className="flex-none" /> Stripe payment received — credits appear once the webhook settles (usually seconds).
             </div>
           )}
           {stripeResult === "cancel" && (
@@ -157,7 +158,7 @@ function TopupInner() {
                   (market === m ? "bg-zinc-800 font-medium" : "text-zinc-500 hover:text-zinc-300")
                 }
               >
-                {m === "np" ? "🇳🇵 Nepal (Khalti)" : "🌍 International (card)"}
+                {m === "np" ? "Nepal (Khalti)" : "International (card)"}
               </button>
             ))}
           </div>

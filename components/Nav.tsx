@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 const LINKS = [
@@ -109,7 +110,7 @@ export default function Nav() {
             className="flex h-9 w-9 items-center justify-center rounded-md"
             style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
           >
-            {open ? "✕" : "☰"}
+            {open ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>

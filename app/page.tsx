@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
 import HeroVideo from "@/components/HeroVideo";
 import Nav from "@/components/Nav";
 import CopyButton from "@/components/CopyButton";
@@ -16,11 +18,11 @@ const MODELS = [
 ];
 
 /* Honest signals only — no invented user counts (audit item 1). */
-const TRUST = [
+const TRUST: [ReactNode, string][] = [
   ["340+", "live models"],
   ["रू0", "to start — free models"],
   ["eSewa · Khalti · card", "local payments"],
-  ["🇳🇵", "built in Nepal"],
+  [<MapPin key="np" size={22} className="mx-auto" aria-hidden />, "built in Nepal"],
 ];
 
 const COMPARISON: [string, string, string][] = [
@@ -32,10 +34,10 @@ const COMPARISON: [string, string, string][] = [
 ];
 
 const USE_CASES = [
-  { icon: "⚡", title: "Everyday questions", pick: "Fast", detail: "Homework, translations, quick answers. From रू44 per million tokens." },
-  { icon: "🧠", title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
-  { icon: "🚀", title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
-  { icon: "🎨", title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
+  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: "Homework, translations, quick answers. From रू44 per million tokens." },
+  { icon: Brain, title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
+  { icon: Rocket, title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
+  { icon: Palette, title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
 ];
 
 const FAQ: [string, string][] = [
@@ -150,16 +152,16 @@ export default function Home() {
           Built for Nepal. <span className="text-zinc-500">Open to the world.</span>
         </h2>
         <div className="mt-16 grid gap-6 sm:grid-cols-3">
-          {[
-            ["🇳🇵", "Local payments", "Top up credits with eSewa or Khalti in seconds — or card via Stripe from anywhere."],
-            ["🧾", "NPR pricing", "Transparent per-token prices in rupees. Start free. No FX surprises."],
-            ["🔌", "Drop-in API", "OpenAI-compatible. Point any SDK at our base URL — your code doesn't change."],
-          ].map(([icon, title, body]) => (
+          {([
+            [MapPin, "Local payments", "Top up credits with eSewa or Khalti in seconds — or card via Stripe from anywhere."],
+            [Receipt, "NPR pricing", "Transparent per-token prices in rupees. Start free. No FX surprises."],
+            [Plug, "Drop-in API", "OpenAI-compatible. Point any SDK at our base URL — your code doesn't change."],
+          ] as const).map(([Icon, title, body]) => (
             <div
               key={title}
               className="group rounded-2xl border border-zinc-800 bg-zinc-950 p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
             >
-              <div className="text-3xl" aria-hidden>{icon}</div>
+              <Icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-semibold">{title}</div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{body}</p>
             </div>
@@ -180,9 +182,9 @@ export default function Home() {
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li>✓ 26+ free models, unlimited chats*</li>
-              <li>✓ Full playground — history, images in, voice</li>
-              <li>✓ No card, no top-up required</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />26+ free models, unlimited chats*</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Full playground — history, images in, voice</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
             </ul>
             <p className="mt-4 text-[11px] text-zinc-600">*Free models are best-effort with daily caps.</p>
           </div>
@@ -191,10 +193,10 @@ export default function Home() {
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pay as you go</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">from <span lang="ne">रू</span>200</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li>✓ Every model — GPT, Claude, Gemini, images</li>
-              <li>✓ Fast models from <span lang="ne">रू</span>44 / 1M tokens</li>
-              <li>✓ Claude Sonnet 5 at <span lang="ne">रू</span>350 / 1M input</li>
-              <li>✓ Top up via Khalti, eSewa, or card</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Every model — GPT, Claude, Gemini, images</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Fast models from <span lang="ne">रू</span>44 / 1M tokens</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Claude Sonnet 5 at <span lang="ne">रू</span>350 / 1M input</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Top up via Khalti, eSewa, or card</li>
             </ul>
             <Link href="/models" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
               See live prices for all models →
@@ -204,9 +206,9 @@ export default function Home() {
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Developers & teams</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">Same rates</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li>✓ OpenAI-compatible API + streaming</li>
-              <li>✓ Multiple API keys, usage dashboard</li>
-              <li>✓ One NPR balance across your whole team</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />OpenAI-compatible API + streaming</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Multiple API keys, usage dashboard</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />One NPR balance across your whole team</li>
             </ul>
             <Link href="/docs" className="mt-5 inline-block text-sm font-semibold text-zinc-300 hover:text-white">
               Read the docs →
@@ -257,7 +259,7 @@ export default function Home() {
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {USE_CASES.map((u) => (
             <div key={u.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-zinc-600">
-              <div className="text-3xl" aria-hidden>{u.icon}</div>
+              <u.icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
               <div className="mt-1 text-xs font-bold uppercase tracking-wider text-red-400">→ {u.pick}</div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{u.detail}</p>

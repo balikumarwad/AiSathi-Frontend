@@ -109,7 +109,7 @@ export default function AccountPage() {
             <div className="flex items-center justify-between rounded-xl border border-zinc-800 p-4">
               <div>
                 <div className="text-sm text-zinc-400">
-                  नमस्ते{session.user.user_metadata?.full_name ? `, ${String(session.user.user_metadata.full_name).split(" ")[0]}` : ""} 🙏
+                  नमस्ते{session.user.user_metadata?.full_name ? `, ${String(session.user.user_metadata.full_name).split(" ")[0]}` : ""}
                 </div>
                 <div className="font-medium">
                   {(session.user.user_metadata?.full_name as string) ?? session.user.email}

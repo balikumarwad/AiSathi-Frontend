@@ -11,6 +11,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import {
+  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Languages, Lightbulb, Link2,
+  Menu, Mic, Mountain, Palette, Paperclip, Plane, Rocket, RotateCcw, Sparkles, Square, X, Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Nav from "@/components/Nav";
 import Content from "@/components/Markdown";
 import { ArtifactPanel, extractArtifacts, type Artifact } from "@/components/Artifacts";
@@ -41,19 +46,19 @@ const SYSTEM_PROMPT =
   "Be helpful and direct. Use markdown: headings for structure, bullet lists for steps, code blocks for code. " +
   "Keep answers focused — thorough when needed, never padded.";
 
-const SUGGESTIONS = [
-  { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
-  { icon: "🎨", text: "Create an image of a rhino galloping past Everest at sunrise" },
-  { icon: "📄", text: "Write a professional cover letter for a software engineer job" },
-  { icon: "🧳", text: "Plan a perfect 3-day trip to Pokhara on a budget" },
+const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
+  { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
+  { icon: Palette, text: "Create an image of a rhino galloping past Everest at sunrise" },
+  { icon: FileText, text: "Write a professional cover letter for a software engineer job" },
+  { icon: Plane, text: "Plan a perfect 3-day trip to Pokhara on a budget" },
 ];
 
 // Text-first prompts for the anonymous demo (free models, no image/doc tools).
-const DEMO_SUGGESTIONS = [
-  { icon: "🏔️", text: "Write a short poem about the Himalayas in Nepali" },
-  { icon: "💡", text: "Explain how AI works, using a momo-making analogy" },
-  { icon: "🌐", text: "Translate 'Where is the nearest bus stop?' into Nepali" },
-  { icon: "🧳", text: "Plan a perfect 3-day trip to Pokhara on a budget" },
+const DEMO_SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
+  { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
+  { icon: Lightbulb, text: "Explain how AI works, using a momo-making analogy" },
+  { icon: Languages, text: "Translate 'Where is the nearest bus stop?' into Nepali" },
+  { icon: Plane, text: "Plan a perfect 3-day trip to Pokhara on a budget" },
 ];
 
 /**
@@ -153,10 +158,10 @@ function greeting(name?: string) {
  * 340 raw model names. Mappings live here so the underlying model can be
  * swapped without users noticing — margin management by indirection.
  */
-const TIERS = [
-  { tier: "⚡ Fast", desc: "Quick everyday answers — cheapest", id: "google/gemini-3.1-flash-lite" },
-  { tier: "🧠 Smart", desc: "Best balance — Claude Sonnet", id: "anthropic/claude-sonnet-5" },
-  { tier: "🚀 Genius", desc: "Frontier intelligence — Claude Fable", id: "anthropic/claude-fable-5" },
+const TIERS: { label: string; icon: LucideIcon; desc: string; id: string }[] = [
+  { label: "Fast", icon: Zap, desc: "Quick everyday answers — cheapest", id: "google/gemini-3.1-flash-lite" },
+  { label: "Smart", icon: Brain, desc: "Best balance — Claude Sonnet", id: "anthropic/claude-sonnet-5" },
+  { label: "Genius", icon: Rocket, desc: "Frontier intelligence — Claude Fable", id: "anthropic/claude-fable-5" },
 ];
 
 function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model: string; onPick: (id: string) => void }) {
@@ -174,7 +179,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
 
   const ql = q.trim().toLowerCase();
   const match = (m: CatalogModel) => !ql || m.id.toLowerCase().includes(ql) || (m.name ?? "").toLowerCase().includes(ql);
-  const AUTO: CatalogModel = { id: "openrouter/auto", name: "✨ Auto — picks the best AI for your question" };
+  const AUTO: CatalogModel = { id: "openrouter/auto", name: "Auto — picks the best AI for your question" };
   const free = models.filter(isFree).filter(match).filter((m) => m.id !== AUTO.id);
   const paid = models.filter((m) => !isFree(m)).filter(match).filter((m) => m.id !== AUTO.id);
 
@@ -192,7 +197,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
     >
       <span className="min-w-0">
         <span className="block truncate text-sm" style={{ color: "var(--text-strong)" }}>
-          {m.name ?? m.id} {m.vision && <span title="Understands images">📷</span>} {m.image_out && <span title="Generates images">🎨</span>}
+          <span className="inline-flex items-center gap-1.5">{m.name ?? m.id} {m.vision && <Camera size={12} aria-label="Understands images" />} {m.image_out && <Palette size={12} aria-label="Generates images" />}</span>
         </span>
         <span className="block truncate font-[family-name:var(--font-mono)] text-[11px]" style={{ color: "var(--text-faint)" }}>{m.id}</span>
       </span>
@@ -210,7 +215,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
         title={model}
       >
         <span className="truncate">{shortName}</span>
-        <span style={{ color: "var(--text-faint)" }}>▾</span>
+        <ChevronDown size={13} style={{ color: "var(--text-faint)" }} />
       </button>
       {open && (
         <div className="absolute bottom-full z-30 mb-2 w-[420px] max-w-[85vw] overflow-hidden" style={{ background: "#131313", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
@@ -233,7 +238,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
                       style={{ background: t.id === model ? "var(--ev-red-15)" : "transparent" }}
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>{t.tier}</span>
+                        <span className="flex items-center gap-2 truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}><t.icon size={15} /> {t.label}</span>
                         <span className="block truncate text-[11px]" style={{ color: "var(--text-faint)" }}>{t.desc}</span>
                       </span>
                       {m && <span className="flex-none text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{fmtPrice(m)}</span>}
@@ -248,9 +253,9 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
                 {row(AUTO)}
               </>
             )}
-            {free.length > 0 && <div style={groupLabel}>🆓 Free — works without credits</div>}
+            {free.length > 0 && <div style={groupLabel}>Free — works without credits</div>}
             {free.slice(0, 30).map(row)}
-            {paid.length > 0 && <div style={groupLabel}>⚡ Paid — रू in / out per 1M tokens</div>}
+            {paid.length > 0 && <div style={groupLabel}>Paid — रू in / out per 1M tokens</div>}
             {paid.slice(0, 80).map(row)}
             {free.length + paid.length === 0 && (
               <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>No models match &quot;{q}&quot;</div>
@@ -542,7 +547,7 @@ export default function Playground() {
   const COMMANDS: Cmd[] = [
     { cmd: "new", hint: "Start a new chat", run: () => { setInput(""); startNewChat(); } },
     ...(bestFreeCmd ? [{ cmd: "free", hint: `Switch to a free model (${bestFreeCmd.id.split("/").pop()})`, run: () => { setModel(bestFreeCmd.id); setInput(""); } }] : []),
-    { cmd: "auto", hint: "Switch to ✨ Auto — best model per question", run: () => { setModel("openrouter/auto"); setInput(""); } },
+    { cmd: "auto", hint: "Switch to Auto — best model per question", run: () => { setModel("openrouter/auto"); setInput(""); } },
     { cmd: "model ", hint: "Switch model by name — e.g. /model claude", run: () => {} },
     ...(chat ? [{ cmd: "export", hint: "Download this chat as Markdown", run: () => { setInput(""); exportChat(); } }] : []),
   ];
@@ -795,7 +800,7 @@ export default function Playground() {
       if (json?.nepalai?.balance_npr != null) setBalance(json.nepalai.balance_npr);
       persist(updateChat(id, [...history, {
         role: "assistant",
-        content: reply?.content || (outImgs.length ? "Here you go! 🎨 Click the image to download." : "The model returned no image — try describing it differently."),
+        content: reply?.content || (outImgs.length ? "Here you go! Click the image to download." : "The model returned no image — try describing it differently."),
         images: outImgs.length ? outImgs : undefined,
         costNpr: json?.nepalai?.cost_npr ?? null,
         model: imgModel,
@@ -881,7 +886,7 @@ export default function Playground() {
       persist(updateChat(id, [...next, {
         role: "assistant",
         content:
-          "🎬 Video generation isn't available on AIsathi yet — none of the model providers we route to offer video output through the gateway today. It's on the roadmap!\n\nMeanwhile I can create an **image** of this — just say *\"make an image of ...\"* 🎨",
+          "Video generation isn't available on AIsathi yet — none of the model providers we route to offer video output through the gateway today. It's on the roadmap!\n\nMeanwhile I can create an **image** of this — just say *\"make an image of ...\"*",
         model: "aisathi/router",
       }], all));
       return;
@@ -967,7 +972,7 @@ export default function Playground() {
           style={{ background: "var(--ev-red-15)", border: "1px solid var(--border-accent)", borderRadius: "var(--radius-md)" }}
         >
           <span className="min-w-0 flex-1">
-            <strong>That&apos;s your {DEMO_CAP} free messages 🎉</strong> — sign up free to keep chatting. Unlimited free models, no card needed.
+            <strong>That&apos;s your {DEMO_CAP} free messages</strong> — sign up free to keep chatting. Unlimited free models, no card needed.
           </span>
           <a href="/login" className="flex-none rounded-full px-4 py-1.5 text-xs font-bold text-white no-underline" style={{ background: "var(--accent)" }}>
             Sign up free →
@@ -987,7 +992,7 @@ export default function Playground() {
               className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
               style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
             >
-              🆓 Use a free model
+              Use a free model
             </button>
           )}
           <a
@@ -1006,7 +1011,7 @@ export default function Playground() {
           style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
         >
           <span className="min-w-0 flex-1">
-            ✨ You&apos;re trying AIsathi free — <strong>{demoLeft}</strong> {demoLeft === 1 ? "message" : "messages"} left. Sign up for unlimited chats, images &amp; every model.
+            <Sparkles size={14} className="mr-1 inline-block align-text-bottom" />You&apos;re trying AIsathi free — <strong>{demoLeft}</strong> {demoLeft === 1 ? "message" : "messages"} left. Sign up for unlimited chats, images &amp; every model.
           </span>
           <a href="/login" className="flex-none font-semibold underline underline-offset-2" style={{ color: "var(--text-strong)" }}>
             Sign up free →
@@ -1018,14 +1023,14 @@ export default function Playground() {
           className="mb-2 flex flex-wrap items-center gap-3 p-3 text-[13px]"
           style={{ background: "rgba(250, 204, 21, 0.08)", border: "1px solid rgba(250, 204, 21, 0.3)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
         >
-          <span className="min-w-0 flex-1">📷 <strong>{model.split("/").pop()}</strong> can&apos;t see images.</span>
+          <span className="flex min-w-0 flex-1 items-center gap-1.5"><Camera size={14} className="flex-none" /><span><strong>{model.split("/").pop()}</strong> can&apos;t see images.</span></span>
           {bestVision && (
             <button
               onClick={() => setModel(bestVision.id)}
               className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
               style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
             >
-              Switch to {bestVision.id.split("/").pop()} 📷
+              Switch to {bestVision.id.split("/").pop()}
             </button>
           )}
         </div>
@@ -1066,7 +1071,7 @@ export default function Playground() {
           <div className="flex flex-wrap gap-2 px-1">
             {docs.map((d, i) => (
               <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
-                <span aria-hidden>📄</span>
+                <FileText size={14} aria-hidden />
                 <span className="max-w-[160px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
                 <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
                 <button onClick={() => setDocs(docs.filter((_, x) => x !== i))} className="font-bold" style={{ color: "var(--text-faint)" }}>×</button>
@@ -1123,7 +1128,7 @@ export default function Playground() {
             style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}
             title="Attach image or PDF (or paste an image)"
           >
-            📎
+            <Paperclip size={16} />
           </button>
           <button
             onClick={toggleMic}
@@ -1135,7 +1140,7 @@ export default function Playground() {
             }}
             title={listening ? "Stop dictating" : "Dictate with your voice"}
           >
-            {listening ? "⏺" : "🎤"}
+            {listening ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
           </button>
           <ModelPicker models={models} model={model} onPick={setModel} />
           {balance !== null && (
@@ -1149,8 +1154,8 @@ export default function Playground() {
           )}
           <div className="flex-1" />
           {busy ? (
-            <button onClick={() => abortRef.current?.abort()} className="flex h-9 w-9 items-center justify-center rounded-xl text-sm" style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }} title="Stop">
-              ◼
+            <button onClick={() => abortRef.current?.abort()} className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }} title="Stop">
+              <Square size={13} fill="currentColor" />
             </button>
           ) : (
             <button
@@ -1160,7 +1165,7 @@ export default function Playground() {
               style={{ background: "var(--accent)" }}
               title="Send"
             >
-              ↑
+              <ArrowUp size={18} />
             </button>
           )}
         </div>
@@ -1211,7 +1216,7 @@ export default function Playground() {
           className="flex items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-white/5"
           style={{ borderTop: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}
         >
-          <span aria-hidden>🧠</span> Memory
+          <Brain size={15} aria-hidden /> Memory
           <span className="ml-auto" style={{ color: "var(--text-faint)" }}>{memories.length || ""}</span>
         </button>
       )}
@@ -1233,8 +1238,8 @@ export default function Playground() {
       <div className="absolute inset-0 bg-black/60" />
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl" style={{ background: "#141414", border: "1px solid var(--border-strong)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
-          <div className="flex items-center gap-2 font-semibold"><span aria-hidden>🧠</span> What AIsathi remembers</div>
-          <button onClick={() => setMemoryOpen(false)} style={{ color: "var(--text-faint)" }}>✕</button>
+          <div className="flex items-center gap-2 font-semibold"><Brain size={16} aria-hidden /> What AIsathi remembers</div>
+          <button onClick={() => setMemoryOpen(false)} style={{ color: "var(--text-faint)" }}><X size={16} /></button>
         </div>
         <div className="max-h-[60vh] overflow-y-auto p-3">
           {memories.length === 0 ? (
@@ -1256,7 +1261,7 @@ export default function Playground() {
                     style={{ color: "var(--text-faint)" }}
                     title="Forget this"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </li>
               ))}
@@ -1271,8 +1276,8 @@ export default function Playground() {
   );
 
   const memoryToastEl = memoryToast && (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg" style={{ background: "#141414", border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}>
-      🧠 Memory updated
+    <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg" style={{ background: "#141414", border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}>
+      <Brain size={14} /> Memory updated
     </div>
   );
 
@@ -1301,8 +1306,8 @@ export default function Playground() {
           {/* Chat header (only when a conversation is open) */}
           {messages.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
-              <button onClick={() => setSidebarOpen(true)} className="rounded-md px-2 py-1 text-sm md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
-                ☰
+              <button onClick={() => setSidebarOpen(true)} className="flex items-center rounded-md px-2 py-1.5 md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
+                <Menu size={16} />
               </button>
               <span className="min-w-0 flex-1 truncate text-sm font-medium" onDoubleClick={() => chat && renameChat(chat.id)} title="Double-click to rename">
                 {chat?.title}
@@ -1313,12 +1318,12 @@ export default function Playground() {
                 </span>
               )}
               {session && (
-                <button onClick={shareChat} disabled={shared === "sharing"} className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: shared === "copied" ? "var(--ev-red)" : "var(--text-muted)" }} title="Create a public link to this conversation">
-                  {shared === "copied" ? "✓ Link copied" : shared === "sharing" ? "…" : "🔗 Share"}
+                <button onClick={shareChat} disabled={shared === "sharing"} className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: shared === "copied" ? "var(--ev-red)" : "var(--text-muted)" }} title="Create a public link to this conversation">
+                  {shared === "copied" ? <><Check size={13} /> Link copied</> : shared === "sharing" ? "…" : <><Link2 size={13} /> Share</>}
                 </button>
               )}
-              <button onClick={exportChat} className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }} title="Download this chat as Markdown">
-                ⬇ Export
+              <button onClick={exportChat} className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }} title="Download this chat as Markdown">
+                <Download size={13} /> Export
               </button>
             </div>
           )}
@@ -1327,11 +1332,11 @@ export default function Playground() {
             <div className="flex flex-1 flex-col items-center justify-center px-6">
               <div className="w-full max-w-2xl text-center">
                 {chats.length > 0 && (
-                  <button onClick={() => setSidebarOpen(true)} className="mb-6 rounded-md px-3 py-1.5 text-xs md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
-                    ☰ Chat history
+                  <button onClick={() => setSidebarOpen(true)} className="mb-6 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
+                    <Menu size={14} /> Chat history
                   </button>
                 )}
-                <div className="font-[family-name:var(--font-script)] text-2xl" style={{ color: "var(--ev-red)" }}>{g.np} 🙏</div>
+                <div className="font-[family-name:var(--font-script)] text-2xl" style={{ color: "var(--ev-red)" }}>{g.np}</div>
                 <h1 className="mt-1 font-[family-name:var(--font-display)] text-4xl font-normal tracking-tight sm:text-5xl">{g.en}</h1>
                 <div className="mt-8 text-left">{composer}</div>
                 <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1343,7 +1348,7 @@ export default function Playground() {
                       className="flex items-center gap-3 px-4 py-3 text-left text-[13px] transition-colors hover:bg-white/5 disabled:opacity-40"
                       style={{ border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
                     >
-                      <span className="text-lg">{s.icon}</span> {s.text}
+                      <s.icon size={18} className="flex-none" style={{ color: "var(--text-muted)" }} /> {s.text}
                     </button>
                   ))}
                 </div>
@@ -1370,7 +1375,7 @@ export default function Playground() {
                           ))}
                           {m.attachments?.map((d, xi) => (
                             <div key={xi} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
-                              <span aria-hidden>📄</span>
+                              <FileText size={14} aria-hidden />
                               <span className="max-w-[200px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
                               <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
                             </div>
@@ -1405,19 +1410,19 @@ export default function Playground() {
                               {m.doc && !busy && (
                                 <button
                                   onClick={() => downloadPdf(chat?.title ?? "document", m.content)}
-                                  className="font-semibold"
+                                  className="flex items-center gap-1 font-semibold"
                                   style={{ color: "var(--ev-red)" }}
                                 >
-                                  ⬇ Download PDF
+                                  <Download size={12} /> Download PDF
                                 </button>
                               )}
                               {!busy && (
                                 <span className="flex gap-3 opacity-0 transition-opacity group-hover:opacity-100">
-                                  <button onClick={() => copyMessage(i, m.content)} className="font-semibold hover:text-white">
-                                    {copiedIdx === i ? "✓ copied" : "copy"}
+                                  <button onClick={() => copyMessage(i, m.content)} className="flex items-center gap-1 font-semibold hover:text-white">
+                                    {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />} {copiedIdx === i ? "copied" : "copy"}
                                   </button>
                                   {i === messages.length - 1 && (
-                                    <button onClick={regenerate} className="font-semibold hover:text-white">↻ regenerate</button>
+                                    <button onClick={regenerate} className="flex items-center gap-1 font-semibold hover:text-white"><RotateCcw size={12} /> regenerate</button>
                                   )}
                                 </span>
                               )}

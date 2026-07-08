@@ -57,7 +57,7 @@ for await (const chunk of stream) {
   },
   {
     title: "Image generation",
-    note: "Use an image-output model (🎨 in the catalog) and ask for image output. Images come back as base64 data URLs.",
+    note: "Use an image-output model (marked as image-capable in the catalog) and ask for image output. Images come back as base64 data URLs.",
     code: `curl ${BASE}/chat/completions \\
   -H "Authorization: Bearer np-your-key" \\
   -H "Content-Type: application/json" \\
@@ -142,7 +142,7 @@ export default function Docs() {
           <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">Good to know</h2>
           <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             <li>• Completion length is capped at 8,192 tokens per request.</li>
-            <li>• Vision input works on 📷 models — send OpenAI-style <code className="font-[family-name:var(--font-mono)]">image_url</code> content parts (base64 data URLs are most reliable).</li>
+            <li>• Vision input works on image-capable models — send OpenAI-style <code className="font-[family-name:var(--font-mono)]">image_url</code> content parts (base64 data URLs are most reliable).</li>
             <li>• Your balance must cover the worst-case cost of a request before it starts — the 402 error tells you the estimate.</li>
             <li>• Keys are shown once at creation and stored hashed. Revoke any key instantly from your account page.</li>
           </ul>

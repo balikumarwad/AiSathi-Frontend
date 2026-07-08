@@ -94,7 +94,7 @@ function CodeBlock({ code }: { code: string }) {
           onClick={() => { navigator.clipboard.writeText(body); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
           className="font-semibold transition-colors hover:text-white"
         >
-          {copied ? "✓ copied" : "copy"}
+          {copied ? "copied" : "copy"}
         </button>
       </div>
       <pre className="overflow-x-auto rounded-b-md p-4 font-[family-name:var(--font-mono)] text-xs leading-relaxed" style={{ background: "rgba(0,0,0,0.55)", border: "1px solid var(--border-hairline)", borderTop: "none" }}>

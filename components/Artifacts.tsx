@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowUpRight, Check, Copy, Download, FileText, Globe, Image as ImageIcon, X } from "lucide-react";
 
 /**
  * Artifacts — Claude-style live previews. When the model emits a substantial
@@ -46,19 +47,19 @@ export function extractArtifacts(text: string): Artifact[] {
 }
 
 export function ArtifactCard({ art, onOpen }: { art: Artifact; onOpen: () => void }) {
-  const icon = art.kind === "html" ? "🌐" : art.kind === "svg" ? "🖼️" : "📄";
+  const Icon = art.kind === "html" ? Globe : art.kind === "svg" ? ImageIcon : FileText;
   return (
     <button
       onClick={onOpen}
       className="my-3 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-white/5"
       style={{ border: "1px solid var(--border-strong)", background: "var(--surface-inset)" }}
     >
-      <span className="text-xl" aria-hidden>{icon}</span>
+      <Icon size={20} style={{ color: "var(--text-muted)" }} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>{art.title}</span>
         <span className="block text-[11px]" style={{ color: "var(--text-faint)" }}>{art.code.split("\n").length} lines · click to open</span>
       </span>
-      <span className="flex-none text-xs font-semibold" style={{ color: "var(--ev-red)" }}>Open ↗</span>
+      <span className="flex flex-none items-center gap-1 text-xs font-semibold" style={{ color: "var(--ev-red)" }}>Open <ArrowUpRight size={14} /></span>
     </button>
   );
 }
@@ -107,15 +108,16 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
         )}
         <button
           onClick={() => { navigator.clipboard.writeText(art.code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-          className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5"
+          className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5"
           style={{ color: "var(--text-muted)" }}
+          title="Copy"
         >
-          {copied ? "✓" : "Copy"}
+          {copied ? <Check size={15} /> : <Copy size={15} />}
         </button>
-        <button onClick={download} className="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ color: "var(--text-muted)" }}>
-          ⬇
+        <button onClick={download} className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5" style={{ color: "var(--text-muted)" }} title="Download">
+          <Download size={15} />
         </button>
-        <button onClick={onClose} className="rounded-md px-2 py-1 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-faint)" }} title="Close">✕</button>
+        <button onClick={onClose} className="flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-white/5" style={{ color: "var(--text-faint)" }} title="Close"><X size={15} /></button>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "preview" && canPreview ? (

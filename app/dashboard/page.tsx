@@ -108,7 +108,7 @@ export default function Dashboard() {
         </h1>
         {session && (
           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-            नमस्ते, {name} 🙏 — your usage updates automatically.
+            नमस्ते, {name} — your usage updates automatically.
           </p>
         )}
 

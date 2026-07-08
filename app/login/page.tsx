@@ -83,7 +83,7 @@ export default function LoginPage() {
         if (data.session) router.replace("/account");
         else
           setNotice(
-            `✉️ ${name.trim() ? name.trim() + ", " : ""}खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.`,
+            `${name.trim() ? name.trim() + ", " : ""}खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.`,
           );
       } else {
         const { error } = await sb.auth.signInWithPassword({
