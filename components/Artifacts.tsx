@@ -67,7 +67,8 @@ export function ArtifactCard({ art, onOpen }: { art: Artifact; onOpen: () => voi
 
 export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => void }) {
   const isPdf = art.kind === "pdf";
-  const canPreview = art.kind === "html" || art.kind === "svg" || isPdf;
+  const runnableJs = art.kind === "code" && /^(js|javascript|mjs|jsx|node)$/i.test(art.lang);
+  const canPreview = art.kind === "html" || art.kind === "svg" || isPdf || runnableJs;
   const hasCode = !isPdf;
   const [tab, setTab] = useState<"preview" | "code">(canPreview ? "preview" : "code");
   const [copied, setCopied] = useState(false);
@@ -89,9 +90,28 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
   };
 
   // SVG is wrapped in a minimal HTML doc so it centers on a white ground.
-  const srcDoc = art.kind === "svg"
+  const htmlDoc = art.kind === "svg"
     ? `<!doctype html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff">${art.code}</body></html>`
     : art.code;
+
+  // JS runner: sandboxed iframe that captures console output into its own body.
+  const runnerDoc = `<!doctype html><html><head><meta charset="utf-8"><style>
+    body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#e8edf6;background:#0d0d0d;margin:0;padding:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+    .err{color:#ff6b6b}.warn{color:#f0b429}.dim{color:#8a94a6}
+  </style></head><body><script>
+    function fmt(x){try{return typeof x==='object'?JSON.stringify(x,null,2):String(x)}catch(e){return String(x)}}
+    function out(cls,args){var d=document.createElement('div');if(cls)d.className=cls;d.textContent=[].map.call(args,fmt).join(' ');document.body.appendChild(d)}
+    ['log','info'].forEach(function(k){var o=console[k];console[k]=function(){out('',arguments);o.apply(console,arguments)}});
+    var W=console.warn;console.warn=function(){out('warn',arguments);W.apply(console,arguments)};
+    var E=console.error;console.error=function(){out('err',arguments);E.apply(console,arguments)};
+    window.onerror=function(m,s,l,c,e){out('err',[e&&e.stack||m]);return true};
+    try{
+${art.code.replace(/<\/script>/gi, "<\\/script>")}
+    }catch(e){out('err',[e&&e.stack||String(e)])}
+    if(!document.body.children.length){out('dim',['(ran with no console output)'])}
+  <\/script></body></html>`;
+
+  const previewDoc = runnableJs ? runnerDoc : htmlDoc;
 
   const tabBtn = (id: "preview" | "code", label: string) => (
     <button
@@ -111,7 +131,7 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
         <span className="min-w-0 flex-1 truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>{art.title}</span>
         {canPreview && hasCode && (
           <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ border: "1px solid var(--border-hairline)" }}>
-            {tabBtn("preview", "Preview")}
+            {tabBtn("preview", runnableJs ? "Run" : "Preview")}
             {tabBtn("code", "Code")}
           </div>
         )}
@@ -135,9 +155,11 @@ export function ArtifactPanel({ art, onClose }: { art: Artifact; onClose: () => 
           <iframe src={art.code} className="h-full w-full border-0 bg-white" title={art.title} />
         ) : tab === "preview" && canPreview ? (
           <iframe
+            key={art.id + tab}
             sandbox="allow-scripts allow-popups allow-forms"
-            srcDoc={srcDoc}
-            className="h-full w-full border-0 bg-white"
+            srcDoc={previewDoc}
+            className="h-full w-full border-0"
+            style={{ background: runnableJs ? "#0d0d0d" : "#fff" }}
             title={art.title}
           />
         ) : (
