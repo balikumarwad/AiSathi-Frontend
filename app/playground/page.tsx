@@ -346,7 +346,7 @@ export default function Playground() {
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
-  const [docs, setDocs] = useState<{ name: string; text: string; pages: number; url: string }[]>([]); // pending PDF attachments
+  const [docs, setDocs] = useState<{ name: string; text: string; pages: number; url: string; scanned?: boolean; file?: File }[]>([]); // pending PDF attachments
   const [docBusy, setDocBusy] = useState(false); // reading a PDF
   const [docStatus, setDocStatus] = useState("Reading PDF…"); // attach/OCR progress label
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -650,18 +650,9 @@ export default function Playground() {
         try {
           const pdf = await import("@/lib/pdf");
           const url = await pdf.fileToDataUrl(f);
-          const { text: extracted, pages, scanned } = await pdf.extractPdfText(f);
-          let text = extracted;
-          // Scanned PDF (no selectable text) -> OCR the pages.
-          if (scanned || !text) {
-            setDocStatus("Scanned PDF — running OCR…");
-            try {
-              const ocr = await pdf.ocrPdf(f, 15, (p, n) => setDocStatus(`Running OCR — page ${p}/${n}…`));
-              if (ocr.text) text = ocr.text;
-              else setError(`"${f.name}" is a scan and OCR found no text.`);
-            } catch { setError(`Couldn't OCR "${f.name}".`); }
-          }
-          setDocs((cur) => [...cur, { name: f.name, text, pages, url }].slice(0, 3));
+          const { text, pages, scanned } = await pdf.extractPdfText(f);
+          // Don't auto-OCR (it's heavy) — flag scanned PDFs and offer a button.
+          setDocs((cur) => [...cur, { name: f.name, text, pages, url, scanned: scanned || !text, file: f }].slice(0, 3));
         } catch {
           setError(`Couldn't read "${f.name}".`);
         } finally {
@@ -670,6 +661,25 @@ export default function Playground() {
       } else {
         setError("Attach images or PDFs only.");
       }
+    }
+  }
+
+  /** Opt-in OCR for a scanned PDF (heavy — user-triggered, capped 15 pages). */
+  async function runOcr(i: number) {
+    const d = docs[i];
+    if (!d?.file || docBusy) return;
+    setError("");
+    setDocStatus("Loading OCR…");
+    setDocBusy(true);
+    try {
+      const pdf = await import("@/lib/pdf");
+      const { text } = await pdf.ocrPdf(d.file, 15, (p, n) => setDocStatus(`Running OCR — page ${p}/${n}…`));
+      if (text) setDocs((cur) => cur.map((x, xi) => (xi === i ? { ...x, text, scanned: false } : x)));
+      else setError(`OCR found no text in "${d.name}".`);
+    } catch {
+      setError(`Couldn't OCR "${d.name}".`);
+    } finally {
+      setDocBusy(false);
     }
   }
 
@@ -1278,6 +1288,7 @@ export default function Playground() {
                 <FileText size={14} aria-hidden />
                 <span className="max-w-[160px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
                 <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                {d.scanned && <button onClick={() => runOcr(i)} disabled={docBusy} className="font-semibold disabled:opacity-40" style={{ color: "var(--ev-red)" }} title="Scanned PDF — extract text with OCR">Run OCR</button>}
                 <button onClick={() => setArtifact({ id: `pdf-${i}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>
                 <button onClick={() => setDocs(docs.filter((_, x) => x !== i))} className="font-bold" style={{ color: "var(--text-faint)" }}>×</button>
               </div>
