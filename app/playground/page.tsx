@@ -748,7 +748,8 @@ export default function Playground() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authKey}` },
         body: JSON.stringify({
-          model: "openrouter/free",
+          // Cheap + reliable for signed-in users (~रू0.0005); free/best-effort for demo.
+          model: apiKey ? "openai/gpt-4o-mini" : "openrouter/free",
           messages: [
             { role: "system", content: "Suggest exactly 3 short, natural follow-up questions the user might ask next, based on the conversation. Each under 9 words, phrased as the user would type. Return ONLY a JSON array of 3 strings." + (langRef.current === "ne" ? " Write them in Nepali." : "") },
             { role: "user", content: `User asked: ${userText.slice(0, 500)}\n\nAssistant replied: ${replyText.slice(0, 1500)}` },
