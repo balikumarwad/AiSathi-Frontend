@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { bearerFrom, hashApiKey } from "@/lib/keys";
-import { allow } from "@/lib/ratelimit";
+import { allowAsync } from "@/lib/ratelimit";
 import { usdToNpr, round4 } from "@/lib/pricing";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { upstreamChat, upstreamModels } from "@/lib/upstream";
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
   // Abuse cap: 60 requests/min per key (dev mode keyed as one bucket; demo
   // keyed per IP).
   const rlId = auth.mode === "db" ? auth.keyId : auth.mode === "demo" ? `demo:${auth.ip}` : "dev";
-  if (!allow(rlId, 60, 60_000)) {
+  if (!(await allowAsync(rlId, 60, 60_000))) {
     return NextResponse.json(
       { error: { message: "Rate limit exceeded — max 60 requests/minute per key.", code: 429 } },
       { status: 429, headers: { "Retry-After": "60" } },
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
   }
   // Demo mode also gets an hourly per-IP cap so the anonymous free lane can't
   // be scripted; honest visitors are additionally capped client-side.
-  if (auth.mode === "demo" && !allow(`demoHr:${auth.ip}`, 25, 3_600_000)) {
+  if (auth.mode === "demo" && !(await allowAsync(`demoHr:${auth.ip}`, 25, 3_600_000))) {
     return NextResponse.json(
       {
         error: {

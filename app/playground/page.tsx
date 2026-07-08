@@ -45,7 +45,13 @@ const SYSTEM_PROMPT =
   "Structure longer answers with markdown: a short lead, headings or bullet lists, code blocks with a language tag, and a brief takeaway when it helps. " +
   "If a request is ambiguous, make a sensible assumption and say so instead of refusing; if you are unsure of a fact, be honest about it. " +
   "When the user attaches a document or image, use its contents directly to answer. " +
+  "Do not use emoji in your replies. " +
   "Respond in clear, simple English by default even when the question mixes languages; reply in Nepali only when the user writes fully in Nepali or explicitly asks for Nepali.";
+
+/** Heuristic: does the question likely need up-to-date web information? */
+function needsWeb(text: string): boolean {
+  return /\b(today|latest|current(ly)?|now|recent|news|weather|price|rate|stock|score|release[ds]?|202[6-9]|this (week|month|year)|right now|as of|breaking)\b/i.test(text);
+}
 
 // Default model logic: signed-in users with credit get Claude Sonnet (quality
 // that "feels like Claude"); everyone else gets a cheap default. The user's
@@ -353,8 +359,9 @@ export default function Playground() {
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [editingIdx, setEditingIdx] = useState<number | null>(null); // editing a user message
   const [editText, setEditText] = useState("");
+  const [chatQuery, setChatQuery] = useState(""); // sidebar conversation search
   const [listening, setListening] = useState(false);
-  const [webSearch, setWebSearch] = useState(false); // live web search in normal chat
+  const [webMode, setWebMode] = useState<"off" | "auto" | "on">("off"); // web search: off / auto-detect / always
   const [lang, setLang] = useState<"en" | "ne">("en"); // reply language toggle
   const langRef = useRef<"en" | "ne">("en");
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
@@ -826,6 +833,10 @@ export default function Playground() {
       // Try each candidate model until one returns an OK stream. The failure
       // (e.g. a free model rate-limited upstream) happens before any tokens
       // stream, so the fallback is invisible to the user.
+      // Web search: on (always), auto (when the question needs current info),
+      // or off. Never in the demo lane (free-only, and search costs money).
+      const lastUser = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+      const useWeb = useKey !== "demo" && (webMode === "on" || (webMode === "auto" && needsWeb(lastUser)));
       let res: Response | null = null;
       let useModel = candidates[0];
       let lastJson: { error?: { message?: string } } | null = null;
@@ -836,11 +847,9 @@ export default function Playground() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${useKey}` },
           // max_tokens caps the reply so expensive models can't run away and
           // upstream credit reservations stay small. ~3000 words is plenty.
-          // Web search: OpenRouter's web plugin gives any model live results.
-          // Off in the demo lane (free-only, and search costs money).
           body: JSON.stringify({
             model: useModel, messages: apiMessages, stream: true, max_tokens: 4096,
-            ...(webSearch && useKey !== "demo" ? { plugins: [{ id: "web", max_results: 4 }] } : {}),
+            ...(useWeb ? { plugins: [{ id: "web", max_results: 4 }] } : {}),
           }),
           signal: ac.signal,
         });
@@ -1435,16 +1444,20 @@ export default function Playground() {
           </button>
           {!demoMode && (
             <button
-              onClick={() => setWebSearch((v) => !v)}
+              onClick={() => setWebMode((m) => (m === "off" ? "auto" : m === "auto" ? "on" : "off"))}
               className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors hover:bg-white/5"
               style={{
-                border: `1px solid ${webSearch ? "var(--ev-red)" : "var(--border-hairline)"}`,
-                color: webSearch ? "var(--ev-red)" : "var(--text-muted)",
-                background: webSearch ? "var(--ev-red-15)" : "transparent",
+                border: `1px solid ${webMode !== "off" ? "var(--ev-red)" : "var(--border-hairline)"}`,
+                color: webMode !== "off" ? "var(--ev-red)" : "var(--text-muted)",
+                background: webMode !== "off" ? "var(--ev-red-15)" : "transparent",
               }}
-              title={webSearch ? "Web search is ON — replies use live results (adds ~रू0.9 per search)" : "Turn on live web search for current information"}
+              title={
+                webMode === "off" ? "Web search off — click for Auto (searches when a question needs current info), then Always"
+                : webMode === "auto" ? "Web search: Auto — searches only when the question needs current info (~रू0.9 per search)"
+                : "Web search: Always on — every reply uses live results (~रू0.9 per search)"
+              }
             >
-              <Globe size={14} /> Web
+              <Globe size={14} /> {webMode === "off" ? "Web" : webMode === "auto" ? "Web · Auto" : "Web · On"}
             </button>
           )}
           <ModelPicker models={models} model={model} onPick={pickModel} />
@@ -1491,6 +1504,15 @@ export default function Playground() {
         >
           <span style={{ color: "var(--ev-red)" }}>+</span> New chat
         </button>
+        {chats.length > 3 && (
+          <input
+            value={chatQuery}
+            onChange={(e) => setChatQuery(e.target.value)}
+            placeholder="Search chats…"
+            className="mt-2 w-full rounded-md px-3 py-1.5 text-xs outline-none"
+            style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
+          />
+        )}
       </div>
       <div className="sathi-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         {chats.length === 0 && (
@@ -1498,7 +1520,11 @@ export default function Playground() {
             Your conversations live here — stored in your browser only. Double-click to rename.
           </p>
         )}
-        {chats.map((c) => (
+        {(() => {
+          const q = chatQuery.trim().toLowerCase();
+          const shown = q ? chats.filter((c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q))) : chats;
+          if (q && shown.length === 0) return <p className="px-2 pt-2 text-xs" style={{ color: "var(--text-faint)" }}>No chats match &quot;{chatQuery}&quot;.</p>;
+          return shown.map((c) => (
           <div key={c.id} className="group flex items-center gap-1 rounded-md transition-colors hover:bg-white/5" style={{ background: c.id === chatId ? "var(--ev-white-05)" : "transparent" }}>
             <button
               onClick={() => { setChatId(c.id); setError(""); setSidebarOpen(false); }}
@@ -1513,7 +1539,8 @@ export default function Playground() {
               ×
             </button>
           </div>
-        ))}
+          ));
+        })()}
       </div>
       {session && (
         <button
