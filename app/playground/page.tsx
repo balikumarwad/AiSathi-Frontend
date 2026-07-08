@@ -84,10 +84,14 @@ const DEMO_SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
  */
 function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
   const t = text.toLowerCase();
-  const wantsMake = /\b(make|create|generate|design|draft|prepare|produce|write|banau\w*)\b/.test(t);
-  if (wantsMake && /\b(video|animation|reel|clip|short film)\b/.test(t)) return "video";
-  if ((wantsMake && /\b(image|photo|picture|logo|poster|banner|wallpaper|illustration|thumbnail|tasbir)\b/.test(t)) || /\b(draw|sketch)\b/.test(t)) return "image";
-  if (wantsMake && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
+  const makeVerb = /\b(make|create|generate|design|produce|render|build|want|give me|show me|need|banau\w*)\b/.test(t);
+  if (makeVerb && /\b(video|animation|reel|clip|short film|movie|gif)\b/.test(t)) return "video";
+  if (
+    (makeVerb && /\b(image|photo|picture|logo|poster|banner|wallpaper|illustration|thumbnail|drawing|painting|artwork|avatar|icon|tasbir|photo|फोटो|तस्बिर)\b/.test(t)) ||
+    /\b(draw|sketch|paint)\b/.test(t) ||
+    /\b(image|photo|picture) of\b/.test(t)
+  ) return "image";
+  if (/\b(make|create|generate|write|draft|prepare|produce)\b/.test(t) && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
   return "chat";
 }
 
@@ -1194,28 +1198,30 @@ export default function Playground() {
       return;
     }
 
-    // Gaida — 3-agent agentic loop (signed-in only).
+    // Creator router runs FIRST so media creation works even when a Gaida
+    // variant or a specific model is selected.
+    const intent = content ? detectIntent(content) : "chat";
+    if (intent === "image") {
+      await runImage(next, id, all);
+      return;
+    }
+    if (intent === "video") {
+      persist(updateChat(id, [...next, {
+        role: "assistant",
+        content:
+          "I can't generate video yet — video generation needs a dedicated video model, which isn't wired up on AIsathi at the moment.\n\nWhat I **can** do right now: create an **image** (just say *\"make an image of ...\"*). Video is coming.",
+        model: "aisathi/router",
+      }], all));
+      return;
+    }
+
+    // Gaida — 3-agent agentic loop (signed-in only), for non-media requests.
     const gaidaVariant = GAIDA_VARIANTS.find((v) => v.id === model);
     if (gaidaVariant) {
       await runGaida(next, id, all, gaidaVariant);
       return;
     }
 
-    // Creator router: dispatch to the specialist pipeline for this intent.
-    const intent = content ? detectIntent(content) : "chat";
-    if (intent === "video") {
-      persist(updateChat(id, [...next, {
-        role: "assistant",
-        content:
-          "Video generation isn't available on AIsathi yet — none of the model providers we route to offer video output through the gateway today. It's on the roadmap!\n\nMeanwhile I can create an **image** of this — just say *\"make an image of ...\"*",
-        model: "aisathi/router",
-      }], all));
-      return;
-    }
-    if (intent === "image") {
-      await runImage(next, id, all);
-      return;
-    }
     if (intent === "doc") {
       await run(next, id, all, { model: docModel(), system: DOC_PROMPT, doc: true });
       return;
