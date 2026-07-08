@@ -47,6 +47,13 @@ const SYSTEM_PROMPT =
   "When the user attaches a document or image, use its contents directly to answer. " +
   "Respond in clear, simple English by default even when the question mixes languages; reply in Nepali only when the user writes fully in Nepali or explicitly asks for Nepali.";
 
+// Default model logic: signed-in users with credit get Claude Sonnet (quality
+// that "feels like Claude"); everyone else gets a cheap default. The user's
+// explicit pick is always remembered.
+const DEFAULT_MODEL = "openai/gpt-4o-mini";
+const QUALITY_MODEL = "anthropic/claude-sonnet-5";
+const QUALITY_MIN_BALANCE = 20; // NPR — enough to enjoy Claude before topping up
+
 const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
   { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
   { icon: Palette, text: "Create an image of a rhino galloping past Everest at sunrise" },
@@ -329,7 +336,7 @@ const newChatId = () => `c${Date.now().toString(36)}${Math.random().toString(36)
 
 export default function Playground() {
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("openai/gpt-4o-mini");
+  const [model, setModel] = useState(DEFAULT_MODEL);
   const [models, setModels] = useState<CatalogModel[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [chatId, setChatId] = useState<string>("");
@@ -494,6 +501,22 @@ export default function Playground() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chats, chatId]);
   useEffect(() => { memoriesRef.current = memories; }, [memories]);
 
+  // Remember the user's explicit model choice across sessions.
+  const pickModel = useCallback((id: string) => {
+    setModel(id);
+    try { localStorage.setItem("aisathi_model", id); } catch { /* quota */ }
+  }, []);
+
+  // Default model: the saved choice if any; otherwise Claude Sonnet for
+  // signed-in users with credit (so it "feels like Claude"), else the cheap default.
+  useEffect(() => {
+    const saved = localStorage.getItem("aisathi_model");
+    if (saved) { setModel(saved); return; }
+    if (session && (balance ?? 0) >= QUALITY_MIN_BALANCE && models.some((m) => m.id === QUALITY_MODEL)) {
+      setModel(QUALITY_MODEL);
+    }
+  }, [session, balance, models]);
+
   /* ---- chat ops ---- */
   function startNewChat() {
     setChatId("");
@@ -598,8 +621,8 @@ export default function Playground() {
   const bestFreeCmd = models.find((m) => isFree(m) && m.vision) ?? models.find(isFree);
   const COMMANDS: Cmd[] = [
     { cmd: "new", hint: "Start a new chat", run: () => { setInput(""); startNewChat(); } },
-    ...(bestFreeCmd ? [{ cmd: "free", hint: `Switch to a free model (${bestFreeCmd.id.split("/").pop()})`, run: () => { setModel(bestFreeCmd.id); setInput(""); } }] : []),
-    { cmd: "auto", hint: "Switch to Auto — best model per question", run: () => { setModel("openrouter/auto"); setInput(""); } },
+    ...(bestFreeCmd ? [{ cmd: "free", hint: `Switch to a free model (${bestFreeCmd.id.split("/").pop()})`, run: () => { pickModel(bestFreeCmd.id); setInput(""); } }] : []),
+    { cmd: "auto", hint: "Switch to Auto — best model per question", run: () => { pickModel("openrouter/auto"); setInput(""); } },
     { cmd: "model ", hint: "Switch model by name — e.g. /model claude", run: () => {} },
     ...(chat ? [{ cmd: "export", hint: "Download this chat as Markdown", run: () => { setInput(""); exportChat(); } }] : []),
   ];
@@ -610,7 +633,7 @@ export default function Playground() {
     if (word === "model" && rest.length) {
       const q = rest.join(" ").toLowerCase();
       const found = models.find((m) => m.id.toLowerCase().includes(q) || (m.name ?? "").toLowerCase().includes(q));
-      if (found) { setModel(found.id); setInput(""); }
+      if (found) { pickModel(found.id); setInput(""); }
       else setError(`No model matches "${rest.join(" ")}"`);
       return true;
     }
@@ -1202,7 +1225,7 @@ export default function Playground() {
           </span>
           {bestFree && (
             <button
-              onClick={() => { setModel(bestFree.id); setError(""); }}
+              onClick={() => { pickModel(bestFree.id); setError(""); }}
               className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
               style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
             >
@@ -1240,7 +1263,7 @@ export default function Playground() {
           <span className="flex min-w-0 flex-1 items-center gap-1.5"><Camera size={14} className="flex-none" /><span><strong>{model.split("/").pop()}</strong> can&apos;t see images.</span></span>
           {bestVision && (
             <button
-              onClick={() => setModel(bestVision.id)}
+              onClick={() => pickModel(bestVision.id)}
               className="flex-none rounded-full px-4 py-1.5 text-xs font-bold"
               style={{ border: "1px solid var(--border-strong)", color: "var(--text-strong)" }}
             >
@@ -1358,7 +1381,7 @@ export default function Playground() {
           >
             {listening ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
           </button>
-          <ModelPicker models={models} model={model} onPick={setModel} />
+          <ModelPicker models={models} model={model} onPick={pickModel} />
           {balance !== null && (
             balance < 10 ? (
               <a href="/topup" className="hidden text-xs font-semibold no-underline sm:inline" style={{ color: "var(--ev-red)" }} title="Balance is low — top up">
