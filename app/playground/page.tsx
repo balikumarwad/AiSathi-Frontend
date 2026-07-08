@@ -353,6 +353,8 @@ export default function Playground() {
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
   const [webSearch, setWebSearch] = useState(false); // live web search in normal chat
+  const [lang, setLang] = useState<"en" | "ne">("en"); // reply language toggle
+  const langRef = useRef<"en" | "ne">("en");
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
   const [docs, setDocs] = useState<{ name: string; text: string; pages: number; url: string; scanned?: boolean; file?: File }[]>([]); // pending PDF attachments
   const [docBusy, setDocBusy] = useState(false); // reading a PDF
@@ -400,6 +402,8 @@ export default function Playground() {
 
   useEffect(() => {
     setApiKey(localStorage.getItem("nepalai_key") ?? "");
+    const savedLang = (localStorage.getItem("aisathi_lang") as "en" | "ne") || "en";
+    setLang(savedLang); langRef.current = savedLang;
     setDemoUsed(Number(localStorage.getItem("aisathi_demo_used") ?? 0));
     try {
       const saved = JSON.parse(localStorage.getItem("aisathi_chats") ?? "[]") as Chat[];
@@ -769,15 +773,27 @@ export default function Playground() {
     } catch { /* best-effort */ }
   }
 
+  /** Forces the reply language per the top-right toggle. */
+  function langDirective(): string {
+    return langRef.current === "ne"
+      ? "\n\nIMPORTANT: Reply entirely in Nepali (Devanagari script), no matter what language the user writes in."
+      : "\n\nIMPORTANT: Reply in clear English, no matter what language the user writes in.";
+  }
+
+  /** Set + remember the reply language. */
+  const pickLang = useCallback((l: "en" | "ne") => {
+    setLang(l);
+    langRef.current = l;
+    try { localStorage.setItem("aisathi_lang", l); } catch { /* quota */ }
+  }, []);
+
   /** System prompt for normal chat, with the user's persistent memory injected. */
   function systemWithMemory(): string {
     const mem = memoriesRef.current;
-    if (!mem.length) return SYSTEM_PROMPT;
-    return (
-      SYSTEM_PROMPT +
-      "\n\nThings you remember about this user (use naturally when relevant; do not recite them back):\n" +
-      mem.map((m) => `- ${m.content}`).join("\n")
-    );
+    const base = mem.length
+      ? SYSTEM_PROMPT + "\n\nThings you remember about this user (use naturally when relevant; do not recite them back):\n" + mem.map((m) => `- ${m.content}`).join("\n")
+      : SYSTEM_PROMPT;
+    return base;
   }
 
   /* ---- send / stream / regenerate ---- */
@@ -788,7 +804,7 @@ export default function Playground() {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const apiMessages: unknown[] = [{ role: "system", content: opts?.system ?? systemWithMemory() }];
+      const apiMessages: unknown[] = [{ role: "system", content: (opts?.system ?? systemWithMemory()) + langDirective() }];
       history.forEach((m) => {
         // Attached-document text rides along as context on the user turn so the
         // model can read and answer about the PDF.
@@ -1555,6 +1571,26 @@ export default function Playground() {
     </div>
   );
 
+  // Reply-language toggle (English / Nepali) — controls the answer language.
+  const langToggle = (
+    <div className="flex flex-none items-center rounded-lg p-0.5 text-xs font-semibold" style={{ border: "1px solid var(--border-hairline)", background: "var(--surface-header)" }} title="Choose the reply language">
+      <button
+        onClick={() => pickLang("en")}
+        className="rounded-md px-2.5 py-1 transition-colors"
+        style={lang === "en" ? { background: "var(--ev-white-10)", color: "var(--text-strong)" } : { color: "var(--text-muted)" }}
+      >
+        EN
+      </button>
+      <button
+        onClick={() => pickLang("ne")}
+        className="rounded-md px-2.5 py-1 transition-colors"
+        style={lang === "ne" ? { background: "var(--ev-white-10)", color: "var(--text-strong)" } : { color: "var(--text-muted)" }}
+      >
+        <span lang="ne">नेपाली</span>
+      </button>
+    </div>
+  );
+
   return (
     <div className="flex h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
@@ -1575,7 +1611,11 @@ export default function Playground() {
           </div>
         )}
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
+          {/* Reply-language toggle, floated top-right on the empty state. */}
+          {messages.length === 0 && (
+            <div className="absolute right-4 top-3 z-20">{langToggle}</div>
+          )}
           {usageBanner}
           {/* Chat header (only when a conversation is open) */}
           {messages.length > 0 && (
@@ -1591,6 +1631,7 @@ export default function Playground() {
                   this chat: रू{chatCost.toFixed(4)}
                 </span>
               )}
+              {langToggle}
               {session && (
                 <button onClick={shareChat} disabled={shared === "sharing"} className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5" style={{ border: "1px solid var(--border-hairline)", color: shared === "copied" ? "var(--ev-red)" : "var(--text-muted)" }} title="Create a public link to this conversation">
                   {shared === "copied" ? <><Check size={13} /> Link copied</> : shared === "sharing" ? "…" : <><Link2 size={13} /> Share</>}
