@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Languages, Lightbulb, Link2,
+  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Globe, Languages, Lightbulb, Link2,
   Menu, Mic, Mountain, Palette, Paperclip, Plane, Rocket, RotateCcw, Sparkles, Square, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -352,6 +352,7 @@ export default function Playground() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [shared, setShared] = useState<"idle" | "sharing" | "copied">("idle");
   const [listening, setListening] = useState(false);
+  const [webSearch, setWebSearch] = useState(false); // live web search in normal chat
   const [demoUsed, setDemoUsed] = useState(0); // signed-out free-message counter
   const [docs, setDocs] = useState<{ name: string; text: string; pages: number; url: string; scanned?: boolean; file?: File }[]>([]); // pending PDF attachments
   const [docBusy, setDocBusy] = useState(false); // reading a PDF
@@ -802,7 +803,12 @@ export default function Playground() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${useKey}` },
           // max_tokens caps the reply so expensive models can't run away and
           // upstream credit reservations stay small. ~3000 words is plenty.
-          body: JSON.stringify({ model: useModel, messages: apiMessages, stream: true, max_tokens: 4096 }),
+          // Web search: OpenRouter's web plugin gives any model live results.
+          // Off in the demo lane (free-only, and search costs money).
+          body: JSON.stringify({
+            model: useModel, messages: apiMessages, stream: true, max_tokens: 4096,
+            ...(webSearch && useKey !== "demo" ? { plugins: [{ id: "web", max_results: 4 }] } : {}),
+          }),
           signal: ac.signal,
         });
         if (res.ok && res.body) break;
@@ -1381,6 +1387,20 @@ export default function Playground() {
           >
             {listening ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
           </button>
+          {!demoMode && (
+            <button
+              onClick={() => setWebSearch((v) => !v)}
+              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors hover:bg-white/5"
+              style={{
+                border: `1px solid ${webSearch ? "var(--ev-red)" : "var(--border-hairline)"}`,
+                color: webSearch ? "var(--ev-red)" : "var(--text-muted)",
+                background: webSearch ? "var(--ev-red-15)" : "transparent",
+              }}
+              title={webSearch ? "Web search is ON — replies use live results (adds ~रू0.9 per search)" : "Turn on live web search for current information"}
+            >
+              <Globe size={14} /> Web
+            </button>
+          )}
           <ModelPicker models={models} model={model} onPick={pickModel} />
           {balance !== null && (
             balance < 10 ? (
