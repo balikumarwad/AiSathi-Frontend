@@ -10,6 +10,7 @@ export type SyncMsg = {
   role: "user" | "assistant";
   content: string;
   images?: string[];
+  video?: string;
   costNpr?: number | null;
   model?: string;
 };

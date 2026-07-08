@@ -24,7 +24,7 @@ import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/
 import { addMemory, deleteMemory, loadMemories, type Memory } from "@/lib/memory";
 
 type DocRef = { name: string; pages: number; url?: string };
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
   id: string;
@@ -994,6 +994,78 @@ export default function Playground() {
     }
   }
 
+  /**
+   * Text-to-video via /api/video (Replicate under the hood). Video is async:
+   * we submit the prompt, then poll for the finished clip while showing a live
+   * "generating…" status in the assistant bubble. Signed-in only (needs a key).
+   */
+  async function runVideo(history: Msg[], id: string, all: Chat[]) {
+    const prompt = history[history.length - 1]?.content ?? "";
+    if (!apiKey) {
+      persist(updateChat(id, [...history, {
+        role: "assistant",
+        content: "Video generation needs an account. **Sign in** (or add credits) and try again — then say *\"make a video of ...\"*.",
+        model: "aisathi/video",
+      }], all));
+      return;
+    }
+    setBusy(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const started = Date.now();
+    const show = (content: string) => {
+      all = updateChat(id, [...history, { role: "assistant", content, model: "aisathi/video" }], all);
+      setChats(all);
+    };
+    try {
+      show("Generating your video… this usually takes about a minute.");
+      const res = await fetch("/api/v1/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ prompt }),
+        signal: ac.signal,
+      });
+      const created = await res.json().catch(() => null);
+      if (!res.ok) {
+        persist(updateChat(id, [...history, { role: "assistant", content: created?.error ?? `Couldn't start video (error ${res.status}).`, model: "aisathi/video" }], all));
+        return;
+      }
+      const predId = created.id as string;
+      // Poll until the clip is ready (or fails). Cap at ~4 minutes.
+      for (let i = 0; i < 80; i++) {
+        if (ac.signal.aborted) return;
+        await new Promise((r) => setTimeout(r, 3000));
+        const s = await fetch(`/api/v1/video?id=${encodeURIComponent(predId)}`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: ac.signal,
+        });
+        const st = await s.json().catch(() => null);
+        const secs = Math.round((Date.now() - started) / 1000);
+        if (st?.status === "succeeded" && st?.url) {
+          persist(updateChat(id, [...history, {
+            role: "assistant",
+            content: "Here's your video — hover to play, or use the ⋯ menu to download.",
+            video: st.url,
+            model: "aisathi/video",
+          }], all));
+          return;
+        }
+        if (st?.status === "failed" || st?.status === "canceled") {
+          persist(updateChat(id, [...history, { role: "assistant", content: `Video generation ${st.status}. ${st?.error ?? "Try a simpler prompt."}`.trim(), model: "aisathi/video" }], all));
+          return;
+        }
+        show(`Generating your video… ${secs}s elapsed (${st?.status ?? "working"}).`);
+      }
+      persist(updateChat(id, [...history, { role: "assistant", content: "The video is taking longer than expected. It may still finish — try again in a moment.", model: "aisathi/video" }], all));
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError(String(e));
+    } finally {
+      setBusy(false);
+      abortRef.current = null;
+      inputRef.current?.focus();
+    }
+  }
+
   function docModel() {
     const smart = "anthropic/claude-sonnet-5";
     return (balance ?? 0) > 5 && models.some((m) => m.id === smart) ? smart : model;
@@ -1206,12 +1278,7 @@ export default function Playground() {
       return;
     }
     if (intent === "video") {
-      persist(updateChat(id, [...next, {
-        role: "assistant",
-        content:
-          "I can't generate video yet — video generation needs a dedicated video model, which isn't wired up on AIsathi at the moment.\n\nWhat I **can** do right now: create an **image** (just say *\"make an image of ...\"*). Video is coming.",
-        model: "aisathi/router",
-      }], all));
+      await runVideo(next, id, all);
       return;
     }
 
@@ -1824,6 +1891,26 @@ export default function Playground() {
                                     <img src={src} alt="generated" className="max-h-80 max-w-full rounded-xl object-contain transition-opacity hover:opacity-90" style={{ border: "1px solid var(--border-strong)" }} />
                                   </a>
                                 ))}
+                              </div>
+                            ) : null}
+                            {m.video ? (
+                              <div className="mb-2">
+                                <video
+                                  src={m.video}
+                                  controls
+                                  loop
+                                  playsInline
+                                  className="max-h-96 max-w-full rounded-xl"
+                                  style={{ border: "1px solid var(--border-strong)" }}
+                                />
+                                <a
+                                  href={m.video}
+                                  download={`aisathi-video-${i}.mp4`}
+                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold"
+                                  style={{ color: "var(--ev-red)" }}
+                                >
+                                  <Download size={12} /> Download video
+                                </a>
                               </div>
                             ) : null}
                             <div className="text-[15px] leading-relaxed">
