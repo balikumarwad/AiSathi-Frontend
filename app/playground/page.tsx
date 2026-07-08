@@ -164,6 +164,13 @@ const TIERS: { label: string; icon: LucideIcon; desc: string; id: string }[] = [
   { label: "Genius", icon: Rocket, desc: "Frontier intelligence — Claude Fable", id: "anthropic/claude-fable-5" },
 ];
 
+// Gaida 1 (गैंडा = rhino) — a 3-agent premium loop: GPT researches the web,
+// GLM drafts the answer, Claude Fable 5 reviews both and writes the final reply.
+const GAIDA_ID = "aisathi/gaida-1";
+const GAIDA_RESEARCH_MODEL = "openai/gpt-4o-mini";
+const GAIDA_DRAFT_MODEL = "z-ai/glm-4.7";
+const GAIDA_LEAD_MODEL = "anthropic/claude-fable-5";
+
 function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model: string; onPick: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -205,7 +212,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
     </button>
   );
 
-  const shortName = model.split("/").pop() ?? model;
+  const shortName = model === GAIDA_ID ? "Gaida 1" : (model.split("/").pop() ?? model);
   return (
     <div ref={boxRef} className="relative">
       <button
@@ -227,6 +234,20 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
           <div className="sathi-scroll max-h-72 overflow-y-auto pb-1">
             {!ql && (
               <>
+                <div style={groupLabel}>Agentic</div>
+                <button
+                  onClick={() => { onPick(GAIDA_ID); setOpen(false); setQ(""); }}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+                  style={{ background: GAIDA_ID === model ? "var(--ev-red-15)" : "transparent" }}
+                >
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>
+                      Gaida 1
+                      <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style={{ background: "var(--ev-red)" }}>Premium</span>
+                    </span>
+                    <span className="block truncate text-[11px]" style={{ color: "var(--text-faint)" }}>3 agents: GPT researches the web, GLM drafts, Claude Fable reviews</span>
+                  </span>
+                </button>
                 <div style={groupLabel}>Choose by feel</div>
                 {TIERS.map((t) => {
                   const m = models.find((x) => x.id === t.id);
@@ -819,6 +840,125 @@ export default function Playground() {
     return (balance ?? 0) > 5 && models.some((m) => m.id === smart) ? smart : model;
   }
 
+  /**
+   * Gaida 1 — a 3-agent agentic loop. GPT (with web search) researches the
+   * request, GLM drafts an answer, then Claude Fable 5 reviews both and writes
+   * the final reply (streamed). Progress is shown live; total cost is the sum
+   * of all three premium calls.
+   */
+  async function runGaida(history: Msg[], id: string, all: Chat[]) {
+    setBusy(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const userMsg = history[history.length - 1].content;
+    let totalCost = 0;
+
+    const STEPS = ["Researching the web (GPT)", "Drafting the answer (GLM)", "Reviewing & finalizing (Claude Fable 5)"];
+    const doneFlags = [false, false, false];
+    const statusText = (active: number) =>
+      "**Gaida 1** — three premium agents working together\n\n" +
+      STEPS.map((s, i) => `${i + 1}. ${s} — ${doneFlags[i] ? "done" : i === active ? "working…" : "waiting"}`).join("\n");
+    const showStatus = (active: number) => {
+      all = updateChat(id, [...history, { role: "assistant", content: statusText(active), model: GAIDA_ID }], all);
+      setChats(all);
+    };
+
+    // Non-streaming gateway call; returns text + NPR cost.
+    const ask = async (model: string, messages: unknown[], web?: boolean): Promise<{ content: string; cost: number }> => {
+      const body: Record<string, unknown> = { model, messages, max_tokens: 2048 };
+      if (web) body.plugins = [{ id: "web", max_results: 4 }];
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(body),
+        signal: ac.signal,
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error?.message ?? `Error ${res.status}`);
+      if (j.nepalai?.balance_npr != null) setBalance(j.nepalai.balance_npr);
+      return { content: j.choices?.[0]?.message?.content ?? "", cost: Number(j.nepalai?.cost_npr ?? 0) };
+    };
+
+    try {
+      // 1. Research (web)
+      showStatus(0);
+      const research = await ask(GAIDA_RESEARCH_MODEL, [
+        { role: "system", content: "You are the RESEARCH agent. Analyse the user's request and search the web for current, factual information. Return concise findings: key facts, figures, and source names. Be brief and neutral — do not write the final answer." },
+        { role: "user", content: userMsg },
+      ], true);
+      totalCost += research.cost; doneFlags[0] = true;
+
+      // 2. Draft
+      showStatus(1);
+      const draft = await ask(GAIDA_DRAFT_MODEL, [
+        { role: "system", content: SYSTEM_PROMPT + "\nYou are the DRAFTING agent. Write a complete, well-structured first-draft answer that fully addresses the user's request." },
+        { role: "user", content: userMsg },
+      ]);
+      totalCost += draft.cost; doneFlags[1] = true;
+
+      // 3. Review + finalize (streamed by Claude Fable 5)
+      showStatus(2);
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: GAIDA_LEAD_MODEL,
+          stream: true,
+          max_tokens: 4096,
+          messages: [
+            { role: "system", content: systemWithMemory() + "\nYou are the LEAD reviewer (Claude Fable 5). You receive the user's request, web research from a research agent, and a draft from a drafting agent. Check both for accuracy and completeness, correct any errors, fill gaps, and write the single best final answer for the user. Output ONLY the polished final answer — no notes about the process." },
+            { role: "user", content: `USER REQUEST:\n${userMsg}\n\nWEB RESEARCH (GPT):\n${research.content || "(none)"}\n\nDRAFT (GLM):\n${draft.content || "(none)"}` },
+          ],
+        }),
+        signal: ac.signal,
+      });
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error?.message ?? "Gaida final step failed");
+      }
+      let reply = "";
+      let cost: number | null = null;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const j = JSON.parse(data);
+            if (j.nepalai) { cost = j.nepalai.cost_npr ?? null; if (j.nepalai.balance_npr != null) setBalance(j.nepalai.balance_npr); }
+            const delta = j.choices?.[0]?.delta?.content;
+            if (delta) {
+              reply += delta;
+              all = updateChat(id, [...history, { role: "assistant", content: reply, model: GAIDA_ID }], all);
+              setChats(all);
+            }
+          } catch { /* partial */ }
+        }
+      }
+      totalCost += cost ?? 0;
+      persist(updateChat(id, [...history, { role: "assistant", content: reply || "(no answer)", costNpr: Number(totalCost.toFixed(4)), model: GAIDA_ID }], all));
+      const arts = extractArtifacts(reply);
+      if (arts.length) setArtifact(arts[arts.length - 1]);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        setError((e as Error).message || String(e));
+        persist(updateChat(id, history, all)); // roll back the status message
+      }
+    } finally {
+      setBusy(false);
+      abortRef.current = null;
+      inputRef.current?.focus();
+    }
+  }
+
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if ((!content && images.length === 0 && docs.length === 0) || busy || docBusy) return;
@@ -877,6 +1017,12 @@ export default function Playground() {
       setDemoUsed(used);
       const cands = demoModels();
       await run(next, id, all, { key: "demo", model: cands[0], fallbacks: cands.slice(1) });
+      return;
+    }
+
+    // Gaida 1 — 3-agent premium loop (signed-in only).
+    if (model === GAIDA_ID) {
+      await runGaida(next, id, all);
       return;
     }
 
