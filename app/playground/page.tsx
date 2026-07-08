@@ -683,7 +683,22 @@ export default function Playground() {
           setDocBusy(false);
         }
       } else {
-        setError("Attach images or PDFs only.");
+        // Word / Excel / PowerPoint / text — extract text client-side.
+        const files = await import("@/lib/files");
+        if (!files.isSupportedDoc(f)) { setError("Attach images, PDFs, Word, Excel, PowerPoint or text files."); continue; }
+        if (f.size > 50 * 1024 * 1024) { setError("Files max 50MB."); continue; }
+        setError("");
+        setDocStatus(`Reading ${f.name.split(".").pop()?.toUpperCase()}…`);
+        setDocBusy(true);
+        try {
+          const { text } = await files.extractFileText(f);
+          if (!text) setError(`"${f.name}" has no readable text.`);
+          setDocs((cur) => [...cur, { name: f.name, text, pages: 0, url: "" }].slice(0, 3));
+        } catch {
+          setError(`Couldn't read "${f.name}".`);
+        } finally {
+          setDocBusy(false);
+        }
       }
     }
   }
@@ -1316,9 +1331,9 @@ export default function Playground() {
               <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
                 <FileText size={14} aria-hidden />
                 <span className="max-w-[160px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
-                <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                {d.pages > 0 && <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>}
                 {d.scanned && <button onClick={() => runOcr(i)} disabled={docBusy} className="font-semibold disabled:opacity-40" style={{ color: "var(--ev-red)" }} title="Scanned PDF — extract text with OCR">Run OCR</button>}
-                <button onClick={() => setArtifact({ id: `pdf-${i}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>
+                {d.url && <button onClick={() => setArtifact({ id: `pdf-${i}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>}
                 <button onClick={() => setDocs(docs.filter((_, x) => x !== i))} className="font-bold" style={{ color: "var(--text-faint)" }}>×</button>
               </div>
             ))}
@@ -1365,13 +1380,13 @@ export default function Playground() {
           style={{ color: "var(--text-strong)" }}
         />
         <div className="flex items-center gap-2">
-          <input ref={fileRef} type="file" accept="image/*,application/pdf,.pdf" multiple hidden onChange={(e) => { attachFiles(e.target.files); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" accept="image/*,application/pdf,.pdf,.docx,.xlsx,.xls,.csv,.pptx,.txt,.md,.json,.log" multiple hidden onChange={(e) => { attachFiles(e.target.files); e.target.value = ""; }} />
           <button
             onClick={() => fileRef.current?.click()}
             disabled={images.length >= 3 && docs.length >= 3}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-white/5 disabled:opacity-30"
             style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}
-            title="Attach image or PDF (or paste an image)"
+            title="Attach a file — image, PDF, Word, Excel, PowerPoint or text"
           >
             <Paperclip size={16} />
           </button>
@@ -1636,7 +1651,7 @@ export default function Playground() {
                             <div key={xi} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)" }}>
                               <FileText size={14} aria-hidden />
                               <span className="max-w-[200px] truncate" style={{ color: "var(--text-body)" }}>{d.name}</span>
-                              <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>
+                              {d.pages > 0 && <span style={{ color: "var(--text-faint)" }}>{d.pages}p</span>}
                               {d.url && <button onClick={() => setArtifact({ id: `pdf-m-${xi}`, title: d.name, kind: "pdf", lang: "pdf", code: d.url! })} className="font-semibold" style={{ color: "var(--ev-red)" }}>View</button>}
                             </div>
                           ))}
