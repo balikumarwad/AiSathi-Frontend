@@ -522,7 +522,10 @@ export default function Playground() {
       ...frees.map((m) => m.id),
     ];
     const uniq = [...new Set(ordered)].slice(0, 5);
-    return uniq.length ? uniq : [model];
+    // Always end on a reliable, platform-funded model so a logged-out visitor
+    // never hits a dead end when every free model is rate-limited upstream.
+    // The server allows this one model in the demo lane (capped + IP-limited).
+    return [...uniq, DEFAULT_MODEL];
   }
 
   useEffect(() => {

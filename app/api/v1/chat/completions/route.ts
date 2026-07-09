@@ -165,12 +165,17 @@ export async function POST(req: Request) {
         : MAX_COMPLETION_TOKENS;
   }
 
-  // Demo lane: free models only (zero upstream cost), with a small completion
-  // cap so the anonymous free pool isn't drained. Paid models nudge to signup.
+  // Demo lane: free models only (zero upstream cost), plus one cheap,
+  // platform-funded safety-net model. The client tries free models first and
+  // only falls back to the safety model when the whole free pool is rate-
+  // limited upstream — so an anonymous visitor always gets a reply instead of a
+  // "provider error". The 1024-token cap plus the 25/hr per-IP limit keep the
+  // worst-case cost of that fallback tiny. Other paid models still nudge to signup.
+  const DEMO_SAFETY_MODEL = "openai/gpt-4o-mini";
   if (auth.mode === "demo") {
     const price = await modelPricing(String(body.model));
     const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
-    if (!isFree) {
+    if (!isFree && String(body.model) !== DEMO_SAFETY_MODEL) {
       return NextResponse.json(
         {
           error: {
