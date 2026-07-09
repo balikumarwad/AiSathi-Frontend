@@ -166,10 +166,58 @@ function Prose({ text }: { text: string }) {
   );
 }
 
+/**
+ * Zero-dependency syntax highlighter. One tokenizing pass (comments and
+ * strings win over everything, so they can't be mis-split) classifies each
+ * token; colors are fixed light-on-dark since the code surface is always dark.
+ * Covers the common languages people paste — not a full grammar, but enough to
+ * read cleanly. Falls back to plain text on very large blocks.
+ */
+const HL = {
+  comment: "#8b949e",
+  string: "#a5d6ff",
+  number: "#79c0ff",
+  keyword: "#ff7b72",
+  literal: "#79c0ff",
+  fn: "#d2a8ff",
+};
+const HL_KEYWORDS = new Set(
+  "const let var function return if else for while do switch case break continue new class extends super import from export default async await try catch finally throw typeof instanceof void delete yield static get set public private protected def elif lambda pass with as not and or is print self package func type struct interface map range chan go defer fun val when object use pub impl trait where mut enum match crate mod ref then fi done elif local declare readonly echo select foreach namespace using".split(" "),
+);
+const HL_LITERALS = new Set("true false null undefined None True False nil NaN Infinity this self".split(" "));
+// Languages whose line comments start with '#'; everything else uses // and /* */.
+const HL_HASH = new Set("python py bash sh shell zsh yaml yml ruby rb r toml ini perl makefile dockerfile conf".split(" "));
+
+const HL_STRING = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/;
+const HL_NUMBER = /\b0[xX][0-9a-fA-F]+\b|\b\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?\b/;
+const HL_IDENT = /[A-Za-z_$][\w$]*/;
+
+function highlight(code: string, lang: string): { s: string; c?: string; i?: boolean }[] {
+  if (code.length > 20000) return [{ s: code }];
+  const cmt = HL_HASH.has(lang.toLowerCase()) ? /#[^\n]*/ : /\/\/[^\n]*|\/\*[\s\S]*?\*\//;
+  const re = new RegExp(`(${cmt.source})|(${HL_STRING.source})|(${HL_NUMBER.source})|(${HL_IDENT.source})|(\\s+|[\\s\\S])`, "g");
+  const out: { s: string; c?: string; i?: boolean }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code))) {
+    if (m[1]) out.push({ s: m[1], c: HL.comment, i: true });
+    else if (m[2]) out.push({ s: m[2], c: HL.string });
+    else if (m[3]) out.push({ s: m[3], c: HL.number });
+    else if (m[4]) {
+      const w = m[4];
+      if (HL_KEYWORDS.has(w)) out.push({ s: w, c: HL.keyword });
+      else if (HL_LITERALS.has(w)) out.push({ s: w, c: HL.literal });
+      else if (code[re.lastIndex] === "(") out.push({ s: w, c: HL.fn });
+      else out.push({ s: w });
+    } else out.push({ s: m[5] });
+  }
+  return out;
+}
+
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const lang = code.match(/^([a-z0-9+-]+)\n/i)?.[1] ?? "";
   const body = code.replace(/^[a-z0-9+-]*\n/i, "");
+  const toks = highlight(body, lang);
   return (
     <div className="group/code relative my-3.5 overflow-hidden rounded-lg" style={{ border: "1px solid var(--border-hairline)" }}>
       <div className="flex items-center justify-between px-4 py-1.5 text-[11px]" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-faint)" }}>
@@ -181,8 +229,8 @@ function CodeBlock({ code }: { code: string }) {
           {copied ? "copied" : "copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 font-[family-name:var(--font-mono)] text-xs leading-relaxed" style={{ background: "rgba(0,0,0,0.55)" }}>
-        {body}
+      <pre className="overflow-x-auto p-4 font-[family-name:var(--font-mono)] text-xs leading-relaxed" style={{ background: "rgba(0,0,0,0.55)", color: "#e6edf3" }}>
+        {toks.map((t, i) => (t.c ? <span key={i} style={{ color: t.c, fontStyle: t.i ? "italic" : undefined }}>{t.s}</span> : <Fragment key={i}>{t.s}</Fragment>))}
       </pre>
     </div>
   );
