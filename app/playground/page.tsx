@@ -432,10 +432,10 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
                 {row(AUTO)}
               </>
             )}
-            {free.length > 0 && <div style={groupLabel}>Free — works without credits</div>}
-            {free.slice(0, 30).map(row)}
-            {paid.length > 0 && <div style={groupLabel}>Paid — रू in / out per 1M tokens</div>}
-            {paid.slice(0, 80).map(row)}
+            {free.length > 0 && <div style={groupLabel}>Free ({free.length}) — works without credits</div>}
+            {free.map(row)}
+            {paid.length > 0 && <div style={groupLabel}>Paid ({paid.length}) — रू in / out per 1M tokens</div>}
+            {paid.map(row)}
             {free.length + paid.length === 0 && (
               <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>No models match &quot;{q}&quot;</div>
             )}
