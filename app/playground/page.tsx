@@ -193,6 +193,14 @@ function downloadPdf(title: string, md: string) {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   // Drop a leading H1 that just repeats the document title, to avoid a double heading.
   const body = md.replace(/^\s*#\s+(.+)\n/, (m, t) => (t.trim().toLowerCase() === safeTitle.toLowerCase() ? "" : m));
+  // Substantial multi-section documents get the full report treatment: a cover
+  // page and automatic section numbering (1, 1.1, 1.2…). Short letters/notes
+  // stay plain so a one-page reply doesn't get an awkward title page.
+  const sections = (body.match(/^##\s+/gm) ?? []).length;
+  const isReport = sections >= 2 || body.length > 1500;
+  const cover = isReport
+    ? `<section class="cover"><div class="cover-brand">AIsathi</div><h1 class="cover-title">${safeTitle.replace(/&/g, "&amp;")}</h1><div class="cover-rule"></div><div class="cover-date">${date}</div><div class="cover-src">aisathi.io</div></section>`
+    : `<div class="doc-head"><span class="brand">AIsathi</span><span class="meta">${date}</span></div>`;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>
     @page { size: A4; margin: 22mm 20mm 18mm; }
     * { box-sizing: border-box; }
@@ -229,9 +237,24 @@ function downloadPdf(title: string, md: string) {
     hr { border: 0; border-top: 0.75pt solid #ddd; margin: 16pt 0; }
     a { color: #b91c1c; text-decoration: none; }
     .doc-foot { margin-top: 26pt; padding-top: 8pt; border-top: 0.75pt solid #eee; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 8.5pt; color: #aaa; display: flex; justify-content: space-between; }
+    .cover { min-height: 246mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; page-break-after: always; }
+    .cover-brand { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11pt; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #999; margin-bottom: 26pt; }
+    .cover-title { font-size: 32pt; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: #0f0f0f; margin: 0 0 18pt; max-width: 88%; page-break-after: auto; }
+    .cover-rule { width: 64px; height: 3px; background: #e11d2e; margin: 0 0 18pt; }
+    .cover-date { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12pt; color: #555; }
+    .cover-src { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase; color: #bbb; margin-top: 40pt; }
+    /* Automatic section numbering — reports only. */
+    .doc.report { counter-reset: h2 h3 h4; }
+    .report h2 { counter-reset: h3 h4; counter-increment: h2; }
+    .report h3 { counter-reset: h4; counter-increment: h3; }
+    .report h4 { counter-increment: h4; }
+    .report h2::before { content: counter(h2) ".\\00a0\\00a0"; color: #e11d2e; }
+    .report h3::before { content: counter(h2) "." counter(h3) "\\00a0\\00a0"; color: #e11d2e; }
+    .report h4::before { content: counter(h2) "." counter(h3) "." counter(h4) "\\00a0\\00a0"; color: #b91c1c; }
+    .report .cover h1::before { content: none; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .doc-head, .doc-foot { break-inside: avoid; } }
-  </style></head><body><div class="doc">
-    <div class="doc-head"><span class="brand">AIsathi</span><span class="meta">${date}</span></div>
+  </style></head><body><div class="doc${isReport ? " report" : ""}">
+    ${cover}
     ${mdToHtml(body)}
     <div class="doc-foot"><span>Generated with AIsathi</span><span>aisathi.io</span></div>
   </div></body></html>`);
