@@ -115,9 +115,9 @@ function TopupInner() {
               <p className="flex items-center gap-2 text-2xl"><CheckCircle2 className="text-green-400" /> Payment verified</p>
               {result.credited_npr !== undefined && (
                 <p className="mt-3 text-zinc-300">
-                  Credited <b>रू {result.credited_npr.toLocaleString()}</b>
+                  Added <b>{(result.credited_npr * 10).toLocaleString()} credits</b>
                   {result.balance_npr !== undefined && (
-                    <> — new balance <b>रू {result.balance_npr.toLocaleString()}</b></>
+                    <> — new balance <b>{(result.balance_npr * 10).toLocaleString()} credits</b></>
                   )}
                 </p>
               )}
@@ -174,13 +174,20 @@ function TopupInner() {
                   disabled={busy || !apiKey}
                   className="rounded-xl border border-zinc-800 p-4 text-left hover:border-zinc-500 disabled:opacity-40"
                 >
-                  <div className="font-semibold">{p.display_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{p.display_name}</span>
+                    {p.currency === "NPR" && Number(p.credit_npr) > Number(p.price) && (
+                      <span className="rounded-full bg-green-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-400">
+                        +{Math.round((Number(p.credit_npr) / Number(p.price) - 1) * 100)}% bonus
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 text-2xl font-bold">
                     {p.currency === "NPR" ? "रू" : "$"}
                     {Number(p.price).toLocaleString()}
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    grants रू{Number(p.credit_npr).toLocaleString()} credit
+                    {(Number(p.credit_npr) * 10).toLocaleString()} credits
                   </div>
                 </button>
               ))}

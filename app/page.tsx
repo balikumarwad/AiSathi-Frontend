@@ -175,46 +175,50 @@ export default function Home() {
           Simple, honest pricing
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-          No subscription needed. Pay only for the tokens you use, in rupees.
+          Chat free forever, or get a credit package — cheaper than ChatGPT Go, paid in rupees.
         </p>
         <div className="mt-14 grid gap-6 sm:grid-cols-3">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />26+ free models, unlimited chats*</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />26+ free models, 150 messages a day</li>
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Full playground — history, images in, voice</li>
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
             </ul>
-            <p className="mt-4 text-[11px] text-zinc-600">*Free models are best-effort with daily caps.</p>
           </div>
           <div className="relative rounded-2xl border border-red-800/60 bg-zinc-950 p-8 shadow-lg shadow-red-950/20">
             <div className="absolute -top-3 left-8 rounded-full bg-red-600 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
-            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pay as you go</div>
-            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">from <span lang="ne">रू</span>200</div>
-            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Every model — GPT, Claude, Gemini, images</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Fast models from <span lang="ne">रू</span>44 / 1M tokens</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Claude Sonnet 5 at <span lang="ne">रू</span>350 / 1M input</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Top up via Khalti, eSewa, or card</li>
+            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Starter</div>
+            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>499</div>
+            <div className="mt-1 text-sm font-semibold text-green-400">5,990 credits — 20% bonus</div>
+            <ul className="mt-5 space-y-2.5 text-sm text-zinc-400">
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Every model — GPT, Claude, Gemini + images</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />~1,200 smart replies or 6,000 fast ones</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Pay with Khalti, eSewa, or card</li>
             </ul>
-            <Link href="/models" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
-              See live prices for all models →
+            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+              Get Starter →
             </Link>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
-            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Developers & teams</div>
-            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold">Same rates</div>
-            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />OpenAI-compatible API + streaming</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Multiple API keys, usage dashboard</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />One NPR balance across your whole team</li>
+            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pro</div>
+            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>999</div>
+            <div className="mt-1 text-sm font-semibold text-green-400">12,990 credits — 30% bonus</div>
+            <ul className="mt-5 space-y-2.5 text-sm text-zinc-400">
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Everything in Starter, 2.2x the credits</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Best value for daily Claude & GPT use</li>
+              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Credits never expire — use at your pace</li>
             </ul>
-            <Link href="/docs" className="mt-5 inline-block text-sm font-semibold text-zinc-300 hover:text-white">
-              Read the docs →
+            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-zinc-300 hover:text-white">
+              Get Pro →
             </Link>
           </div>
         </div>
+        <p className="mx-auto mt-6 max-w-xl text-center text-xs text-zinc-600">
+          Need more? Top up any amount from <span lang="ne">रू</span>200. Developers get the same credits via the{" "}
+          <Link href="/docs" className="underline hover:text-zinc-400">OpenAI-compatible API</Link>.
+        </p>
       </section>
 
       {/* ============ WHY NOT GO DIRECT (audit item 5) ============ */}

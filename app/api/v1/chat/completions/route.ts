@@ -205,6 +205,21 @@ export async function POST(req: Request) {
     }
     const price = await modelPricing(String(body.model));
     const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
+    // Free models stay free for every signed-in user, but with a generous daily
+    // cap (~3x a heavy chatter) so the free tier can't be scripted into a bulk
+    // pipeline. Heavy users are nudged to a package.
+    if (isFree && !(await allowAsync(`freeDay:${auth.keyId}`, 150, 24 * 3_600_000))) {
+      return NextResponse.json(
+        {
+          error: {
+            message:
+              "You've hit today's free-model limit (150 messages). It resets tomorrow — or get a package for premium models and no daily cap.",
+            code: 429,
+          },
+        },
+        { status: 429 },
+      );
+    }
     if (!isFree) {
       // Rough prompt-token estimate (~4 chars/token) — good enough to gate on.
       const estPromptTok = Math.ceil(JSON.stringify(body.messages).length / 4);
@@ -218,7 +233,7 @@ export async function POST(req: Request) {
           {
             error: {
               message:
-                "Insufficient credits for this request. Top up your AIsathi balance — or use a free model (रू0/M in the catalog).",
+                "Not enough credits for this request. Get a package or top up — or switch to a free model.",
               code: 402,
             },
             balance_npr: Number(bal),

@@ -267,10 +267,24 @@ function isFree(m: CatalogModel) {
   return !!m.pricing && m.pricing.prompt_npr_per_m === 0 && m.pricing.completion_npr_per_m === 0;
 }
 
+/**
+ * Consumer-facing currency: credits, not rupees. 1 credit = रू0.10 of usage.
+ * The ledger and API stay in NPR (docs/topup show real money — that's payment);
+ * the chat surface shows only credits so users think in service, not paisa.
+ */
+function credits(npr: number): number {
+  return Math.max(0, Math.round(npr * 10));
+}
+function fmtCredits(npr: number): string {
+  return credits(npr).toLocaleString("en-US");
+}
+
 function fmtPrice(m: CatalogModel) {
   if (!m.pricing) return "";
   if (isFree(m)) return "Free";
-  return `रू${m.pricing.prompt_npr_per_m} / रू${m.pricing.completion_npr_per_m}`;
+  // Typical message ≈ 400 tokens in + 600 out — good enough for comparison.
+  const perMsgNpr = (m.pricing.prompt_npr_per_m * 400 + m.pricing.completion_npr_per_m * 600) / 1e6;
+  return `~${Math.max(1, Math.round(perMsgNpr * 10))} cr/msg`;
 }
 
 function greeting(name?: string) {
@@ -434,7 +448,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
             )}
             {free.length > 0 && <div style={groupLabel}>Free ({free.length}) — works without credits</div>}
             {free.map(row)}
-            {paid.length > 0 && <div style={groupLabel}>Paid ({paid.length}) — रू in / out per 1M tokens</div>}
+            {paid.length > 0 && <div style={groupLabel}>Premium ({paid.length}) — approx credits per message</div>}
             {paid.map(row)}
             {free.length + paid.length === 0 && (
               <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>No models match &quot;{q}&quot;</div>
@@ -677,7 +691,7 @@ export default function Playground() {
     if (!chat) return;
     const md = [
       `# ${chat.title}`,
-      `_Exported from AIsathi (aisathi.io) · total cost रू${chatCost.toFixed(4)}_`,
+      `_Exported from AIsathi (aisathi.io) · ${fmtCredits(chatCost)} credits used_`,
       "",
       ...chat.messages.map((m) => `**${m.role === "user" ? "You" : `AIsathi (${m.model ?? "model"})`}:**\n\n${m.content}\n`),
     ].join("\n");
@@ -1462,7 +1476,7 @@ export default function Playground() {
       }}
     >
       <span className="min-w-0 flex-1 truncate">
-        You&apos;ve used <strong>{usage.pct}%</strong> of your credits · रू{usage.left} left
+        You&apos;ve used <strong>{usage.pct}%</strong> of your credits · {fmtCredits(usage.left)} credits left
       </span>
       <a href="/dashboard" className="flex-none font-semibold underline underline-offset-2" style={{ color: "var(--text-strong)" }}>
         View usage
@@ -1673,8 +1687,8 @@ export default function Playground() {
               }}
               title={
                 webMode === "off" ? "Web search off — click for Auto (searches when a question needs current info), then Always"
-                : webMode === "auto" ? "Web search: Auto — searches only when the question needs current info (~रू0.9 per search)"
-                : "Web search: Always on — every reply uses live results (~रू0.9 per search)"
+                : webMode === "auto" ? "Web search: Auto — searches only when the question needs current info (~9 credits per search)"
+                : "Web search: Always on — every reply uses live results (~9 credits per search)"
               }
             >
               <Globe size={14} /> {webMode === "off" ? "Web" : webMode === "auto" ? "Web · Auto" : "Web · On"}
@@ -1684,10 +1698,10 @@ export default function Playground() {
           {balance !== null && (
             balance < 10 ? (
               <a href="/topup" className="hidden text-xs font-semibold no-underline sm:inline" style={{ color: "var(--ev-red)" }} title="Balance is low — top up">
-                रू {balance} · top up
+                {fmtCredits(balance ?? 0)} credits · top up
               </a>
             ) : (
-              <span className="hidden text-xs sm:inline" style={{ color: "var(--text-faint)" }}>रू {balance}</span>
+              <span className="hidden text-xs sm:inline" style={{ color: "var(--text-faint)" }}>{fmtCredits(balance ?? 0)} credits</span>
             )
           )}
           <div className="flex-1" />
@@ -1776,7 +1790,7 @@ export default function Playground() {
         {session ? (
           <>
             {fullName ?? session.user.email}
-            {balance !== null && <span className="float-right font-semibold" style={{ color: "var(--text-muted)" }}>रू {balance}</span>}
+            {balance !== null && <span className="float-right font-semibold" style={{ color: "var(--text-muted)" }}>{fmtCredits(balance)} cr</span>}
           </>
         ) : (
           <a href="/login" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>Sign in →</a>
@@ -1890,7 +1904,7 @@ export default function Playground() {
               </span>
               {chatCost > 0 && (
                 <span className="hidden text-[11px] sm:inline" style={{ color: "var(--text-faint)" }}>
-                  this chat: रू{chatCost.toFixed(4)}
+                  this chat: {fmtCredits(chatCost)} credits
                 </span>
               )}
               {langToggle}
@@ -2034,7 +2048,7 @@ export default function Playground() {
                               )}
                             </div>
                             <div className="mt-2 flex items-center gap-3 text-[11px]" style={{ color: "var(--text-faint)" }}>
-                              {m.costNpr != null && <span>{m.costNpr === 0 ? "free · रू0" : `रू ${m.costNpr}`} · {(m.model ?? model).split("/").pop()}</span>}
+                              {m.costNpr != null && <span>{m.costNpr === 0 ? "free" : `${fmtCredits(m.costNpr)} credits`} · {(m.model ?? model).split("/").pop()}</span>}
                               {m.doc && !busy && (
                                 <button
                                   onClick={() => downloadPdf(chat?.title ?? "document", m.content)}
