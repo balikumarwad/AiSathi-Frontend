@@ -111,8 +111,23 @@ const DOC_PROMPT =
 
 function mdToHtml(md: string): string {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Escape first, then apply inline markdown (the markers aren't escaped, so
+  // they still match; any HTML in the source is neutralized).
   const inline = (s: string) =>
-    s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>');
+  const cells = (l: string) => {
+    let s = l.trim();
+    if (s.startsWith("|")) s = s.slice(1);
+    if (s.endsWith("|")) s = s.slice(0, -1);
+    return s.split("|").map((c) => c.trim());
+  };
+  const isSep = (l: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+
   let html = "";
   md.split("```").forEach((seg, i) => {
     if (i % 2 === 1) {
@@ -120,18 +135,52 @@ function mdToHtml(md: string): string {
       return;
     }
     for (const para of seg.split(/\n{2,}/)) {
-      const lines = para.split("\n").filter(Boolean);
+      let lines = para.split("\n").filter((l) => l.trim().length);
       if (!lines.length) continue;
+
+      // Peel any leading heading lines so a heading glued to the text below it
+      // (no blank line) still renders as a heading, and the rest classifies on.
+      while (lines.length > 1) {
+        const hm = lines[0].match(/^(#{1,4})\s+(.*)$/);
+        if (!hm) break;
+        html += `<h${hm[1].length}>${inline(hm[2])}</h${hm[1].length}>`;
+        lines = lines.slice(1);
+      }
+
+      // Horizontal rule
+      if (lines.length === 1 && /^\s*([-*_])\1{2,}\s*$/.test(lines[0])) { html += "<hr/>"; continue; }
+
+      // Heading
       const h = lines[0].match(/^(#{1,4})\s+(.*)$/);
-      if (h && lines.length === 1) {
-        html += `<h${h[1].length}>${inline(esc(h[2]))}</h${h[1].length}>`;
+      if (h && lines.length === 1) { html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+
+      // Blockquote
+      if (lines.every((l) => /^\s*>\s?/.test(l))) {
+        html += `<blockquote>${lines.map((l) => inline(l.replace(/^\s*>\s?/, ""))).join("<br/>")}</blockquote>`;
         continue;
       }
+
+      // Table
+      if (lines.length >= 2 && lines[0].includes("|") && isSep(lines[1])) {
+        const head = cells(lines[0]);
+        const body = lines.slice(2).map(cells);
+        html +=
+          "<table><thead><tr>" + head.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>" +
+          body.map((r) => "<tr>" + head.map((_, ci) => `<td>${inline(r[ci] ?? "")}</td>`).join("") + "</tr>").join("") +
+          "</tbody></table>";
+        continue;
+      }
+
+      // List — ordered vs unordered by the first marker
       if (lines.every((l) => /^\s*([-*•]|\d+[.)])\s+/.test(l))) {
-        html += "<ul>" + lines.map((l) => `<li>${inline(esc(l.replace(/^\s*([-*•]|\d+[.)])\s+/, "")))}</li>`).join("") + "</ul>";
+        const ordered = /^\s*\d+[.)]\s+/.test(lines[0]);
+        const tag = ordered ? "ol" : "ul";
+        html += `<${tag}>` + lines.map((l) => `<li>${inline(l.replace(/^\s*([-*•]|\d+[.)])\s+/, ""))}</li>`).join("") + `</${tag}>`;
         continue;
       }
-      html += `<p>${lines.map((l) => inline(esc(l))).join("<br/>")}</p>`;
+
+      // Paragraph — soft line breaks flow together for justified prose
+      html += `<p>${lines.map((l) => inline(l)).join(" ")}</p>`;
     }
   });
   return html;
@@ -140,13 +189,52 @@ function mdToHtml(md: string): string {
 function downloadPdf(title: string, md: string) {
   const w = window.open("", "_blank", "width=820,height=1000");
   if (!w) return;
-  w.document.write(`<!doctype html><html><head><title>${title.replace(/</g, "")}</title><style>
-    body{font-family:Georgia,'Times New Roman',serif;max-width:720px;margin:48px auto;padding:0 32px;color:#111;line-height:1.65;}
-    h1{font-size:26px;border-bottom:2px solid #e11d2e;padding-bottom:8px;}h2{font-size:20px;margin-top:28px;}h3{font-size:17px;}
-    pre{background:#f4f4f4;padding:14px;border-radius:6px;overflow-x:auto;font-size:13px;}code{font-family:Consolas,monospace;}
-    ul{padding-left:22px;}li{margin:4px 0;}
-    footer{margin-top:48px;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:10px;}
-  </style></head><body>${mdToHtml(md)}<footer>Created with AIsathi — aisathi.io</footer></body></html>`);
+  const safeTitle = title.replace(/[<>]/g, "").trim() || "Document";
+  const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  // Drop a leading H1 that just repeats the document title, to avoid a double heading.
+  const body = md.replace(/^\s*#\s+(.+)\n/, (m, t) => (t.trim().toLowerCase() === safeTitle.toLowerCase() ? "" : m));
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>
+    @page { size: A4; margin: 22mm 20mm 18mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, 'Times New Roman', 'Noto Serif', serif;
+      font-size: 11.5pt; line-height: 1.62; color: #1a1a1a;
+      text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+    }
+    .doc { hyphens: auto; -webkit-hyphens: auto; }
+    .doc-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-bottom: 2.5px solid #e11d2e; padding-bottom: 7pt; margin-bottom: 20pt;
+    }
+    .doc-head .brand { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12pt; font-weight: 700; letter-spacing: -0.01em; color: #111; }
+    .doc-head .meta  { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 8.5pt; letter-spacing: 0.06em; text-transform: uppercase; color: #999; }
+    h1, h2, h3, h4 { font-family: Georgia, serif; color: #0f0f0f; line-height: 1.22; page-break-after: avoid; }
+    h1 { font-size: 22pt; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 10pt; }
+    h2 { font-size: 15pt; font-weight: 700; margin: 20pt 0 6pt; padding-bottom: 3pt; border-bottom: 0.75pt solid #e0e0e0; }
+    h3 { font-size: 12.5pt; font-weight: 700; margin: 15pt 0 4pt; }
+    h4 { font-size: 11.5pt; font-weight: 700; margin: 12pt 0 2pt; color: #333; }
+    p { margin: 0 0 8pt; text-align: justify; orphans: 2; widows: 2; }
+    ul, ol { margin: 6pt 0 10pt; padding-left: 20pt; }
+    li { margin: 2.5pt 0; padding-left: 3pt; }
+    li::marker { color: #e11d2e; font-weight: 700; }
+    blockquote { margin: 11pt 0; padding: 3pt 0 3pt 14pt; border-left: 3px solid #e11d2e; color: #444; font-style: italic; }
+    code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 9.5pt; background: #f2f2f3; padding: 0.5pt 4pt; border-radius: 3px; }
+    pre { background: #f7f7f8; border: 0.75pt solid #e5e5e7; border-radius: 6px; padding: 11pt 13pt; overflow-x: auto; margin: 11pt 0; page-break-inside: avoid; }
+    pre code { background: none; padding: 0; font-size: 9pt; line-height: 1.5; }
+    table { width: 100%; border-collapse: collapse; margin: 11pt 0; font-size: 10.5pt; page-break-inside: avoid; }
+    th, td { border: 0.75pt solid #ccc; padding: 5pt 8pt; text-align: left; vertical-align: top; }
+    th { background: #f0f0f1; font-weight: 700; }
+    tbody tr:nth-child(even) td { background: #fafafa; }
+    hr { border: 0; border-top: 0.75pt solid #ddd; margin: 16pt 0; }
+    a { color: #b91c1c; text-decoration: none; }
+    .doc-foot { margin-top: 26pt; padding-top: 8pt; border-top: 0.75pt solid #eee; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 8.5pt; color: #aaa; display: flex; justify-content: space-between; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .doc-head, .doc-foot { break-inside: avoid; } }
+  </style></head><body><div class="doc">
+    <div class="doc-head"><span class="brand">AIsathi</span><span class="meta">${date}</span></div>
+    ${mdToHtml(body)}
+    <div class="doc-foot"><span>Generated with AIsathi</span><span>aisathi.io</span></div>
+  </div></body></html>`);
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 400);
