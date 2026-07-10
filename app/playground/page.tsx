@@ -1003,7 +1003,33 @@ export default function Playground() {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const apiMessages: unknown[] = [{ role: "system", content: (opts?.system ?? systemWithMemory()) + langDirective() }];
+      // RAG: pull verified Nepal facts relevant to the question and inject
+      // them into the system prompt. Best-effort with a hard time budget —
+      // a slow lookup must never delay the reply noticeably.
+      const ragQuery = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+      let ragBlock = "";
+      if (ragQuery.length >= 8) {
+        try {
+          const kn = await Promise.race([
+            fetch("/api/knowledge/search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ q: ragQuery.slice(0, 500) }),
+              signal: ac.signal,
+            }).then((r) => (r.ok ? r.json() : null)),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+          ]);
+          const matches = (kn?.matches ?? []) as { title: string; content: string; source?: string; as_of?: string; similarity: number }[];
+          if (matches.length) {
+            ragBlock =
+              "\n\nVerified Nepal knowledge relevant to this question (curated " +
+              (matches[0].as_of ? `as of ${matches[0].as_of}` : "recently") +
+              "; prefer these facts over your training memory; where fees or rules may have changed, say so and point to the official source):\n" +
+              matches.map((m) => `- ${m.title}: ${m.content}${m.source ? ` [source: ${m.source}]` : ""}`).join("\n");
+          }
+        } catch { /* RAG is best-effort */ }
+      }
+      const apiMessages: unknown[] = [{ role: "system", content: (opts?.system ?? systemWithMemory()) + langDirective() + ragBlock }];
       // Document requests: only the recent exchange matters (the ask + at most
       // one revision round). Sending the whole chat makes the model copy
       // earlier, unrelated conversation into the document.
