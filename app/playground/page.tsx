@@ -112,8 +112,9 @@ const MEMORY_EXTRACT_PROMPT =
   "Return ONLY a JSON array of at most 3 strings. If there is nothing worth remembering, return [].";
 
 const DOC_PROMPT =
-  "You are AIsathi's professional document writer. Produce the COMPLETE document the user asked for in clean, well-structured markdown: " +
+  "You are AIsathi's professional document writer. Produce the COMPLETE document the user MOST RECENTLY asked for in clean, well-structured markdown: " +
   "a clear title heading, organized sections, and professional wording. Output ONLY the document itself — no commentary before or after. " +
+  "Earlier conversation is background context at most — NEVER copy previous replies, previous documents, or unrelated chat content into this document. " +
   "If key details are missing (names, dates, addresses), use sensible placeholders like [Your Name]. " +
   "Use Nepali conventions when the document is for use in Nepal: addresses as Ward, Municipality/Rural Municipality, District; dates in both BS and AD where formal documents need them; रू with lakh/crore for amounts; " +
   "and the standard Nepali formats for common documents — a biodata (with personal details, citizenship number placeholder, and passport-photo note) differs from a Western resume, and official letters (nivedan) open with the office name and address, then 'विषय:' (subject), and close with the applicant's details. " +
@@ -518,6 +519,11 @@ export default function Playground() {
   const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
+  // Smart auto-scroll: follow the stream only while the user is at the bottom.
+  // The moment they scroll up (to reread earlier messages mid-generation) we
+  // stop yanking the view down; scrolling back near the bottom re-engages.
+  const stickToBottomRef = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   // Cross-device sync (signed-in users): refs avoid stale closures in persist.
@@ -657,7 +663,11 @@ export default function Playground() {
       .catch(() => setBalance(null));
   }, []);
   useEffect(() => { refreshBalance(apiKey); }, [apiKey, refreshBalance]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chats, chatId]);
+  useEffect(() => {
+    if (stickToBottomRef.current) endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chats, chatId]);
+  // Switching chats always starts pinned to the latest message.
+  useEffect(() => { stickToBottomRef.current = true; }, [chatId]);
   useEffect(() => { memoriesRef.current = memories; }, [memories]);
 
   // Remember the user's explicit model choice across sessions.
@@ -987,7 +997,11 @@ export default function Playground() {
     abortRef.current = ac;
     try {
       const apiMessages: unknown[] = [{ role: "system", content: (opts?.system ?? systemWithMemory()) + langDirective() }];
-      history.forEach((m) => {
+      // Document requests: only the recent exchange matters (the ask + at most
+      // one revision round). Sending the whole chat makes the model copy
+      // earlier, unrelated conversation into the document.
+      const ctxHistory = opts?.doc ? history.slice(-4) : history;
+      ctxHistory.forEach((m) => {
         // Attached-document text rides along as context on the user turn so the
         // model can read and answer about the PDF.
         const textContent = m.docText ? `${m.docText}\n\n${m.content}` : m.content;
@@ -1966,7 +1980,14 @@ export default function Playground() {
             </div>
           ) : (
             <>
-              <div className="sathi-scroll min-h-0 flex-1 overflow-y-auto">
+              <div
+                ref={scrollBoxRef}
+                onScroll={() => {
+                  const el = scrollBoxRef.current;
+                  if (el) stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+                }}
+                className="sathi-scroll min-h-0 flex-1 overflow-y-auto"
+              >
                 <div className="mx-auto w-full max-w-3xl px-6 py-8">
                   <div className="space-y-8">
                     {messages.map((m, i) =>
