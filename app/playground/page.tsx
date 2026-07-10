@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Globe, Languages, Lightbulb, Link2,
-  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, X, Zap,
+  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, Globe, Languages, Lightbulb, Link2,
+  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, ThumbsDown, ThumbsUp, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Nav from "@/components/Nav";
@@ -516,6 +516,11 @@ export default function Playground() {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const memoriesRef = useRef<Memory[]>([]);
   const [artifact, setArtifact] = useState<Artifact | null>(null); // open live-preview artifact
+  // Reply feedback: which messages this browser voted on ("chatId:idx" -> vote),
+  // persisted locally so buttons stay filled across reloads. Votes feed the
+  // feedback table (training data) and the monthly रू1,000 lucky draw.
+  const [voted, setVoted] = useState<Record<string, "up" | "down">>({});
+  const [fbPromoSeen, setFbPromoSeen] = useState(true); // default hidden until localStorage read
   const recRef = useRef<{ stop: () => void } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -565,6 +570,8 @@ export default function Playground() {
     const savedLang = (localStorage.getItem("aisathi_lang") as "en" | "ne") || "en";
     setLang(savedLang); langRef.current = savedLang;
     setDemoUsed(Number(localStorage.getItem("aisathi_demo_used") ?? 0));
+    try { setVoted(JSON.parse(localStorage.getItem("aisathi_votes") ?? "{}")); } catch { /* fresh */ }
+    setFbPromoSeen(localStorage.getItem("aisathi_fb_promo") === "1");
     try {
       const saved = JSON.parse(localStorage.getItem("aisathi_chats") ?? "[]") as Chat[];
       setChats(saved);
@@ -1477,6 +1484,26 @@ export default function Playground() {
     setTimeout(() => setCopiedIdx(null), 1500);
   }
 
+  /** Vote on an assistant reply. Fire-and-forget; the button fills instantly. */
+  function sendFeedback(i: number, vote: "up" | "down") {
+    if (!chat) return;
+    const key = `${chat.id}:${i}`;
+    if (voted[key]) return; // one vote per reply per browser
+    const next = { ...voted, [key]: vote };
+    setVoted(next);
+    try { localStorage.setItem("aisathi_votes", JSON.stringify(next)); } catch { /* full */ }
+    const msg = chat.messages[i];
+    const question = [...chat.messages.slice(0, i)].reverse().find((m) => m.role === "user")?.content ?? "";
+    void fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey || "demo"}` },
+      body: JSON.stringify({
+        vote, model: msg?.model, question: question.slice(0, 4000),
+        answer: (msg?.content ?? "").slice(0, 8000), chat_id: chat.id, msg_index: i,
+      }),
+    }).catch(() => { /* feedback is best-effort */ });
+  }
+
   const fullName =
     (session?.user.user_metadata?.full_name as string | undefined) ??
     (session?.user.user_metadata?.name as string | undefined);
@@ -1511,6 +1538,26 @@ export default function Playground() {
         Top up
       </a>
       <button onClick={dismissBanner} className="flex-none px-1" style={{ color: "var(--text-faint)" }} title="Dismiss">
+        ×
+      </button>
+    </div>
+  );
+
+  // Lucky-draw promo: shown until dismissed. Every rated reply = one entry in
+  // the monthly रू1,000 draw (signed-in users; winner needs an account to pay).
+  const fbPromoBanner = !fbPromoSeen && (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 text-[13px]"
+      style={{ background: "rgba(74, 222, 128, 0.08)", borderBottom: "1px solid rgba(74, 222, 128, 0.25)", color: "var(--text-body)" }}
+    >
+      <Gift size={15} className="flex-none" style={{ color: "#4ade80" }} aria-hidden />
+      <span className="min-w-0 flex-1">
+        Rate replies with <ThumbsUp size={11} className="inline" aria-label="thumbs up" /> / <ThumbsDown size={11} className="inline" aria-label="thumbs down" /> — every rating is an entry in this month&apos;s <strong>रू1,000 lucky draw</strong>.{!session && " Sign in so we can pay you if you win!"}
+      </span>
+      <button
+        onClick={() => { setFbPromoSeen(true); localStorage.setItem("aisathi_fb_promo", "1"); }}
+        className="flex-none px-1" style={{ color: "var(--text-faint)" }} title="Dismiss"
+      >
         ×
       </button>
     </div>
@@ -1919,6 +1966,7 @@ export default function Playground() {
             <div className="absolute right-4 top-3 z-20">{langToggle}</div>
           )}
           {usageBanner}
+          {fbPromoBanner}
           {/* Chat header (only when a conversation is open) */}
           {messages.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
@@ -2092,7 +2140,30 @@ export default function Playground() {
                                 </button>
                               )}
                               {!busy && (
-                                <span className="flex gap-3 opacity-0 transition-opacity group-hover:opacity-100">
+                                <span className={`flex items-center gap-3 transition-opacity ${voted[`${chat?.id}:${i}`] ? "" : "opacity-0 group-hover:opacity-100"}`}>
+                                  <button
+                                    onClick={() => sendFeedback(i, "up")}
+                                    disabled={!!voted[`${chat?.id}:${i}`]}
+                                    title="Good reply — enters the रू1,000 lucky draw"
+                                    className="flex items-center font-semibold hover:text-white disabled:cursor-default"
+                                    style={voted[`${chat?.id}:${i}`] === "up" ? { color: "#4ade80" } : undefined}
+                                  >
+                                    <ThumbsUp size={12} fill={voted[`${chat?.id}:${i}`] === "up" ? "currentColor" : "none"} />
+                                  </button>
+                                  <button
+                                    onClick={() => sendFeedback(i, "down")}
+                                    disabled={!!voted[`${chat?.id}:${i}`]}
+                                    title="Bad reply — helps us improve"
+                                    className="flex items-center font-semibold hover:text-white disabled:cursor-default"
+                                    style={voted[`${chat?.id}:${i}`] === "down" ? { color: "var(--ev-red)" } : undefined}
+                                  >
+                                    <ThumbsDown size={12} fill={voted[`${chat?.id}:${i}`] === "down" ? "currentColor" : "none"} />
+                                  </button>
+                                  {voted[`${chat?.id}:${i}`] && (
+                                    <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                                      {session ? "thanks — you're in this month's draw" : "thanks!"}
+                                    </span>
+                                  )}
                                   <button onClick={() => copyMessage(i, m.content)} className="flex items-center gap-1 font-semibold hover:text-white">
                                     {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />} {copiedIdx === i ? "copied" : "copy"}
                                   </button>
