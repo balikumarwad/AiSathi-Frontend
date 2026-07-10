@@ -12,11 +12,29 @@ import { ArtifactCard, classifyArtifact, type Artifact } from "@/components/Arti
  */
 
 function Inline({ text }: { text: string }) {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|~~[^~]+~~|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g);
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|~~[^~]+~~|\*[^*]+\*|!?\[[^\]]+\]\((?:https?:\/\/[^\s)]+|\/[^\s)]+)\))/g);
   return (
     <>
       {parts.map((p, i) => {
         if (!p) return null;
+        // Markdown image — rendered as a real <img> only for site-hosted
+        // assets (aisathi.io or relative paths); anything else falls through
+        // to a plain link so model output can't embed arbitrary third-party
+        // images (tracking pixels, shock content).
+        const img = p.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)$/);
+        if (img) {
+          const trusted = img[2].startsWith("/") || /^https:\/\/(www\.)?aisathi\.io\//.test(img[2]);
+          if (trusted)
+            return (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img key={i} src={img[2]} alt={img[1]} className="my-2 max-h-96 max-w-full rounded-xl object-contain" style={{ border: "1px solid var(--border-strong)" }} />
+            );
+          return (
+            <a key={i} href={img[2]} target="_blank" rel="noreferrer" className="underline decoration-1 underline-offset-2" style={{ color: "var(--ev-red)" }}>
+              {img[1] || img[2]}
+            </a>
+          );
+        }
         if (p.startsWith("`") && p.endsWith("`"))
           return (
             <code key={i} className="rounded px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[0.85em]" style={{ background: "rgba(255,255,255,0.08)" }}>
@@ -26,7 +44,7 @@ function Inline({ text }: { text: string }) {
         if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} className="font-semibold" style={{ color: "var(--text-strong, #fff)" }}>{p.slice(2, -2)}</strong>;
         if (p.startsWith("~~") && p.endsWith("~~")) return <span key={i} className="line-through opacity-70">{p.slice(2, -2)}</span>;
         if (p.startsWith("*") && p.endsWith("*") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
-        const link = p.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+        const link = p.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)$/);
         if (link)
           return (
             <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80" style={{ color: "var(--ev-red)" }}>
