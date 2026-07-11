@@ -51,6 +51,15 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // In-app browsers (LinkedIn, Facebook, Instagram, Messenger, TikTok, X...)
+  // are blocked by Google OAuth ("403: disallowed_useragent"). Detect them so
+  // we can steer users to a real browser instead of a dead-end Google error.
+  const [inApp, setInApp] = useState(false);
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setInApp(/LinkedInApp|FBAN|FBAV|FB_IAB|Instagram|Messenger|Snapchat|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Line\//i.test(ua));
+  }, []);
 
   useEffect(() => {
     sb?.auth.getSession().then(({ data }) => {
@@ -165,9 +174,18 @@ export default function LoginPage() {
             <div className="space-y-4 text-left">
               {step === "email" && (
                 <>
+                  {inApp && (
+                    <div
+                      className="rounded-lg px-4 py-3 text-[13px] leading-relaxed"
+                      style={{ background: "rgba(217, 160, 50, 0.12)", border: "1px solid rgba(217, 160, 50, 0.4)", color: "var(--text-body)" }}
+                    >
+                      <strong>Google sign-in doesn&apos;t work inside this app&apos;s browser</strong> (Google blocks it for security).
+                      Tap the <strong>⋯ menu</strong> and choose <strong>&quot;Open in browser&quot;</strong> — or use email below, which works right here.
+                    </div>
+                  )}
                   <button
                     onClick={signInWithGoogle}
-                    disabled={busy}
+                    disabled={busy || inApp}
                     className="flex w-full items-center justify-center gap-3 py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
                     style={{
                       background: "var(--ev-white)",

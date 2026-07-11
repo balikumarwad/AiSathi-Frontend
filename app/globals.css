@@ -79,3 +79,25 @@ body {
   color: transparent;
   animation: sathi-shimmer 1.8s linear infinite;
 }
+
+/* Hero aurora: slow GPU-friendly drift (transform + opacity only) so the
+   landing page visibly moves on every device — including phones where the
+   hero video is skipped (data cost) or autoplay is blocked. */
+@keyframes sathi-drift-a {
+  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.75; }
+  50% { transform: translate(-40%, 8vh) scale(1.18); opacity: 1; }
+}
+@keyframes sathi-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(9vw, -7vh) scale(1.25); opacity: 1; }
+}
+@keyframes sathi-drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.65; }
+  50% { transform: translate(-7vw, 6vh) scale(1.15); opacity: 1; }
+}
+.sathi-aurora-a { animation: sathi-drift-a 13s ease-in-out infinite; will-change: transform, opacity; }
+.sathi-aurora-b { animation: sathi-drift-b 17s ease-in-out infinite; will-change: transform, opacity; }
+.sathi-aurora-c { animation: sathi-drift-c 21s ease-in-out infinite; will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) {
+  .sathi-aurora-a, .sathi-aurora-b, .sathi-aurora-c { animation: none; }
+}

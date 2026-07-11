@@ -82,11 +82,13 @@ export default function Home() {
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
         <HeroVideo />
 
-        {/* Animated aurora fallback / underlay (respects reduced motion) */}
+        {/* Animated aurora underlay — pure CSS drift, so the hero visibly
+            moves on every device even when the video is skipped or blocked.
+            (Respects reduced motion via the sathi-aurora classes.) */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] -translate-x-1/2 rounded-full bg-red-600/20 blur-[120px] animate-pulse motion-reduce:animate-none" />
-          <div className="absolute bottom-0 left-0 h-[50vh] w-[50vw] rounded-full bg-purple-700/20 blur-[100px]" />
-          <div className="absolute right-0 top-1/3 h-[40vh] w-[40vw] rounded-full bg-blue-700/15 blur-[100px]" />
+          <div className="sathi-aurora-a absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] rounded-full bg-red-600/20 blur-[120px]" />
+          <div className="sathi-aurora-b absolute bottom-0 left-0 h-[50vh] w-[50vw] rounded-full bg-purple-700/20 blur-[100px]" />
+          <div className="sathi-aurora-c absolute right-0 top-1/3 h-[40vh] w-[40vw] rounded-full bg-blue-700/15 blur-[100px]" />
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black" />
