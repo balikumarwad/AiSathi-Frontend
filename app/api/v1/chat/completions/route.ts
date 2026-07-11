@@ -17,6 +17,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { upstreamChat, upstreamModels } from "@/lib/upstream";
 
 export const runtime = "nodejs";
+// Vercel Pro: allow long streams (big Claude answers, Gaida agent loops)
+// instead of the 60s Hobby ceiling that could cut replies mid-sentence.
+export const maxDuration = 300;
 
 type KeyContext =
   | { mode: "dev" }

@@ -18,7 +18,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { allowAsync } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Pro: headroom for slow provider responses
 
 const REPLICATE = "https://api.replicate.com/v1";
 // seedance-1-lite: the most-run text-to-video model on Replicate — cheap,

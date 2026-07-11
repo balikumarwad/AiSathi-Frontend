@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Bebas_Neue, Geist_Mono, Give_You_Glory, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -74,6 +76,9 @@ export default function RootLayout({
               y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
             })(window, document, "clarity", "script", "${CLARITY_ID}");`}
         </Script>
+        {/* Vercel Pro: first-party visitor analytics + real-user Core Web Vitals. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
