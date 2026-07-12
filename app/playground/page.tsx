@@ -1812,7 +1812,12 @@ export default function Playground() {
           ) : (
             <button
               onClick={() => send()}
-              disabled={(!input.trim() && images.length === 0) || (!apiKey && !session)}
+              // Enabled whenever there's something to send. Demo (logged-out)
+              // users must be able to send too — send() routes them to the free
+              // demo lane and enforces the message cap. (Previously an
+              // `(!apiKey && !session)` clause left every logged-out visitor's
+              // Send button permanently greyed out.)
+              disabled={!input.trim() && images.length === 0}
               className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold text-white transition-colors disabled:opacity-30"
               style={{ background: "var(--accent)" }}
               title="Send"
