@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Gift, ThumbsDown, ThumbsUp, Trophy } from "lucide-react";
+import { Activity, AlertTriangle, Coins, Gift, ThumbsDown, ThumbsUp, Trophy, Users } from "lucide-react";
 import Nav from "@/components/Nav";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
@@ -16,6 +16,12 @@ type Stats = { total: number; up: number; down: number; month_entries: number; m
 type Standing = { user_id: string; email: string; entries: number };
 type Vote = { id: number; created_at: string; vote: "up" | "down"; model: string; question: string; answer: string; anonymous: boolean };
 type Winner = { email: string; name: string | null; entries: number };
+type Metrics = {
+  totals: { requests: number; users: number; ok: number; errors: number; cost_npr: number; upstream_usd: number; tokens: number };
+  today: { requests: number; cost_npr: number; users: number };
+  daily: { day: string; requests: number; errors: number; cost_npr: number }[];
+  models: { model: string; requests: number; errors: number; cost_npr: number }[];
+};
 
 export default function AdminPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -29,12 +35,18 @@ export default function AdminPage() {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"all" | "down">("all");
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
 
   const load = useCallback(async (token: string) => {
-    const res = await fetch("/api/admin/feedback", { headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 403) { setDenied(true); setReady(true); return; }
-    const j = await res.json();
+    const auth = { Authorization: `Bearer ${token}` };
+    const [fb, mt] = await Promise.all([
+      fetch("/api/admin/feedback", { headers: auth }),
+      fetch("/api/admin/metrics?days=14", { headers: auth }),
+    ]);
+    if (fb.status === 403) { setDenied(true); setReady(true); return; }
+    const j = await fb.json();
     setStats(j.stats); setStandings(j.standings ?? []); setRecent(j.recent ?? []);
+    if (mt.ok) setMetrics(await mt.json());
     setReady(true);
   }, []);
 
@@ -70,7 +82,7 @@ export default function AdminPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-5xl px-6 py-12">
-        <h1 className="text-3xl font-bold">Admin — Feedback & Lucky Draw</h1>
+        <h1 className="text-3xl font-bold">AISathi Admin</h1>
 
         {!ready && <p className="mt-8 text-zinc-400">Loading…</p>}
 
@@ -84,10 +96,90 @@ export default function AdminPage() {
           <p className="mt-8 text-red-400">This account doesn&apos;t have admin access.</p>
         )}
 
+        {ready && session && !denied && metrics && (() => {
+          const t = metrics.totals;
+          const successRate = t.requests ? Math.round((t.ok / t.requests) * 100) : 100;
+          const maxReq = Math.max(1, ...metrics.daily.map((d) => d.requests));
+          return (
+            <section className="mt-8">
+              <h2 className="flex items-center gap-2 text-xl font-bold"><Activity size={20} className="text-blue-400" /> Monitoring — last 14 days</h2>
+
+              {/* Stat cards */}
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                {[
+                  { icon: Activity, label: "Requests", value: t.requests.toLocaleString(), tone: "text-blue-400" },
+                  { icon: AlertTriangle, label: "Success rate", value: successRate + "%", tone: successRate >= 90 ? "text-emerald-400" : successRate >= 75 ? "text-amber-400" : "text-red-400" },
+                  { icon: Users, label: "Active users", value: t.users, tone: "text-purple-400" },
+                  { icon: Coins, label: "Revenue (रू)", value: Number(t.cost_npr).toLocaleString(), tone: "text-emerald-400" },
+                  { icon: Coins, label: "Upstream cost", value: "$" + Number(t.upstream_usd).toFixed(2), tone: "text-zinc-300" },
+                  { icon: Activity, label: "Today", value: metrics.today.requests + " req", tone: "text-blue-400" },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500"><c.icon size={13} /> {c.label}</div>
+                    <div className={`mt-1 text-2xl font-bold ${c.tone}`}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Requests-per-day chart (green = ok, red = failed) */}
+              <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
+                  <span>Requests per day</span>
+                  <span className="flex items-center gap-3">
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/70" /> ok</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500/80" /> failed</span>
+                  </span>
+                </div>
+                <div className="flex h-40 items-end gap-1.5">
+                  {metrics.daily.map((d) => (
+                    <div key={d.day} className="flex h-full flex-1 flex-col justify-end" title={`${d.day}\n${d.requests} requests · ${d.errors} failed · रू${d.cost_npr}`}>
+                      <div className="flex w-full flex-col-reverse overflow-hidden rounded-t" style={{ height: `${Math.round((d.requests / maxReq) * 100)}%`, minHeight: d.requests ? 2 : 0 }}>
+                        <div className="bg-red-500/80" style={{ flexGrow: d.errors }} />
+                        <div className="bg-emerald-500/70" style={{ flexGrow: Math.max(0, d.requests - d.errors) }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-between text-[10px] text-zinc-600">
+                  <span>{metrics.daily[0]?.day.slice(5)}</span>
+                  <span>{metrics.daily[metrics.daily.length - 1]?.day.slice(5)}</span>
+                </div>
+              </div>
+
+              {/* Top models */}
+              <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                <div className="mb-2 text-sm font-semibold">Model usage & cost</div>
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-zinc-500">
+                    <th className="py-1.5">Model</th>
+                    <th className="py-1.5 text-right">Requests</th>
+                    <th className="py-1.5 text-right">Fail %</th>
+                    <th className="py-1.5 text-right">Cost (रू)</th>
+                  </tr></thead>
+                  <tbody>
+                    {metrics.models.map((m) => {
+                      const fail = m.requests ? Math.round((m.errors / m.requests) * 100) : 0;
+                      return (
+                        <tr key={m.model} className="border-t border-zinc-800/60">
+                          <td className="py-1.5 font-mono text-[13px]">{m.model}</td>
+                          <td className="py-1.5 text-right">{m.requests}</td>
+                          <td className={`py-1.5 text-right ${fail >= 25 ? "text-red-400" : fail > 0 ? "text-amber-400" : "text-zinc-500"}`}>{fail}%</td>
+                          <td className="py-1.5 text-right">{Number(m.cost_npr).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })()}
+
         {ready && session && !denied && stats && (
           <>
+            <h2 className="mt-12 text-xl font-bold">Feedback & Lucky Draw</h2>
             {/* Stats */}
-            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
               {[
                 ["Total votes", stats.total],
                 ["Thumbs up", stats.up],
