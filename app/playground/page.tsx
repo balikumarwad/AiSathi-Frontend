@@ -68,6 +68,9 @@ function needsWeb(text: string): boolean {
 // explicit pick is always remembered.
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const QUALITY_MODEL = "anthropic/claude-sonnet-5";
+// The AISathi Smart auto-router: one identity that classifies each message and
+// picks free vs premium behind the scenes. Users see only "AISathi AI Assistant".
+const SMART_MODEL = "aisathi/smart";
 const QUALITY_MIN_BALANCE = 20; // NPR — enough to enjoy Claude before topping up
 
 const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
@@ -103,6 +106,53 @@ function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
   ) return "image";
   if (/\b(make|create|generate|write|draft|prepare|produce)\b/.test(t) && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
   return "chat";
+}
+
+/**
+ * Complexity classifier for the AISathi Smart router — a cheap heuristic (no
+ * extra API call). Long prompts, or code / architecture / analysis / reasoning
+ * cues, mark a request "complex" (worth a premium model); everything else is
+ * "simple" and goes to a free model. This is what lets AISathi spend credits
+ * only on hard questions and answer the easy ones for free.
+ */
+/** Human label for a model id — hides raw engines behind the AISathi brand. */
+function modelLabel(id: string): string {
+  if (id === SMART_MODEL || id === "aisathi/router") return "AISathi AI Assistant";
+  if (id === "aisathi/video") return "AISathi Video";
+  const g = GAIDA_VARIANTS.find((v) => v.id === id);
+  if (g) return g.label;
+  return id.split("/").pop() ?? id;
+}
+
+function classifyComplexity(text: string): "simple" | "complex" {
+  const t = text.toLowerCase();
+  if (text.length > 600) return "complex";
+  if (
+    /```|\bfunction\b|\bclass \b|\bimport \b|\bdef |=>|\bsql\b|\bregex\b|stack ?trace|traceback|architecture|system design|design an?|refactor|optimi[sz]e|\bdebug\b|algorithm|data structure|business plan|financial|market analysis|\bstrategy\b|\bprove\b|theorem|derive|analy[sz]e|\bresearch\b|\bessay\b|dissertation|comprehensive|in detail|step[- ]by[- ]step/.test(t)
+  ) return "complex";
+  if (t.split(/\s+/).length > 90) return "complex";
+  return "simple";
+}
+
+/**
+ * Ordered model chain for the Smart router. Simple → a chain of reliable free
+ * models (with the cheap gpt-4o-mini as a paid safety net). Complex → a premium
+ * model first when the user can afford it, then the same free chain as fallback
+ * so the request never dead-ends. run() tries each in order until one answers.
+ */
+function smartChain(complexity: "simple" | "complex", balance: number, models: CatalogModel[]): string[] {
+  const frees = models.filter(isFree).map((m) => m.id);
+  const pick = (re: RegExp) => frees.find((id) => re.test(id));
+  const freeChain = [
+    pick(/gpt-oss-120b/i), pick(/gemma-4/i), pick(/llama-3\.3-70b/i), pick(/qwen/i), pick(/mistral/i), pick(/nemotron/i),
+    "openrouter/free", DEFAULT_MODEL, // cheap paid safety net so a signed-in user never dead-ends
+  ].filter(Boolean) as string[];
+  const uniqFree = [...new Set(freeChain)];
+  if (complexity === "simple") return uniqFree;
+  // Complex: premium first if the user has ~1 premium message of credit, else
+  // best free models. Either way it falls through to the free chain.
+  const premium = balance >= 10 ? [QUALITY_MODEL, DEFAULT_MODEL] : [];
+  return [...new Set([...premium, ...uniqFree])];
 }
 
 // Runs quietly after each signed-in turn on a free model to capture durable
@@ -395,7 +445,7 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
     </button>
   );
 
-  const shortName = GAIDA_VARIANTS.find((v) => v.id === model)?.label ?? (model.split("/").pop() ?? model);
+  const shortName = model === SMART_MODEL ? "AISathi" : (GAIDA_VARIANTS.find((v) => v.id === model)?.label ?? (model.split("/").pop() ?? model));
   return (
     <div ref={boxRef} className="relative">
       <button
@@ -417,6 +467,20 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
           <div className="sathi-scroll max-h-72 overflow-y-auto pb-1">
             {!ql && (
               <>
+                <div style={groupLabel}>Recommended</div>
+                <button
+                  onClick={() => { onPick(SMART_MODEL); setOpen(false); setQ(""); }}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+                  style={{ background: model === SMART_MODEL ? "var(--ev-red-15)" : "transparent" }}
+                >
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 truncate text-sm font-semibold" style={{ color: "var(--text-strong)" }}>
+                      <Sparkles size={15} /> AISathi Smart
+                      <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style={{ background: "#16a34a" }}>Auto</span>
+                    </span>
+                    <span className="block truncate text-[11px]" style={{ color: "var(--text-faint)" }}>Automatically picks the best model — free for simple, premium for hard.</span>
+                  </span>
+                </button>
                 <div style={groupLabel}>Agentic — 3 agents work together</div>
                 {GAIDA_VARIANTS.map((v) => (
                   <button
@@ -684,15 +748,13 @@ export default function Playground() {
     try { localStorage.setItem("aisathi_model", id); } catch { /* quota */ }
   }, []);
 
-  // Default model: the saved choice if any; otherwise Claude Sonnet for
-  // signed-in users with credit (so it "feels like Claude"), else the cheap default.
+  // Default model: the saved choice if any; otherwise AISathi Smart for
+  // signed-in users (the auto-router picks free vs premium per message).
   useEffect(() => {
     const saved = localStorage.getItem("aisathi_model");
     if (saved) { setModel(saved); return; }
-    if (session && (balance ?? 0) >= QUALITY_MIN_BALANCE && models.some((m) => m.id === QUALITY_MODEL)) {
-      setModel(QUALITY_MODEL);
-    }
-  }, [session, balance, models]);
+    if (session) setModel(SMART_MODEL);
+  }, [session]);
 
   /* ---- chat ops ---- */
   function startNewChat() {
@@ -997,7 +1059,7 @@ export default function Playground() {
   }
 
   /* ---- send / stream / regenerate ---- */
-  async function run(history: Msg[], id: string, all: Chat[], opts?: { model?: string; system?: string; doc?: boolean; key?: string; fallbacks?: string[] }) {
+  async function run(history: Msg[], id: string, all: Chat[], opts?: { model?: string; system?: string; doc?: boolean; key?: string; fallbacks?: string[]; displayAs?: string }) {
     const useKey = opts?.key ?? apiKey;
     const candidates = [opts?.model ?? model, ...(opts?.fallbacks ?? [])];
     setBusy(true);
@@ -1107,13 +1169,13 @@ export default function Playground() {
             const delta = j.choices?.[0]?.delta?.content;
             if (delta) {
               reply += delta;
-              all = updateChat(id, [...history, { role: "assistant", content: reply, model: useModel }], all);
+              all = updateChat(id, [...history, { role: "assistant", content: reply, model: opts?.displayAs ?? useModel }], all);
               setChats(all);
             }
           } catch { /* partial line */ }
         }
       }
-      persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model: useModel, doc: opts?.doc }], all));
+      persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model: opts?.displayAs ?? useModel, doc: opts?.doc }], all));
       // Claude-style: auto-open the latest substantial artifact in the side panel.
       const arts = extractArtifacts(reply);
       if (arts.length) setArtifact(arts[arts.length - 1]);
@@ -1479,6 +1541,15 @@ export default function Playground() {
 
     if (intent === "doc") {
       await run(next, id, all, { model: docModel(), system: DOC_PROMPT, doc: true });
+      return;
+    }
+
+    // AISathi Smart: classify the request and route free vs premium behind one
+    // "AISathi AI Assistant" identity (displayAs hides the real engine).
+    if (model === SMART_MODEL) {
+      const complexity = attached.length > 0 ? "complex" : classifyComplexity(content);
+      const chain = smartChain(complexity, balance ?? 0, models);
+      await run(next, id, all, { model: chain[0], fallbacks: chain.slice(1), displayAs: SMART_MODEL });
       return;
     }
     await run(next, id, all);
@@ -2161,7 +2232,7 @@ export default function Playground() {
                               )}
                             </div>
                             <div className="mt-2 flex items-center gap-3 text-[11px]" style={{ color: "var(--text-faint)" }}>
-                              {m.costNpr != null && <span>{m.costNpr === 0 ? "free" : `${fmtCredits(m.costNpr)} credits`} · {(m.model ?? model).split("/").pop()}</span>}
+                              {m.costNpr != null && <span>{m.costNpr === 0 ? "free" : `${fmtCredits(m.costNpr)} credits`} · {modelLabel(m.model ?? model)}</span>}
                               {m.doc && !busy && (
                                 <button
                                   onClick={() => downloadPdf(chat?.title ?? "document", m.content)}
