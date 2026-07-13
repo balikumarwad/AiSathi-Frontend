@@ -9,6 +9,12 @@ import { upstreamModels } from "@/lib/upstream";
 
 export const runtime = "nodejs";
 
+// Models that aren't conversational assistants — safety/moderation classifiers
+// (e.g. nemotron-content-safety, llama-guard) that only emit "safe/unsafe"
+// labels, plus embedding / rerank / speech models. Hidden from the catalog so
+// they can never be picked as a chat model or land in a fallback chain.
+const NON_CHAT = /content-safety|safeguard|llama-guard|llamaguard|prompt-guard|shield|guardrail|moderation|\bembed|embedding|rerank|reranker|whisper|text-to-speech|\btts\b|\bstt\b|transcribe|classifier/i;
+
 export async function GET() {
   try {
     const models = (await upstreamModels()) as Array<{
@@ -18,7 +24,9 @@ export async function GET() {
       pricing?: { prompt?: string; completion?: string };
       architecture?: { input_modalities?: string[]; output_modalities?: string[] };
     }>;
-    const data = models.map((m) => ({
+    const data = models
+      .filter((m) => !NON_CHAT.test(m.id) && !NON_CHAT.test(m.name ?? ""))
+      .map((m) => ({
       id: m.id,
       name: m.name ?? m.id,
       context_length: m.context_length ?? null,

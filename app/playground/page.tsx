@@ -756,6 +756,19 @@ export default function Playground() {
     if (session) setModel(SMART_MODEL);
   }, [session]);
 
+  // Safety net: if the selected model isn't a valid chat model anymore — e.g. a
+  // content-safety classifier we've since hidden, or a delisted model — reset
+  // to AISathi Smart / the default so nobody stays stuck talking to a model
+  // that only replies "User Safety: safe".
+  useEffect(() => {
+    if (!models.length) return;
+    const special = model.startsWith("aisathi/") || model === "openrouter/auto" || model === "openrouter/free";
+    if (special || models.some((m) => m.id === model)) return;
+    const fallback = session ? SMART_MODEL : DEFAULT_MODEL;
+    setModel(fallback);
+    try { localStorage.setItem("aisathi_model", fallback); } catch { /* quota */ }
+  }, [models, model, session]);
+
   /* ---- chat ops ---- */
   function startNewChat() {
     setChatId("");
