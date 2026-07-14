@@ -551,6 +551,9 @@ export default function Playground() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [models, setModels] = useState<CatalogModel[]>([]);
+  // Workspace mode — an explicit tool tab. "chat" auto-detects intent as before;
+  // "image" / "doc" force that pipeline so the user deliberately picks the tool.
+  const [mode, setMode] = useState<"chat" | "image" | "doc">("chat");
   const [chats, setChats] = useState<Chat[]>([]);
   const [chatId, setChatId] = useState<string>("");
   const [input, setInput] = useState("");
@@ -635,6 +638,8 @@ export default function Playground() {
     const savedLang = (localStorage.getItem("aisathi_lang") as "en" | "ne") || "en";
     setLang(savedLang); langRef.current = savedLang;
     setDemoUsed(Number(localStorage.getItem("aisathi_demo_used") ?? 0));
+    const savedMode = localStorage.getItem("aisathi_mode");
+    if (savedMode === "image" || savedMode === "doc") setMode(savedMode);
     try { setVoted(JSON.parse(localStorage.getItem("aisathi_votes") ?? "{}")); } catch { /* fresh */ }
     setFbPromoSeen(localStorage.getItem("aisathi_fb_promo") === "1");
     try {
@@ -1475,6 +1480,8 @@ export default function Playground() {
     // Signed-out visitor: run the free demo lane until the cap, then invite signup.
     if (demoMode) {
       if (demoLeft <= 0) { setError("__DEMO_LIMIT__"); return; }
+      if (mode === "image") { setError("Sign up free to create images — the demo is text chat only."); return; }
+      if (mode === "doc") { setError("Sign up free to create documents — the demo is text chat only."); return; }
       if (images.length || docs.length) { setError("Sign up free to chat with images and PDFs — the demo is text-only."); return; }
     } else if (!apiKey.trim()) {
       setError("Setting up your account — try again in a second.");
@@ -1533,8 +1540,19 @@ export default function Playground() {
       return;
     }
 
-    // Creator router runs FIRST so media creation works even when a Gaida
-    // variant or a specific model is selected.
+    // Explicit tool tab overrides everything: the user chose Image / Document,
+    // so force that pipeline regardless of what the text looks like.
+    if (mode === "image") {
+      await runImage(next, id, all);
+      return;
+    }
+    if (mode === "doc") {
+      await run(next, id, all, { model: docModel(), system: DOC_PROMPT, doc: true });
+      return;
+    }
+
+    // Chat mode — creator router runs FIRST so media creation still works from
+    // a typed prompt ("make an image of…") even in the default Chat tab.
     const intent = content ? detectIntent(content) : "chat";
     if (intent === "image") {
       await runImage(next, id, all);
@@ -1802,6 +1820,26 @@ export default function Playground() {
             )}
           </div>
         )}
+        {/* Tool tabs — pick the workspace: Chat, Image, or Document. */}
+        <div className="mb-1.5 flex gap-1 px-1">
+          {([
+            { id: "chat", label: "Chat", icon: Sparkles },
+            { id: "image", label: "Image", icon: Palette },
+            { id: "doc", label: "Document", icon: FileText },
+          ] as const).map((m) => (
+            <button
+              key={m.id}
+              onClick={() => { setMode(m.id); try { localStorage.setItem("aisathi_mode", m.id); } catch { /* quota */ } inputRef.current?.focus(); }}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors"
+              style={mode === m.id
+                ? { background: "var(--ev-red-15)", color: "var(--text-strong)", border: "1px solid var(--border-accent)" }
+                : { color: "var(--text-muted)", border: "1px solid transparent" }}
+              title={m.id === "image" ? "Create images" : m.id === "doc" ? "Write documents & PDFs" : "General chat"}
+            >
+              <m.icon size={13} /> {m.label}
+            </button>
+          ))}
+        </div>
         <textarea
           ref={inputRef}
           rows={1}
@@ -1829,7 +1867,9 @@ export default function Playground() {
             }
           }}
           placeholder={
-            apiKey ? "Ask your साथी anything…  ( / for commands )"
+            mode === "image" ? "Describe an image to create — e.g. a rhino on Everest at sunrise…"
+            : mode === "doc" ? "Describe the document — e.g. a 3-day leave application to my office…"
+            : apiKey ? "Ask your साथी anything…  ( / for commands )"
             : demoMode ? `Ask anything — ${demoLeft} free ${demoLeft === 1 ? "message" : "messages"}, no sign-up…`
             : "Setting up your account…"
           }
