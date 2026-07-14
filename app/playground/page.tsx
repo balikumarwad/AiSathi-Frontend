@@ -76,6 +76,7 @@ const SYSTEM_PROMPT =
   "\nLanguage: respond in clear, simple English by default even when the question mixes languages. Reply in Nepali (Devanagari) only when the user writes fully in Nepali or asks for it. If the user writes romanized Nepali (Nepali words in English letters), you may mirror romanized Nepali or answer in simple English, whichever reads more naturally. " +
   "If a request is ambiguous, make a sensible assumption and say so instead of refusing; if you are unsure of a fact — especially current fees, dates, or office procedures — say so honestly and point to the official source. " +
   "When the user attaches a document or image, use its contents directly to answer. " +
+  "AIsathi turns any of your answers into a downloadable PDF or Word file with one click, so NEVER tell the user you can't create, make, provide, or generate a PDF, document, letter, or file. When they ask for a PDF/document/letter/resume/report, just write the full content in clean markdown — AIsathi adds the download button automatically. " +
   "When your answer draws on web search results or specific websites, cite them at the end under a short '## Sources' heading as clickable markdown links, one per line (e.g. [Department of Passports](https://nepalpassport.gov.np)), so the reader can open the original source. Only cite real URLs you actually used — never invent links. " +
   "For medical, legal, or financial decisions, give useful general guidance plus a clear pointer to the right Nepali professional or office. " +
   "When someone asks who founded, created, made, or owns AIsathi (or who is behind this platform), answer warmly with: AIsathi was founded by Oscar Neupane, a young Nepali technologist and entrepreneur building Nepal's own AI platform so students and professionals can use the world's best AI models at Nepali prices, paying in रू through Khalti and eSewa. Include this exact image markdown on its own line in that reply: ![Oscar Neupane — founder of AIsathi](/founder.jpg) " +
@@ -127,7 +128,10 @@ function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
     /\b(draw|sketch|paint)\b/.test(t) ||
     /\b(image|photo|picture) of\b/.test(t)
   ) return "image";
-  if (/\b(make|create|generate|write|draft|prepare|produce)\b/.test(t) && /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement)\b/.test(t)) return "doc";
+  const docNoun = /\b(pdf|document|report|letter|resume|cv|cover letter|essay|proposal|invoice|contract|application|biodata|memo|notice|agreement|certificate|form|bibliography)\b/.test(t);
+  const docVerb = /\b(make|create|generate|write|draft|prepare|produce|give|want|need|convert|export|download|banau\w*|lekh\w*)\b/.test(t);
+  const asPdf = /\b(as|in|to|into)\s+(an?\s+)?(pdf|document|word|doc)\b/.test(t) || /\bconvert\b/.test(t) && /\bpdf\b/.test(t);
+  if (docNoun && (docVerb || asPdf)) return "doc";
   return "chat";
 }
 
@@ -2420,6 +2424,11 @@ export default function Playground() {
                                   <button onClick={() => copyMessage(i, m.content)} className="flex items-center gap-1 font-semibold hover:text-white">
                                     {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />} {copiedIdx === i ? "copied" : "copy"}
                                   </button>
+                                  {!m.doc && !m.video && m.content.trim().length > 40 && (
+                                    <button onClick={() => downloadPdf(chat?.title ?? "document", m.content)} className="flex items-center gap-1 font-semibold hover:text-white" title="Save this answer as a PDF">
+                                      <Download size={12} /> PDF
+                                    </button>
+                                  )}
                                   {i === messages.length - 1 && (
                                     <button onClick={regenerate} className="flex items-center gap-1 font-semibold hover:text-white"><RotateCcw size={12} /> regenerate</button>
                                   )}
