@@ -277,7 +277,10 @@ function mdToHtml(md: string): string {
 function downloadPdf(title: string, md: string) {
   const w = window.open("", "_blank", "width=820,height=1000");
   if (!w) return;
-  const safeTitle = title.replace(/[<>]/g, "").trim() || "Document";
+  // Prefer the document's own first heading as the title (the chat title is
+  // often about an earlier, unrelated message), falling back to the chat title.
+  const firstHeading = md.match(/^\s*#{1,3}\s+(.+?)\s*$/m)?.[1];
+  const safeTitle = (firstHeading || title).replace(/[<>*`]/g, "").trim().slice(0, 90) || "Document";
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   // Drop a leading H1 that just repeats the document title, to avoid a double heading.
   const body = md.replace(/^\s*#\s+(.+)\n/, (m, t) => (t.trim().toLowerCase() === safeTitle.toLowerCase() ? "" : m));
@@ -340,15 +343,35 @@ function downloadPdf(title: string, md: string) {
     .report h3::before { content: counter(h2) "." counter(h3) "\\00a0\\00a0"; color: #e11d2e; }
     .report h4::before { content: counter(h2) "." counter(h3) "." counter(h4) "\\00a0\\00a0"; color: #b91c1c; }
     .report .cover h1::before { content: none; }
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .doc-head, .doc-foot { break-inside: avoid; } }
-  </style></head><body><div class="doc${isReport ? " report" : ""}">
+    /* Sticky top bar (screen only) — a real "PDF viewer" toolbar. */
+    .pdf-toolbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 20; display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; background: #323639; color: #f1f1f1; font-family: 'Segoe UI', system-ui, sans-serif; box-shadow: 0 1px 6px rgba(0,0,0,0.3); }
+    .pdf-toolbar .t { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pdf-toolbar button { flex: none; font: 600 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; border: none; border-radius: 8px; padding: 9px 18px; background: #e11d2e; color: #fff; }
+    .pdf-toolbar button:hover { background: #c81828; }
+    /* Screen preview: show the document like a real PDF viewer — a centered
+       white A4 page floating on a grey backdrop. */
+    @media screen {
+      html { background: #525659; }
+      body { padding: 76px 16px 48px; }
+      .pdf-toolbar { display: flex; }
+      .doc { max-width: 820px; margin: 0 auto; background: #fff; padding: 56px 64px; box-shadow: 0 4px 28px rgba(0,0,0,0.5); border-radius: 2px; min-height: 1040px; }
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0; }
+      html { background: #fff; }
+      .pdf-toolbar { display: none !important; }
+      .doc { max-width: none; margin: 0; padding: 0; background: none; box-shadow: none; min-height: 0; }
+      .doc-head, .doc-foot { break-inside: avoid; }
+    }
+  </style></head><body>
+    <div class="pdf-toolbar"><span class="t">${safeTitle}</span><button onclick="window.print()">Save as PDF</button></div>
+    <div class="doc${isReport ? " report" : ""}">
     ${cover}
     ${mdToHtml(body)}
     <div class="doc-foot"><span>Generated with AIsathi</span><span>aisathi.io</span></div>
   </div></body></html>`);
   w.document.close();
   w.focus();
-  setTimeout(() => w.print(), 400);
 }
 
 function isFree(m: CatalogModel) {
