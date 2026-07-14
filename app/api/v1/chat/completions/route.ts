@@ -194,6 +194,14 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
 
+  // Free-tier reliability: when a signed-in free user's free models are all
+  // rate-limited upstream, they can fall back to ONE cheap model (gpt-4o-mini),
+  // platform-funded, up to a daily cap — so free chat never dead-ends on a 402.
+  // The client puts this model last in the free fallback chain.
+  const FREE_BACKSTOP_MODEL = "openai/gpt-4o-mini";
+  const FREE_BACKSTOP_DAILY = 30;
+  let freeBackstop = false;
+
   // Balance gate (db mode only): require enough to cover the WORST-CASE cost of
   // this request (whole prompt + capped completion), not merely a positive
   // balance. A `<= 0` gate let a sliver of credit unlock an arbitrarily large
@@ -232,18 +240,29 @@ export async function POST(req: Request) {
       // Unknown/zero-priced-but-not-free models still need *some* credit.
       const required = Math.max(worstNpr, 0.0001);
       if (Number(bal) < required) {
-        return NextResponse.json(
-          {
-            error: {
-              message:
-                "Not enough credits for this request. Get a package or top up — or switch to a free model.",
-              code: 402,
+        // Free-tier smoothness: the cheap backstop model is served free (not
+        // charged to the user) up to a daily cap, so a free user whose free
+        // models are all rate-limited still gets an answer instead of a 402.
+        if (
+          String(body.model) === FREE_BACKSTOP_MODEL &&
+          (await allowAsync(`freebk:${auth.userId}`, FREE_BACKSTOP_DAILY, 24 * 3_600_000))
+        ) {
+          freeBackstop = true;
+          body.max_tokens = Math.min(Number(body.max_tokens) || 1024, 1024);
+        } else {
+          return NextResponse.json(
+            {
+              error: {
+                message:
+                  "Not enough credits for this request. Get a package or top up — or switch to a free model.",
+                code: 402,
+              },
+              balance_npr: Number(bal),
+              estimated_cost_npr: worstNpr,
             },
-            balance_npr: Number(bal),
-            estimated_cost_npr: worstNpr,
-          },
-          { status: 402 },
-        );
+            { status: 402 },
+          );
+        }
       }
     }
   }
@@ -291,10 +310,13 @@ export async function POST(req: Request) {
         Number(usage?.cost) ||
         (usage ? await estimateUsd(String(body.model), promptTok, completionTok) : 0);
       const costNpr = usdToNpr(upstreamUsd);
+      // Free-backstop requests are on the house — the user is never charged,
+      // even though the real upstream cost is still logged for monitoring.
+      const userCostNpr = freeBackstop ? 0 : costNpr;
       let balanceNpr: number | null = null;
       if (auth.mode === "db" && db && usage) {
         let dedErr = null;
-        if (costNpr > 0) {
+        if (userCostNpr > 0) {
           // The answer has already been streamed — it can't be refused now. So
           // settle unconditionally: append the debit even if it drives the
           // balance negative. An overspend is then recorded (not swallowed), and
@@ -302,7 +324,7 @@ export async function POST(req: Request) {
           // instead of the stream being effectively served for free.
           const { error } = await db.from("credit_transactions").insert({
             user_id: auth.userId,
-            amount_npr: -costNpr,
+            amount_npr: -userCostNpr,
             kind: "usage",
             meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, cached_tokens: cachedTok, stream: true },
           });
@@ -318,13 +340,15 @@ export async function POST(req: Request) {
           model: String(body.model),
           prompt_tokens: promptTok,
           completion_tokens: completionTok,
-          upstream_cost_usd: upstreamUsd,
-          cost_npr: costNpr,
+          upstream_cost_usd: upstreamUsd, // real platform cost (for monitoring)
+          cost_npr: userCostNpr, // 0 when free-backstop — user isn't charged
+          // A successful answer is "ok" even on the free backstop (which is
+          // identifiable by cost_npr=0 while upstream_cost_usd>0).
           status: dedErr ? "deduct_failed" : "ok",
         });
         await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", auth.keyId);
       }
-      return { cost_npr: costNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" };
+      return { cost_npr: userCostNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" };
     };
 
     const transform = new TransformStream<Uint8Array, Uint8Array>({
@@ -403,12 +427,14 @@ export async function POST(req: Request) {
     Number(usage.cost) || (await estimateUsd(String(body.model), promptTok, completionTok));
   const costNpr = usdToNpr(upstreamUsd);
 
+  // Free-backstop answers are on the house (see the balance gate above).
+  const userCostNpr = freeBackstop ? 0 : costNpr;
   let balanceNpr: number | null = null;
   if (auth.mode === "db" && db) {
-    if (costNpr > 0) {
+    if (userCostNpr > 0) {
       const { data: newBal, error: dedErr } = await db.rpc("deduct_credits", {
         p_user: auth.userId,
-        p_amount_npr: costNpr,
+        p_amount_npr: userCostNpr,
         p_meta: { model: body.model, prompt_tokens: promptTok, completion_tokens: completionTok, cached_tokens: cachedTok },
       });
       if (dedErr) {
@@ -427,7 +453,7 @@ export async function POST(req: Request) {
       prompt_tokens: promptTok,
       completion_tokens: completionTok,
       upstream_cost_usd: upstreamUsd,
-      cost_npr: costNpr,
+      cost_npr: userCostNpr,
       status: "ok",
     });
     await db
@@ -438,6 +464,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ...payload,
-    nepalai: { cost_npr: costNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" },
+    nepalai: { cost_npr: userCostNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" },
   });
 }

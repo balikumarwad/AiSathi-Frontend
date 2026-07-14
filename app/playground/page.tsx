@@ -1586,6 +1586,14 @@ export default function Playground() {
       await run(next, id, all, { model: chain[0], fallbacks: chain.slice(1), displayAs: SMART_MODEL });
       return;
     }
+    // A manually-picked free model still gets the full free fallback chain +
+    // cheap backstop, so a rate-limited free model never dead-ends the user.
+    const picked = models.find((m) => m.id === model);
+    if (picked && isFree(picked)) {
+      const chain = [...new Set([model, ...smartChain("simple", balance ?? 0, models)])];
+      await run(next, id, all, { model: chain[0], fallbacks: chain.slice(1) });
+      return;
+    }
     await run(next, id, all);
   }
 
