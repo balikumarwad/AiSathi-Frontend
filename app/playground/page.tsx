@@ -24,7 +24,28 @@ import { mergeChats, publishChat, pullChats, pushChat, removeChat } from "@/lib/
 import { addMemory, deleteMemory, loadMemories, type Memory } from "@/lib/memory";
 
 type DocRef = { name: string; pages: number; url?: string };
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
+type RefImage = { thumb: string; link: string; title: string };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; refImages?: RefImage[]; costNpr?: number | null; model?: string; doc?: boolean; attachments?: DocRef[]; docText?: string };
+
+/**
+ * Pick a photo-worthy subject from an answer so we can show a ChatGPT-style
+ * image strip. The model bolds the main entity ("**Tokyo, Japan**"), so we use
+ * the first bolded proper noun. Returns null for code/how-to answers and label
+ * words — those don't want photos, which self-gates the feature nicely.
+ */
+function imageSubject(reply: string): string | null {
+  if (reply.includes("```")) return null; // code answers: no photos
+  const LABELS = /^(takeaway|note|tip|important|warning|key|summary|example|answer|caution|remember|pros?|cons?|step|first|second|third|next|why|how|what|conclusion|result|tl;?dr)\b/i;
+  for (const m of reply.matchAll(/\*\*([^*\n]{2,50})\*\*/g)) {
+    const first = m[1].split(/[,(:—–-]/)[0].trim(); // "Tokyo, Japan" -> "Tokyo"
+    if (first.length < 3 || LABELS.test(first)) continue;
+    const words = first.split(/\s+/);
+    if (words.length > 4) continue;
+    // Proper noun: each word capitalised (allow small connectors like "of").
+    if (words.every((w) => /^[A-Z]/.test(w) || /^(of|the|and|de|al|el|la)$/i.test(w))) return first;
+  }
+  return null;
+}
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
 type CatalogModel = {
   id: string;
@@ -1012,6 +1033,32 @@ export default function Playground() {
     } catch { /* best-effort */ }
   }
 
+  /** ChatGPT-style rich answer: attach a strip of relevant photos to the reply,
+   *  based on its main subject. Free (Openverse), best-effort, self-gating. */
+  async function enrichWithImages(id: string, reply: string) {
+    const subject = imageSubject(reply);
+    if (!subject) return;
+    try {
+      const res = await fetch(`/api/images?q=${encodeURIComponent(subject)}`);
+      if (!res.ok) return;
+      const { images } = (await res.json()) as { images?: RefImage[] };
+      if (!images?.length) return;
+      setChats((prev) => {
+        const next = prev.map((c) => {
+          if (c.id !== id) return c;
+          const msgs = [...c.messages];
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === "assistant") { msgs[i] = { ...msgs[i], refImages: images.slice(0, 4) }; break; }
+          }
+          return { ...c, messages: msgs };
+        });
+        chatsRef.current = next;
+        try { localStorage.setItem("aisathi_chats", JSON.stringify(next.slice(0, 30))); } catch { /* quota */ }
+        return next;
+      });
+    } catch { /* best-effort */ }
+  }
+
   async function extractMemory(userText: string) {
     if (!session || !apiKey || userText.trim().length < 12) return;
     const sb = supabaseBrowser();
@@ -1203,6 +1250,9 @@ export default function Playground() {
       // Suggest follow-up questions for the latest reply.
       const lastUserMsg = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
       if (reply) void generateFollowups(lastUserMsg, reply);
+      // Rich answer: attach a photo strip when the reply has a visual subject
+      // (skipped for documents, which are print-only).
+      if (reply && !opts?.doc) void enrichWithImages(id, reply);
     } catch (e) {
       if ((e as Error).name !== "AbortError") setError(String(e));
     } finally {
@@ -2287,6 +2337,19 @@ export default function Playground() {
                                 >
                                   <Download size={12} /> Download video
                                 </a>
+                              </div>
+                            ) : null}
+                            {m.refImages?.length ? (
+                              <div className="mb-3">
+                                <div className="mb-1.5 text-[11px] font-medium" style={{ color: "var(--text-faint)" }}>Related images</div>
+                                <div className="sathi-scroll flex gap-2 overflow-x-auto pb-1">
+                                  {m.refImages.map((im, xi) => (
+                                    <a key={xi} href={im.link} target="_blank" rel="noreferrer" title={`${im.title} — source`} className="flex-none">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={im.thumb} alt={im.title} loading="lazy" className="h-28 w-40 rounded-lg object-cover transition-opacity hover:opacity-90" style={{ border: "1px solid var(--border-strong)" }} />
+                                    </a>
+                                  ))}
+                                </div>
                               </div>
                             ) : null}
                             <div className="text-[15px] leading-relaxed">
