@@ -96,6 +96,9 @@ const QUALITY_MODEL = "anthropic/claude-sonnet-5";
 // picks free vs premium behind the scenes. Users see only "AISathi AI Assistant".
 const SMART_MODEL = "aisathi/smart";
 const QUALITY_MIN_BALANCE = 20; // NPR — enough to enjoy Claude before topping up
+// Below this balance (or demo), image generation uses the free Pollinations
+// engine; at or above it, the higher-quality paid Gemini model.
+const IMAGE_MIN_CREDITS = 15; // NPR
 
 const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
   { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
@@ -146,6 +149,7 @@ function detectIntent(text: string): "image" | "video" | "doc" | "chat" {
 function modelLabel(id: string): string {
   if (id === SMART_MODEL || id === "aisathi/router") return "AISathi AI Assistant";
   if (id === "aisathi/video") return "AISathi Video";
+  if (id === "aisathi/image") return "AISathi Image";
   const g = GAIDA_VARIANTS.find((v) => v.id === id);
   if (g) return g.label;
   return id.split("/").pop() ?? id;
@@ -1296,7 +1300,34 @@ export default function Playground() {
     setBusy(true);
     const ac = new AbortController();
     abortRef.current = ac;
+    // Free tier (demo or low balance) → Pollinations, a free no-key image
+    // service, so free users can create images too. Credited users get the
+    // higher-quality paid Gemini model.
+    const useFreeImage = (balance ?? 0) < IMAGE_MIN_CREDITS;
     try {
+      if (useFreeImage) {
+        const prompt = ([...history].reverse().find((m) => m.role === "user")?.content ?? "").trim().slice(0, 320) || "a beautiful image";
+        const seed = Math.floor(Math.random() * 1_000_000_000);
+        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
+        all = updateChat(id, [...history, { role: "assistant", content: "Creating your image…", model: "aisathi/image" }], all);
+        setChats(all);
+        // Wait until the image has actually generated (and catch failures).
+        await new Promise<void>((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("image failed"));
+          img.src = url;
+          setTimeout(() => reject(new Error("timeout")), 60_000);
+        });
+        persist(updateChat(id, [...history, {
+          role: "assistant",
+          content: "Here's your image — click to open it full size. (Free image — sign up with credits for higher-quality generation.)",
+          images: [url],
+          costNpr: 0,
+          model: "aisathi/image",
+        }], all));
+        return;
+      }
       const imgModel =
         models.find((m) => m.id === "google/gemini-3.1-flash-image")?.id ??
         models.find((m) => m.image_out && !/preview|lite/.test(m.id) && m.id !== "openrouter/auto")?.id ??
@@ -1334,7 +1365,11 @@ export default function Playground() {
         model: imgModel,
       }], all));
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setError(String(e));
+      if ((e as Error).name !== "AbortError") {
+        if (useFreeImage) {
+          persist(updateChat(id, [...history, { role: "assistant", content: "The image took too long to generate — please try again, or describe it a bit differently.", model: "aisathi/image" }], all));
+        } else setError(String(e));
+      }
     } finally {
       setBusy(false);
       abortRef.current = null;
@@ -1560,7 +1595,7 @@ export default function Playground() {
     // Signed-out visitor: run the free demo lane until the cap, then invite signup.
     if (demoMode) {
       if (demoLeft <= 0) { setError("__DEMO_LIMIT__"); return; }
-      if (mode === "image") { setError("Sign up free to create images — the demo is text chat only."); return; }
+      // Image generation IS allowed for demo (free Pollinations engine).
       if (mode === "doc") { setError("Sign up free to create documents — the demo is text chat only."); return; }
       if (images.length || docs.length) { setError("Sign up free to chat with images and PDFs — the demo is text-only."); return; }
     } else if (!apiKey.trim()) {
@@ -1609,8 +1644,17 @@ export default function Playground() {
     // Capture durable facts in the background (signed-in, non-demo). Free model.
     if (session && content) void extractMemory(content);
 
-    // Demo lane: force a free model, skip the creator router (images/docs need
-    // credits), and count the message toward the cap.
+    // Image generation runs FIRST (before the demo text lane) so demo/free
+    // users can create images too — runImage picks the free Pollinations engine
+    // for them and the paid Gemini model for credited users. The Image tab
+    // forces it; in Chat mode a typed "make an image of…" also triggers it.
+    const intent = content ? detectIntent(content) : "chat";
+    if (mode === "image" || (mode !== "doc" && intent === "image")) {
+      await runImage(next, id, all);
+      return;
+    }
+
+    // Demo lane: force a free model for text chat, count toward the cap.
     if (demoMode) {
       const used = Number(localStorage.getItem("aisathi_demo_used") ?? 0) + 1;
       localStorage.setItem("aisathi_demo_used", String(used));
@@ -1620,22 +1664,9 @@ export default function Playground() {
       return;
     }
 
-    // Explicit tool tab overrides everything: the user chose Image / Document,
-    // so force that pipeline regardless of what the text looks like.
-    if (mode === "image") {
-      await runImage(next, id, all);
-      return;
-    }
+    // Document tab / doc-intent (signed-in only).
     if (mode === "doc") {
       await run(next, id, all, { model: docModel(), system: DOC_PROMPT, doc: true });
-      return;
-    }
-
-    // Chat mode — creator router runs FIRST so media creation still works from
-    // a typed prompt ("make an image of…") even in the default Chat tab.
-    const intent = content ? detectIntent(content) : "chat";
-    if (intent === "image") {
-      await runImage(next, id, all);
       return;
     }
     if (intent === "video") {
