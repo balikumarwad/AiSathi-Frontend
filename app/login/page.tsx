@@ -80,20 +80,20 @@ export default function LoginPage() {
     setNotice("");
     try {
       if (isSignup) {
-        const { data, error } = await sb.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/account`,
-            data: { full_name: name.trim() || null, address: address.trim() || null },
-          },
+        // Instant signup: create a pre-confirmed account server-side, then sign
+        // in right away. No email round-trip, so it works inside in-app
+        // browsers (LinkedIn/Facebook/Instagram) where the email-link flow and
+        // Google OAuth both break.
+        const res = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password, name: name.trim(), address: address.trim() }),
         });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error ?? "Signup failed — please try again.");
+        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        if (data.session) router.replace("/account");
-        else
-          setNotice(
-            `${name.trim() ? name.trim() + ", " : ""}खाता बन्यो! We sent a confirmation email — click the link inside, then sign in.`,
-          );
+        router.replace("/account");
       } else {
         const { error } = await sb.auth.signInWithPassword({
           email: email.trim(),
