@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  ArrowUp, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, Globe, Languages, Lightbulb, Link2,
-  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, ThumbsDown, ThumbsUp, X, Zap,
+  ArrowUp, AudioLines, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, Globe, Languages, Lightbulb, Link2,
+  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, ThumbsDown, ThumbsUp, Volume2, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Nav from "@/components/Nav";
@@ -645,6 +645,12 @@ export default function Playground() {
   const [voted, setVoted] = useState<Record<string, "up" | "down">>({});
   const [fbPromoSeen, setFbPromoSeen] = useState(true); // default hidden until localStorage read
   const recRef = useRef<{ stop: () => void } | null>(null);
+  // Voice agent: hands-free conversation (listen → answer → speak → listen).
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null); // which reply is being read
+  const voiceModeRef = useRef(false);
+  const spokenRef = useRef<string>(""); // last reply already spoken (avoid repeats)
+  const sendRef = useRef<((t?: string) => void) | null>(null); // always the latest send()
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
@@ -662,6 +668,24 @@ export default function Playground() {
   const chat = chats.find((c) => c.id === chatId) ?? null;
   const messages = chat?.messages ?? [];
   const chatCost = messages.reduce((s, m) => s + (m.costNpr ?? 0), 0);
+
+  // Keep sendRef pointing at the latest send() so voice auto-send never fires a
+  // stale closure (wrong chat/state). Runs after every render.
+  useEffect(() => { sendRef.current = send; });
+
+  // Voice agent loop: once a reply finishes (busy → false) in voice mode, read
+  // it aloud, then re-open the mic for the next turn — a hands-free conversation.
+  useEffect(() => {
+    if (busy || !voiceMode) return;
+    const last = messages[messages.length - 1];
+    if (last?.role === "assistant" && last.content && spokenRef.current !== last.content) {
+      spokenRef.current = last.content;
+      speakText(last.content, messages.length - 1, () => {
+        if (voiceModeRef.current) startListening(true);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, voiceMode, messages]);
 
   // Demo mode: signed out AND no pasted key. Free-model, capped, no billing.
   const demoMode = !session && !apiKey.trim();
@@ -892,38 +916,79 @@ export default function Playground() {
   }
 
   /* ---- voice input (browser speech recognition; Chrome/Edge) ---- */
-  function toggleMic() {
-    if (listening) {
-      recRef.current?.stop();
-      return;
-    }
-    type SpeechRec = {
-      lang: string; continuous: boolean; interimResults: boolean;
-      onresult: (e: { resultIndex: number; results: { [i: number]: { isFinal: boolean; 0: { transcript: string } }; length: number } }) => void;
-      onend: () => void; onerror: () => void; start: () => void; stop: () => void;
-    };
+  type SpeechRec = {
+    lang: string; continuous: boolean; interimResults: boolean;
+    onresult: (e: { resultIndex: number; results: { [i: number]: { isFinal: boolean; 0: { transcript: string } }; length: number } }) => void;
+    onend: () => void; onerror: () => void; start: () => void; stop: () => void;
+  };
+  const startListening = useCallback((autoSend: boolean) => {
     const w = window as unknown as { webkitSpeechRecognition?: new () => SpeechRec; SpeechRecognition?: new () => SpeechRec };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!Ctor) {
-      setError("Voice input needs Chrome or Edge.");
-      return;
-    }
+    if (!Ctor) { setError("Voice input needs Chrome or Edge."); return; }
     const rec = new Ctor();
-    rec.lang = "en-US";
-    rec.continuous = true;
+    rec.lang = langRef.current === "ne" ? "ne-NP" : "en-US";
+    rec.continuous = !autoSend; // hands-free: one utterance, then send
     rec.interimResults = false;
     rec.onresult = (e) => {
       let text = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) text += e.results[i][0].transcript;
       }
-      if (text) setInput((cur) => (cur ? cur + " " : "") + text.trim());
+      text = text.trim();
+      if (!text) return;
+      if (autoSend) { rec.stop(); void sendRef.current?.(text); }
+      else setInput((cur) => (cur ? cur + " " : "") + text);
     };
     rec.onend = () => setListening(false);
     rec.onerror = () => setListening(false);
     recRef.current = rec;
     setListening(true);
-    rec.start();
+    try { rec.start(); } catch { setListening(false); }
+  }, []);
+
+  function toggleMic() {
+    if (listening) { recRef.current?.stop(); return; }
+    startListening(false);
+  }
+
+  /* ---- voice output (browser text-to-speech; free, on-device) ---- */
+  function speakText(text: string, idx: number | null, onDone?: () => void) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone?.(); return; }
+    const clean = text
+      .replace(/```[\s\S]*?```/g, ". ")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[#*_>`~|]/g, "")
+      .replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim().slice(0, 1500);
+    if (!clean) { onDone?.(); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    const ne = langRef.current === "ne";
+    const voices = window.speechSynthesis.getVoices();
+    const v = ne
+      ? voices.find((x) => /ne[-_]/i.test(x.lang)) ?? voices.find((x) => /hi[-_]/i.test(x.lang))
+      : voices.find((x) => /en[-_]/i.test(x.lang) && /google|natural/i.test(x.name)) ?? voices.find((x) => /en[-_]/i.test(x.lang));
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = ne ? "ne-NP" : "en-US";
+    u.rate = 1; u.pitch = 1;
+    u.onstart = () => setSpeakingIdx(idx);
+    u.onend = () => { setSpeakingIdx(null); onDone?.(); };
+    u.onerror = () => { setSpeakingIdx(null); onDone?.(); };
+    window.speechSynthesis.speak(u);
+  }
+  function stopSpeaking() {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setSpeakingIdx(null);
+  }
+  function toggleSpeak(i: number, text: string) {
+    if (speakingIdx === i) { stopSpeaking(); return; }
+    speakText(text, i);
+  }
+  function toggleVoiceMode() {
+    const next = !voiceMode;
+    setVoiceMode(next);
+    voiceModeRef.current = next;
+    if (next) { spokenRef.current = ""; startListening(true); }
+    else { recRef.current?.stop(); stopSpeaking(); }
   }
 
   /* ---- slash commands ---- */
@@ -1939,6 +2004,15 @@ export default function Playground() {
             )}
           </div>
         )}
+        {voiceMode && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px]" style={{ background: "var(--ev-red-15)", border: "1px solid var(--border-accent)", color: "var(--text-strong)" }}>
+            <AudioLines size={15} className="flex-none animate-pulse" style={{ color: "var(--ev-red)" }} />
+            <span className="flex-1">
+              {busy ? "Thinking…" : speakingIdx !== null ? "Speaking… — tap Voice to stop" : listening ? "Listening… speak now" : "Voice conversation ready — speak anytime"}
+            </span>
+            <button onClick={toggleVoiceMode} className="flex-none font-semibold" style={{ color: "var(--ev-red)" }}>Stop</button>
+          </div>
+        )}
         {/* Tool tabs — pick the workspace: Chat, Image, or Document. */}
         <div className="mb-1.5 flex gap-1 px-1">
           {([
@@ -2018,6 +2092,18 @@ export default function Playground() {
             title={listening ? "Stop dictating" : "Dictate with your voice"}
           >
             {listening ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
+          </button>
+          <button
+            onClick={toggleVoiceMode}
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors hover:bg-white/5"
+            style={{
+              border: `1px solid ${voiceMode ? "var(--ev-red)" : "var(--border-hairline)"}`,
+              color: voiceMode ? "var(--ev-red)" : "var(--text-muted)",
+              background: voiceMode ? "var(--ev-red-15)" : "transparent",
+            }}
+            title={voiceMode ? "Voice conversation on — tap to stop" : "Hands-free voice conversation — talk and listen"}
+          >
+            <AudioLines size={15} /> <span className="hidden sm:inline">{voiceMode ? "Voice on" : "Voice"}</span>
           </button>
           {!demoMode && (
             <button
@@ -2455,6 +2541,11 @@ export default function Playground() {
                                   <button onClick={() => copyMessage(i, m.content)} className="flex items-center gap-1 font-semibold hover:text-white">
                                     {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />} {copiedIdx === i ? "copied" : "copy"}
                                   </button>
+                                  {m.content.trim().length > 1 && !m.video && (
+                                    <button onClick={() => toggleSpeak(i, m.content)} className="flex items-center gap-1 font-semibold hover:text-white" title={speakingIdx === i ? "Stop" : "Read aloud"} style={speakingIdx === i ? { color: "var(--ev-red)" } : undefined}>
+                                      {speakingIdx === i ? <Square size={11} fill="currentColor" /> : <Volume2 size={12} />} {speakingIdx === i ? "stop" : "listen"}
+                                    </button>
+                                  )}
                                   {!m.doc && !m.video && m.content.trim().length > 40 && (
                                     <button onClick={() => downloadPdf(chat?.title ?? "document", m.content)} className="flex items-center gap-1 font-semibold hover:text-white" title="Save this answer as a PDF">
                                       <Download size={12} /> PDF
