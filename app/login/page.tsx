@@ -58,7 +58,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    setInApp(/LinkedInApp|FBAN|FBAV|FB_IAB|Instagram|Messenger|Snapchat|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Line\//i.test(ua));
+    const app = /LinkedInApp|FBAN|FBAV|FB_IAB|Instagram|Messenger|Snapchat|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Line\//i.test(ua);
+    setInApp(app);
+    // In-app visitors (mostly new from an ad) default to instant email signup.
+    if (app) setIsSignup(true);
   }, []);
 
   useEffect(() => {
@@ -174,39 +177,37 @@ export default function LoginPage() {
             <div className="space-y-4 text-left">
               {step === "email" && (
                 <>
-                  {inApp && (
-                    <div
-                      className="rounded-lg px-4 py-3 text-[13px] leading-relaxed"
-                      style={{ background: "rgba(217, 160, 50, 0.12)", border: "1px solid rgba(217, 160, 50, 0.4)", color: "var(--text-body)" }}
-                    >
-                      <strong>Google sign-in doesn&apos;t work inside this app&apos;s browser</strong> (Google blocks it for security).
-                      Tap the <strong>⋯ menu</strong> and choose <strong>&quot;Open in browser&quot;</strong> — or use email below, which works right here.
-                    </div>
-                  )}
-                  <button
-                    onClick={signInWithGoogle}
-                    disabled={busy || inApp}
-                    className="flex w-full items-center justify-center gap-3 py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
-                    style={{
-                      background: "var(--ev-white)",
-                      color: "#0a0a0a",
-                      border: "none",
-                      borderRadius: "var(--radius-pill)",
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-                      <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.57 5.57 0 0 1-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24z"/>
-                      <path fill="#FBBC05" d="M5.27 14.29a7.16 7.16 0 0 1 0-4.58V6.62H1.29a12.04 12.04 0 0 0 0 10.76l3.98-3.09z"/>
-                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.97 11.97 0 0 0 12 0 11.99 11.99 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
-                    </svg>
-                    Continue with Google
-                  </button>
+                  {/* Google OAuth is blocked inside in-app browsers (LinkedIn,
+                      Facebook, Instagram…), so we hide it there entirely and
+                      lead with instant email, which works in-app. */}
+                  {!inApp && (
+                    <>
+                      <button
+                        onClick={signInWithGoogle}
+                        disabled={busy}
+                        className="flex w-full items-center justify-center gap-3 py-3.5 text-sm font-semibold transition-colors disabled:opacity-40"
+                        style={{
+                          background: "var(--ev-white)",
+                          color: "#0a0a0a",
+                          border: "none",
+                          borderRadius: "var(--radius-pill)",
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                          <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.57 5.57 0 0 1-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24z"/>
+                          <path fill="#FBBC05" d="M5.27 14.29a7.16 7.16 0 0 1 0-4.58V6.62H1.29a12.04 12.04 0 0 0 0 10.76l3.98-3.09z"/>
+                          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.97 11.97 0 0 0 12 0 11.99 11.99 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+                        </svg>
+                        Continue with Google
+                      </button>
 
-                  <div className="flex items-center gap-3 py-1 text-xs" style={{ color: "var(--text-faint)" }}>
-                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} /> OR
-                    <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} />
-                  </div>
+                      <div className="flex items-center gap-3 py-1 text-xs" style={{ color: "var(--text-faint)" }}>
+                        <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} /> OR
+                        <div className="h-px flex-1" style={{ background: "var(--border-hairline)" }} />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <div className="mb-1.5"><span style={microLabel}>Email</span></div>
