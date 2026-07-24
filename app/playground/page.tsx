@@ -1139,9 +1139,10 @@ export default function Playground() {
     startListening(false);
   }
 
-  /* ---- voice output (browser text-to-speech; free, on-device) ---- */
+  /* ---- voice output: Pro TTS (server, natural voices) with free on-device
+     browser speech as the always-available fallback ---- */
+  const proAudioRef = useRef<HTMLAudioElement | null>(null);
   function speakText(text: string, idx: number | null, onDone?: () => void) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone?.(); return; }
     const clean = text
       .replace(/```[\s\S]*?```/g, ". ")
       .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
@@ -1149,6 +1150,35 @@ export default function Playground() {
       .replace(/[#*_>`~|]/g, "")
       .replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim().slice(0, 1500);
     if (!clean) { onDone?.(); return; }
+    // Pro voice: signed-in users with credit get natural TTS when the server
+    // has a provider configured; any failure falls straight back to the free
+    // browser voice so "listen" never breaks.
+    if (session && apiKey && (balance ?? 0) > 0) {
+      void (async () => {
+        try {
+          const r = await fetch("/api/v1/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ text: clean.slice(0, 800) }),
+          });
+          if (!r.ok) { browserSpeak(clean, idx, onDone); return; }
+          const url = URL.createObjectURL(await r.blob());
+          const a = new Audio(url);
+          proAudioRef.current = a;
+          a.onplay = () => setSpeakingIdx(idx);
+          a.onended = () => { setSpeakingIdx(null); URL.revokeObjectURL(url); onDone?.(); };
+          a.onerror = () => { setSpeakingIdx(null); URL.revokeObjectURL(url); browserSpeak(clean, idx, onDone); };
+          await a.play();
+        } catch {
+          browserSpeak(clean, idx, onDone);
+        }
+      })();
+      return;
+    }
+    browserSpeak(clean, idx, onDone);
+  }
+  function browserSpeak(clean: string, idx: number | null, onDone?: () => void) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone?.(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(clean);
     const ne = langRef.current === "ne";
@@ -1165,6 +1195,7 @@ export default function Playground() {
   }
   function stopSpeaking() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    if (proAudioRef.current) { proAudioRef.current.pause(); proAudioRef.current = null; }
     setSpeakingIdx(null);
   }
   function toggleSpeak(i: number, text: string) {
