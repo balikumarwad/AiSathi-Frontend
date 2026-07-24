@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  ArrowUp, AudioLines, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, Globe, Languages, Lightbulb, Link2,
+  ArrowUp, AudioLines, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, GitFork, Globe, Languages, Lightbulb, Link2,
   Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, ThumbsDown, ThumbsUp, Volume2, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -1853,6 +1853,26 @@ export default function Playground() {
     await run(msgs, chat.id, all);
   }
 
+  /**
+   * LibreChat-style fork: copy the thread up to message i into a NEW chat and
+   * switch to it — explore a different direction while the original chat (and
+   * its answers) stays intact in the sidebar.
+   */
+  function branchFrom(i: number) {
+    if (!chat || busy) return;
+    const id = newChatId();
+    const branched: Chat = {
+      id,
+      title: `${chat.title.replace(/ \(branch\)$/, "")} (branch)`.slice(0, 60),
+      messages: chat.messages.slice(0, i + 1),
+      updated: Date.now(),
+    };
+    persist([branched, ...chats]);
+    setChatId(id);
+    setFollowups([]);
+    setError("");
+  }
+
   /** Save an edited user message and re-run from that point (branch). */
   async function submitEdit() {
     if (editingIdx == null || busy) return;
@@ -2621,6 +2641,11 @@ export default function Playground() {
                                   {!m.doc && !m.video && m.content.trim().length > 40 && (
                                     <button onClick={() => downloadPdf(chat?.title ?? "document", m.content)} className="flex items-center gap-1 font-semibold hover:text-white" title="Save this answer as a PDF">
                                       <Download size={12} /> PDF
+                                    </button>
+                                  )}
+                                  {!m.doc && !m.video && (
+                                    <button onClick={() => branchFrom(i)} className="flex items-center gap-1 font-semibold hover:text-white" title="Start a new chat from this point — this one stays as it is">
+                                      <GitFork size={12} /> branch
                                     </button>
                                   )}
                                   {i === messages.length - 1 && (
