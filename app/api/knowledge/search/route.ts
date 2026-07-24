@@ -37,13 +37,30 @@ export async function POST(req: Request) {
     if (!emb.ok) return NextResponse.json({ matches: [] });
     const ej = (await emb.json()) as { data: { embedding: number[] }[] };
 
+    // LibreChat-style citation quality controls (env-tunable, no redeploy of
+    // logic needed): a stricter relevance floor keeps weak matches from being
+    // injected as "verified facts", and a per-source cap stops one document
+    // from crowding out the rest.
+    const minSim = Number(process.env.RAG_MIN_SIMILARITY) || 0.45;
+    const matchCount = Number(process.env.RAG_MATCH_COUNT) || 3;
+    const maxPerSource = Number(process.env.RAG_MAX_PER_SOURCE) || 2;
+
     const { data, error } = await db.rpc("match_knowledge", {
       query_embedding: ej.data[0].embedding,
-      match_count: 3,
-      min_similarity: 0.35,
+      match_count: matchCount * 3, // headroom so per-source capping can't starve results
+      min_similarity: minSim,
     });
     if (error) return NextResponse.json({ matches: [] });
-    return NextResponse.json({ matches: data ?? [] });
+
+    const perSource = new Map<string, number>();
+    const matches = ((data ?? []) as Array<{ source?: string }>).filter((m) => {
+      const src = m.source ?? "";
+      const n = (perSource.get(src) ?? 0) + 1;
+      perSource.set(src, n);
+      return n <= maxPerSource;
+    }).slice(0, matchCount);
+
+    return NextResponse.json({ matches });
   } catch {
     return NextResponse.json({ matches: [] });
   }

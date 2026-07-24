@@ -1384,7 +1384,7 @@ export default function Playground() {
               "\n\nVerified Nepal knowledge relevant to this question (curated " +
               (matches[0].as_of ? `as of ${matches[0].as_of}` : "recently") +
               "; prefer these facts over your training memory; where fees or rules may have changed, say so and point to the official source):\n" +
-              matches.map((m) => `- ${m.title}: ${m.content}${m.source ? ` [source: ${m.source}]` : ""}`).join("\n");
+              matches.map((m) => `- [${Math.round((m.similarity ?? 0) * 100)}% relevant] ${m.title}: ${m.content}${m.source ? ` [source: ${m.source}]` : ""}`).join("\n");
           }
         } catch { /* RAG is best-effort */ }
       }
