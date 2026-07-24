@@ -729,6 +729,34 @@ export default function Playground() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null); // editing a user message
   const [editText, setEditText] = useState("");
   const [chatQuery, setChatQuery] = useState(""); // sidebar conversation search
+  // Server-side full-text hits (tsvector over ALL synced chats, not just the
+  // ~50 loaded locally) — merged under the local results while searching.
+  const [remoteHits, setRemoteHits] = useState<Chat[]>([]);
+  useEffect(() => {
+    const q = chatQuery.trim();
+    if (!session || q.length < 2) { setRemoteHits([]); return; }
+    const t = setTimeout(async () => {
+      const sb = supabaseBrowser();
+      if (!sb) return;
+      // plain query type: every word must match; 'simple' config matches the
+      // generated column so mixed English/Nepali both work.
+      const { data } = await sb
+        .from("chats")
+        .select("id,title,messages,updated_at")
+        .textSearch("fts", q, { type: "plain", config: "simple" })
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      setRemoteHits(
+        (data ?? []).map((r) => ({
+          id: r.id as string,
+          title: (r.title as string) ?? "New chat",
+          messages: (r.messages ?? []) as Msg[],
+          updated: new Date(r.updated_at as string).getTime(),
+        })),
+      );
+    }, 350);
+    return () => clearTimeout(t);
+  }, [chatQuery, session]);
   const [followups, setFollowups] = useState<string[]>([]); // suggested next questions
   const [listening, setListening] = useState(false);
   const [webMode, setWebMode] = useState<"off" | "auto" | "on">("off"); // web search: off / auto-detect / always
@@ -2282,12 +2310,21 @@ export default function Playground() {
         )}
         {(() => {
           const q = chatQuery.trim().toLowerCase();
-          const shown = q ? chats.filter((c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q))) : chats;
+          const local = q ? chats.filter((c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q))) : chats;
+          // Server hits not already shown locally (full-text over ALL synced chats).
+          const localIds = new Set(chats.map((c) => c.id));
+          const remote = q ? remoteHits.filter((c) => !localIds.has(c.id)) : [];
+          const shown = [...local, ...remote];
           if (q && shown.length === 0) return <p className="px-2 pt-2 text-xs" style={{ color: "var(--text-faint)" }}>No chats match &quot;{chatQuery}&quot;.</p>;
           return shown.map((c) => (
           <div key={c.id} className="group flex items-center gap-1 rounded-md transition-colors hover:bg-white/5" style={{ background: c.id === chatId ? "var(--ev-white-05)" : "transparent" }}>
             <button
-              onClick={() => { setChatId(c.id); setError(""); setSidebarOpen(false); }}
+              onClick={() => {
+                // A server-search hit may not be in the local list yet — add it
+                // first so the chat view has messages to render.
+                if (!chats.some((x) => x.id === c.id)) persist([c, ...chats]);
+                setChatId(c.id); setError(""); setSidebarOpen(false);
+              }}
               onDoubleClick={() => renameChat(c.id)}
               className="min-w-0 flex-1 px-3 py-2.5 text-left text-[13px]"
               style={{ color: c.id === chatId ? "var(--text-strong)" : "var(--text-muted)" }}
