@@ -290,6 +290,54 @@ function smartChain(complexity: "simple" | "complex", balance: number, models: C
   return [...new Set([...premium, ...uniqFree])];
 }
 
+/**
+ * LibreChat modelSpecs-style routing, served from the routing_specs DB table
+ * (editable live in Supabase — no redeploy). Picks the highest-priority spec
+ * whose regex matches the message and builds the model chain from it.
+ * Returns null when specs are unavailable so callers fall back to the
+ * built-in classifyComplexity/smartChain pair.
+ */
+type RoutingSpec = {
+  task: string;
+  priority: number;
+  match_regex: string | null;
+  min_balance_npr: number;
+  premium_models: string[];
+  free_patterns: string[];
+};
+
+function specChain(
+  text: string,
+  balance: number,
+  models: CatalogModel[],
+  specs: RoutingSpec[],
+): { task: string; chain: string[] } | null {
+  if (!specs.length) return null;
+  let win: RoutingSpec | undefined;
+  for (const s of specs) { // API returns priority-sorted, highest first
+    if (!s.match_regex) continue;
+    try {
+      if (new RegExp(s.match_regex, "i").test(text)) { win = s; break; }
+    } catch { /* bad regex in DB row — skip it */ }
+  }
+  // Long-form prompts deserve the reasoning chain even without keyword hits.
+  if (!win && (text.length > 600 || text.split(/\s+/).length > 90)) {
+    win = specs.find((s) => s.task === "reasoning");
+  }
+  win ??= specs.find((s) => !s.match_regex) ?? specs[specs.length - 1];
+  const frees = models.filter(isFree).map((m) => m.id);
+  const freeChain = win.free_patterns
+    .map((p) => {
+      try { const re = new RegExp(p, "i"); return frees.find((id) => re.test(id)); } catch { return undefined; }
+    })
+    .filter(Boolean) as string[];
+  const premium = balance >= win.min_balance_npr ? win.premium_models : [];
+  return {
+    task: win.task,
+    chain: [...new Set([...premium, ...freeChain, "openrouter/free", DEFAULT_MODEL])],
+  };
+}
+
 // Runs quietly after each signed-in turn on a free model to capture durable
 // facts about the user (ChatGPT-style memory). Output is parsed as JSON.
 const MEMORY_EXTRACT_PROMPT =
@@ -729,6 +777,14 @@ export default function Playground() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null); // editing a user message
   const [editText, setEditText] = useState("");
   const [chatQuery, setChatQuery] = useState(""); // sidebar conversation search
+  // Live routing table for the Smart router (LibreChat modelSpecs pattern).
+  const [routingSpecs, setRoutingSpecs] = useState<RoutingSpec[]>([]);
+  useEffect(() => {
+    fetch("/api/v1/models/routing")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setRoutingSpecs((j?.specs ?? []) as RoutingSpec[]))
+      .catch(() => { /* built-in chain is the fallback */ });
+  }, []);
   // Server-side full-text hits (tsvector over ALL synced chats, not just the
   // ~50 loaded locally) — merged under the local results while searching.
   const [remoteHits, setRemoteHits] = useState<Chat[]>([]);
@@ -1854,8 +1910,12 @@ export default function Playground() {
     // AISathi Smart: classify the request and route free vs premium behind one
     // "AISathi AI Assistant" identity (displayAs hides the real engine).
     if (model === SMART_MODEL) {
-      const complexity = attached.length > 0 ? "complex" : classifyComplexity(content);
-      const chain = smartChain(complexity, balance ?? 0, models);
+      // DB-driven routing first (tunable without redeploy); built-in chain as
+      // fallback. Attachments keep the built-in complex path.
+      const routed = attached.length === 0 ? specChain(content, balance ?? 0, models, routingSpecs) : null;
+      const chain = routed
+        ? routed.chain
+        : smartChain(attached.length > 0 ? "complex" : classifyComplexity(content), balance ?? 0, models);
       await run(next, id, all, { model: chain[0], fallbacks: chain.slice(1), displayAs: SMART_MODEL });
       return;
     }
