@@ -11,6 +11,7 @@
 
 import { NextResponse, after } from "next/server";
 import { bearerFrom, hashApiKey } from "@/lib/keys";
+import { findCredential } from "@/lib/messageFilter";
 import { streamStoreEnabled, streamWrite, validStreamId } from "@/lib/streamStore";
 import { allowAsync } from "@/lib/ratelimit";
 import { usdToNpr, round4 } from "@/lib/pricing";
@@ -155,6 +156,31 @@ export async function POST(req: Request) {
       { error: { message: "`model` and `messages` are required", code: 400 } },
       { status: 400 },
     );
+  }
+
+  // Credential filter: block secrets in USER messages before they reach the
+  // upstream model, third-party logs, or our own chat sync. Only the latest
+  // user turn is checked — history was already checked when it was sent.
+  {
+    const lastUser = [...(body.messages as Array<{ role?: string; content?: unknown }>)]
+      .reverse()
+      .find((m) => m?.role === "user");
+    const text =
+      typeof lastUser?.content === "string"
+        ? lastUser.content
+        : JSON.stringify(lastUser?.content ?? "");
+    const hit = findCredential(text);
+    if (hit) {
+      return NextResponse.json(
+        {
+          error: {
+            message: `Your message looks like it contains a secret (${hit}). For your safety AIsathi never sends passwords or API keys to AI models — please remove it and try again.`,
+            code: 400,
+          },
+        },
+        { status: 400 },
+      );
+    }
   }
 
   // Bound the cost of any single request: clamp completion length to a ceiling
