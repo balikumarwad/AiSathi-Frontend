@@ -47,6 +47,110 @@ function imageSubject(reply: string): string | null {
   return null;
 }
 type Chat = { id: string; title: string; messages: Msg[]; updated: number };
+
+type NepalaiInfo = { cost_npr?: number | null; balance_npr?: number | null };
+
+/**
+ * Re-attach to a server-buffered stream after a dropped connection: poll the
+ * resume endpoint until the answer is done or progress stalls. Returns the
+ * final text, or null when nothing could be recovered (caller rethrows).
+ */
+async function resumeStream(
+  streamId: string,
+  authKey: string,
+  signal: AbortSignal,
+  lastText: string,
+  onText: (full: string) => void,
+  onNepalai: (n: NepalaiInfo) => void,
+): Promise<string | null> {
+  let text = lastText;
+  let stale = 0;
+  for (let i = 0; i < 150 && !signal.aborted; i++) {
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const r = await fetch(`/api/v1/chat/stream/${streamId}`, {
+        headers: { Authorization: `Bearer ${authKey}` },
+      });
+      // Grace on early 404s: the first server-side mirror may not have landed.
+      if (r.status === 404) { if (i > 4) return null; continue; }
+      if (!r.ok) continue;
+      const state = (await r.json()) as { text?: string; done?: boolean; nepalai?: NepalaiInfo | null };
+      if (typeof state.text === "string" && state.text.length > text.length) {
+        text = state.text;
+        onText(text);
+        stale = 0;
+      } else {
+        stale++;
+      }
+      if (state.done) {
+        if (state.nepalai) onNepalai(state.nepalai);
+        return text;
+      }
+      if (stale > 25) return text || null; // ~30s with no progress: give up
+    } catch {
+      /* still offline — keep trying */
+    }
+  }
+  return text || null;
+}
+
+/**
+ * Consume an SSE chat stream. On a mid-answer network drop (common on mobile),
+ * transparently re-attaches via the resumable-stream endpoint instead of
+ * losing the reply. A user Stop (AbortError) also tells the server to stop
+ * generating, then rethrows for the caller's normal abort handling.
+ */
+async function consumeStream(opts: {
+  res: Response;
+  streamId: string;
+  authKey: string;
+  signal: AbortSignal;
+  onText: (full: string) => void;
+  onNepalai: (n: NepalaiInfo) => void;
+}): Promise<string> {
+  let reply = "";
+  try {
+    const reader = opts.res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const j = JSON.parse(data);
+          if (j.nepalai) opts.onNepalai(j.nepalai);
+          const delta = j.choices?.[0]?.delta?.content;
+          if (delta) {
+            reply += delta;
+            opts.onText(reply);
+          }
+        } catch { /* partial line */ }
+      }
+    }
+    return reply;
+  } catch (e) {
+    if ((e as Error).name === "AbortError") {
+      // User pressed Stop: also stop the server-side generation.
+      void fetch(`/api/v1/chat/stream/${opts.streamId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${opts.authKey}` },
+      }).catch(() => {});
+      throw e;
+    }
+    const recovered = await resumeStream(
+      opts.streamId, opts.authKey, opts.signal, reply, opts.onText, opts.onNepalai,
+    );
+    if (recovered == null) throw e;
+    return recovered;
+  }
+}
 type CatalogModel = {
   id: string;
   name?: string;
@@ -1286,12 +1390,14 @@ export default function Playground() {
       const useWeb = useKey !== "demo" && (webMode === "on" || (webMode === "auto" && needsWeb(lastUser)));
       let res: Response | null = null;
       let useModel = candidates[0];
+      let streamId = "";
       let lastJson: { error?: { message?: string } } | null = null;
       for (let i = 0; i < candidates.length; i++) {
         useModel = candidates[i];
+        streamId = crypto.randomUUID(); // resumable-stream handle, one per attempt
         res = await fetch("/api/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${useKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${useKey}`, "x-stream-id": streamId },
           // max_tokens caps the reply so expensive models can't run away and
           // upstream credit reservations stay small. ~3000 words is plenty.
           body: JSON.stringify({
@@ -1309,36 +1415,18 @@ export default function Playground() {
         setError(/image|vision|multimodal/i.test(String(msg)) ? `${msg} — tip: pick a vision-capable model (e.g. gpt-4o-mini, gemini).` : msg);
         return;
       }
-      let reply = "";
       let cost: number | null = null;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const j = JSON.parse(data);
-            if (j.nepalai) {
-              cost = j.nepalai.cost_npr ?? null;
-              if (j.nepalai.balance_npr != null) setBalance(j.nepalai.balance_npr);
-            }
-            const delta = j.choices?.[0]?.delta?.content;
-            if (delta) {
-              reply += delta;
-              all = updateChat(id, [...history, { role: "assistant", content: reply, model: opts?.displayAs ?? useModel }], all);
-              setChats(all);
-            }
-          } catch { /* partial line */ }
-        }
-      }
+      const reply = await consumeStream({
+        res, streamId, authKey: useKey, signal: ac.signal,
+        onText: (t) => {
+          all = updateChat(id, [...history, { role: "assistant", content: t, model: opts?.displayAs ?? useModel }], all);
+          setChats(all);
+        },
+        onNepalai: (n) => {
+          cost = n.cost_npr ?? null;
+          if (n.balance_npr != null) setBalance(n.balance_npr);
+        },
+      });
       persist(updateChat(id, [...history, { role: "assistant", content: reply || "(empty reply)", costNpr: cost, model: opts?.displayAs ?? useModel, doc: opts?.doc }], all));
       // Claude-style: auto-open the latest substantial artifact in the side panel.
       const arts = extractArtifacts(reply);
@@ -1598,10 +1686,12 @@ export default function Playground() {
         { role: "user", content: `USER REQUEST:\n${userMsg}\n\nRESEARCH / NOTES:\n${research.content || "(none)"}\n\nDRAFT:\n${draft.content || "(none)"}` },
       ];
       let res: Response | null = null;
+      let streamId = "";
       for (const m of variant.lead.models) {
+        streamId = crypto.randomUUID(); // resumable-stream handle, one per attempt
         const r = await fetch("/api/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "x-stream-id": streamId },
           body: JSON.stringify({ model: m, stream: true, max_tokens: 4096, messages: leadMessages }),
           signal: ac.signal,
         });
@@ -1610,33 +1700,15 @@ export default function Playground() {
       if (!res || !res.body) {
         throw new Error("The final reviewer was busy — please try again.");
       }
-      let reply = "";
       let cost: number | null = null;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const j = JSON.parse(data);
-            if (j.nepalai) { cost = j.nepalai.cost_npr ?? null; if (j.nepalai.balance_npr != null) setBalance(j.nepalai.balance_npr); }
-            const delta = j.choices?.[0]?.delta?.content;
-            if (delta) {
-              reply += delta;
-              all = updateChat(id, [...history, { role: "assistant", content: reply, model: variant.id }], all);
-              setChats(all);
-            }
-          } catch { /* partial */ }
-        }
-      }
+      const reply = await consumeStream({
+        res, streamId, authKey: apiKey, signal: ac.signal,
+        onText: (t) => {
+          all = updateChat(id, [...history, { role: "assistant", content: t, model: variant.id }], all);
+          setChats(all);
+        },
+        onNepalai: (n) => { cost = n.cost_npr ?? null; if (n.balance_npr != null) setBalance(n.balance_npr); },
+      });
       totalCost += cost ?? 0;
       persist(updateChat(id, [...history, { role: "assistant", content: reply || "(no answer)", costNpr: Number(totalCost.toFixed(4)), model: variant.id }], all));
       const arts = extractArtifacts(reply);

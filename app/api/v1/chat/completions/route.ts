@@ -9,8 +9,9 @@
  * the gateway is testable before Supabase is configured. Remove in prod.
  */
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { bearerFrom, hashApiKey } from "@/lib/keys";
+import { streamStoreEnabled, streamWrite, validStreamId } from "@/lib/streamStore";
 import { allowAsync } from "@/lib/ratelimit";
 import { usdToNpr, round4 } from "@/lib/pricing";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -290,9 +291,17 @@ export async function POST(req: Request) {
   }
 
   // ---- Streaming path: relay SSE bytes live, bill from the final usage chunk ----
+  // Resumable: when the client sends an unguessable `x-stream-id` (and Upstash
+  // is configured), the accumulated text is mirrored to Redis while streaming
+  // and generation KEEPS RUNNING if the connection drops, so the client can
+  // re-attach at GET /api/v1/chat/stream/<id> instead of losing the answer.
   if (wantStream && upstream.ok && upstream.body) {
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
+    const streamIdHeader = req.headers.get("x-stream-id");
+    const streamId =
+      streamStoreEnabled() && validStreamId(streamIdHeader) ? streamIdHeader : null;
+    const owner = hashApiKey(bearerFrom(req) ?? "");
     let buffer = "";
     let usage: Record<string, unknown> | null = null;
     let billed = false;
@@ -351,42 +360,106 @@ export async function POST(req: Request) {
       return { cost_npr: userCostNpr, balance_npr: balanceNpr, cached_tokens: cachedTok, dev_mode: auth.mode === "dev" };
     };
 
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      async transform(chunk, controller) {
-        buffer += decoder.decode(chunk, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") {
-              // Bill BEFORE releasing [DONE]; tell the client what it cost.
-              const info = await bill();
-              if (info) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ nepalai: info })}\n\n`));
-              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-              continue;
-            }
-            try {
-              const j = JSON.parse(data);
-              if (j.usage) usage = j.usage; // final chunk carries usage + cost
-            } catch {
-              /* partial/non-JSON line — pass through */
+    // The pump below is driven by the UPSTREAM reader, not by client reads, so
+    // a vanished client doesn't stall or cancel generation when resumable.
+    let fullText = "";
+    let clientGone = false;
+    let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+    let finalInfo: Record<string, unknown> | null = null;
+    let lastMirror = 0;
+    const reader = upstream.body.getReader();
+
+    const safeEnqueue = (s: string) => {
+      if (clientGone || !controllerRef) return;
+      try {
+        controllerRef.enqueue(encoder.encode(s));
+      } catch {
+        clientGone = true;
+      }
+    };
+
+    const processLine = async (line: string) => {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") {
+          // Bill BEFORE releasing [DONE]; tell the client what it cost.
+          const info = await bill();
+          if (info) {
+            finalInfo = info;
+            safeEnqueue(`data: ${JSON.stringify({ nepalai: info })}\n\n`);
+          }
+          safeEnqueue("data: [DONE]\n\n");
+          return;
+        }
+        try {
+          const j = JSON.parse(data);
+          if (j.usage) usage = j.usage; // final chunk carries usage + cost
+          const delta = j.choices?.[0]?.delta?.content;
+          if (typeof delta === "string") fullText += delta;
+        } catch {
+          /* partial/non-JSON line — pass through */
+        }
+      }
+      safeEnqueue(line + "\n");
+    };
+
+    const pump = async () => {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) await processLine(line);
+          if (streamId && !billed && Date.now() - lastMirror > 400) {
+            lastMirror = Date.now();
+            const { aborted } = await streamWrite(streamId, { owner, text: fullText, done: false });
+            if (aborted) {
+              // User pressed stop after disconnecting — stop paying upstream.
+              try { await reader.cancel(); } catch { /* already closed */ }
+              break;
             }
           }
-          controller.enqueue(encoder.encode(line + "\n"));
+          if (!streamId && clientGone) {
+            // Not resumable and nobody is listening: don't pay for the rest.
+            try { await reader.cancel(); } catch { /* already closed */ }
+            break;
+          }
         }
+        if (buffer) safeEnqueue(buffer);
+        // Abrupt end without [DONE]: still settle what we saw.
+        const info = await bill();
+        if (info) finalInfo = info;
+        if (streamId) await streamWrite(streamId, { owner, text: fullText, done: true, nepalai: finalInfo });
+      } catch (e) {
+        const info = await bill();
+        if (info) finalInfo = info;
+        if (streamId) {
+          await streamWrite(streamId, { owner, text: fullText, done: true, nepalai: finalInfo, error: String(e) });
+        }
+      } finally {
+        if (controllerRef && !clientGone) {
+          try { controllerRef.close(); } catch { /* already closed */ }
+        }
+      }
+    };
+
+    const clientStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controllerRef = controller;
       },
-      async flush(controller) {
-        if (buffer) controller.enqueue(encoder.encode(buffer));
-        await bill(); // abrupt end without [DONE]: still settle what we saw
+      cancel() {
+        clientGone = true;
+        if (!streamId) reader.cancel().catch(() => {});
       },
     });
 
-    upstream.body.pipeTo(transform.writable).catch(() => {
-      /* client disconnected or upstream dropped — flush() already settles */
-    });
+    // Keep the serverless function alive until generation + billing finish,
+    // even after the client disconnects (Vercel would otherwise kill us).
+    after(pump());
 
-    return new Response(transform.readable, {
+    return new Response(clientStream, {
       status: 200,
       headers: {
         "Content-Type": "text/event-stream; charset=utf-8",
