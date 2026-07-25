@@ -836,6 +836,8 @@ export default function Playground() {
   // Voice agent: hands-free conversation (listen → answer → speak → listen).
   const [voiceMode, setVoiceMode] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null); // which reply is being read
+  // Thumbnails that failed to load — hidden rather than shown as broken boxes.
+  const [badThumbs, setBadThumbs] = useState<Set<string>>(new Set());
   const voiceModeRef = useRef(false);
   const spokenRef = useRef<string>(""); // last reply already spoken (avoid repeats)
   const sendRef = useRef<((t?: string) => void) | null>(null); // always the latest send()
@@ -2703,19 +2705,34 @@ export default function Playground() {
                                 </a>
                               </div>
                             ) : null}
-                            {m.refImages?.length ? (
-                              <div className="mb-3">
-                                <div className="mb-1.5 text-[11px] font-medium" style={{ color: "var(--text-faint)" }}>Related images</div>
-                                <div className="sathi-scroll flex gap-2 overflow-x-auto pb-1">
-                                  {m.refImages.map((im, xi) => (
-                                    <a key={xi} href={im.link} target="_blank" rel="noreferrer" title={`${im.title} — source`} className="flex-none">
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={im.thumb} alt={im.title} loading="lazy" className="h-28 w-40 rounded-lg object-cover transition-opacity hover:opacity-90" style={{ border: "1px solid var(--border-strong)" }} />
-                                    </a>
-                                  ))}
+                            {(() => {
+                              // Only show photos that actually loaded; a dead
+                              // thumbnail must never leave a broken-image box,
+                              // and if every photo fails the strip disappears.
+                              const ok = (m.refImages ?? []).filter((im) => !badThumbs.has(im.thumb));
+                              if (!ok.length) return null;
+                              return (
+                                <div className="mb-3">
+                                  <div className="mb-1.5 text-[11px] font-medium" style={{ color: "var(--text-faint)" }}>Related images</div>
+                                  <div className="sathi-scroll flex gap-2 overflow-x-auto pb-1">
+                                    {ok.map((im, xi) => (
+                                      <a key={xi} href={im.link} target="_blank" rel="noreferrer" title={`${im.title} — source`} className="flex-none">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={im.thumb}
+                                          alt=""
+                                          loading="lazy"
+                                          referrerPolicy="no-referrer"
+                                          onError={() => setBadThumbs((s) => new Set(s).add(im.thumb))}
+                                          className="h-28 w-40 rounded-lg object-cover transition-opacity hover:opacity-90"
+                                          style={{ border: "1px solid var(--border-strong)", background: "var(--surface-inset)" }}
+                                        />
+                                      </a>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : null}
+                              );
+                            })()}
                             <div className="text-[15px] leading-relaxed">
                               <Content text={m.content} onArtifact={setArtifact} />
                               {busy && i === messages.length - 1 && (
