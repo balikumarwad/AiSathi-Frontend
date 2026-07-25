@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   ArrowUp, AudioLines, Brain, Camera, Check, ChevronDown, Copy, Download, FileText, Gift, GitFork, Globe, Languages, Lightbulb, Link2,
-  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Sparkles, Square, ThumbsDown, ThumbsUp, Volume2, X, Zap,
+  Menu, Mic, Mountain, Palette, Paperclip, Pencil, Plane, Rocket, RotateCcw, Share2, Sparkles, Square, ThumbsDown, ThumbsUp, Volume2, X, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Nav from "@/components/Nav";
@@ -838,6 +838,7 @@ export default function Playground() {
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null); // which reply is being read
   // Thumbnails that failed to load — hidden rather than shown as broken boxes.
   const [badThumbs, setBadThumbs] = useState<Set<string>>(new Set());
+  const [imgShared, setImgShared] = useState<string | null>(null); // "link copied" toast
   const voiceModeRef = useRef(false);
   const spokenRef = useRef<string>(""); // last reply already spoken (avoid repeats)
   const sendRef = useRef<((t?: string) => void) | null>(null); // always the latest send()
@@ -1576,7 +1577,18 @@ export default function Playground() {
     const useFreeImage = (balance ?? 0) < IMAGE_MIN_CREDITS;
     try {
       if (useFreeImage) {
-        const prompt = ([...history].reverse().find((m) => m.role === "user")?.content ?? "").trim().slice(0, 320) || "a beautiful image";
+        const rev = [...history].reverse();
+        const lastUser = rev.find((m) => m.role === "user");
+        // Editing on the free tier: Pollinations is text-to-image only and
+        // cannot see the attached picture, so "make it sunset" alone would
+        // render those words literally. Carry the original subject forward and
+        // append the requested change to get a coherent re-imagining instead.
+        const editing = !!lastUser?.images?.length;
+        const change = (lastUser?.content ?? "").trim();
+        const original = editing
+          ? (rev.slice(rev.indexOf(lastUser!) + 1).find((m) => m.role === "user" && !m.images?.length)?.content ?? "").trim()
+          : "";
+        const prompt = ((original && change ? `${original}, ${change}` : change) || "a beautiful image").slice(0, 320);
         const seed = Math.floor(Math.random() * 1_000_000_000);
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
         all = updateChat(id, [...history, { role: "assistant", content: "Creating your image…", model: "aisathi/image" }], all);
@@ -1591,7 +1603,9 @@ export default function Playground() {
         });
         persist(updateChat(id, [...history, {
           role: "assistant",
-          content: "Here's your image — click to open it full size. (Free image — sign up with credits for higher-quality generation.)",
+          content: editing
+            ? "Here's your edited image. (Free tier re-imagines the picture from your description — add credits for true image-to-image editing that keeps the original exactly.)"
+            : "Here's your image — click to open it full size. (Free image — sign up with credits for higher-quality generation.)",
           images: [url],
           costNpr: 0,
           model: "aisathi/image",
@@ -1851,7 +1865,13 @@ export default function Playground() {
       if (demoLeft <= 0) { setError("__DEMO_LIMIT__"); return; }
       // Image generation IS allowed for demo (free Pollinations engine).
       if (mode === "doc") { setError("Sign up free to create documents — the demo is text chat only."); return; }
-      if (images.length || docs.length) { setError("Sign up free to chat with images and PDFs — the demo is text-only."); return; }
+      // Image-mode edits are allowed: the free engine re-prompts from text and
+      // never uploads the picture, so it costs nothing. Vision chat about an
+      // uploaded photo, and PDFs, still need an account.
+      if (docs.length || (images.length && mode !== "image")) {
+        setError("Sign up free to chat with images and PDFs — the demo is text-only.");
+        return;
+      }
     } else if (!apiKey.trim()) {
       setError("Setting up your account — try again in a second.");
       return;
@@ -2002,6 +2022,37 @@ export default function Playground() {
     setEditingIdx(null);
     if (!text) return;
     await send(text, idx);
+  }
+
+  /**
+   * "Edit" on a generated image: load it back into the composer as the input
+   * image and switch to Image mode, so the next message ("make the sky
+   * sunset") becomes an image-to-image edit of exactly this picture.
+   */
+  function editImage(src: string) {
+    if (busy) return;
+    setImages([src]);
+    setMode("image");
+    setError("");
+    setInput("");
+    inputRef.current?.focus();
+    inputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  /** Share a generated image — native share sheet on mobile, link copy elsewhere. */
+  async function shareImage(src: string) {
+    const nav = navigator as Navigator & { share?: (d: { title?: string; url?: string }) => Promise<void> };
+    try {
+      if (nav.share) {
+        await nav.share({ title: "Made with AIsathi", url: src });
+        return;
+      }
+      await navigator.clipboard.writeText(src);
+      setImgShared(src);
+      setTimeout(() => setImgShared(null), 1600);
+    } catch {
+      /* user dismissed the share sheet — nothing to report */
+    }
   }
 
   function copyMessage(i: number, text: string) {
@@ -2273,7 +2324,8 @@ export default function Playground() {
             }
           }}
           placeholder={
-            mode === "image" ? "Describe an image to create — e.g. a rhino on Everest at sunrise…"
+            mode === "image" && images.length > 0 ? "Describe the change — e.g. make it sunset, add snow, turn it into a logo…"
+            : mode === "image" ? "Describe an image to create — e.g. a rhino on Everest at sunrise…"
             : mode === "doc" ? "Describe the document — e.g. a 3-day leave application to my office…"
             : apiKey ? "Ask your साथी anything…  ( / for commands )"
             : demoMode ? `Ask anything — ${demoLeft} free ${demoLeft === 1 ? "message" : "messages"}, no sign-up…`
@@ -2676,12 +2728,65 @@ export default function Playground() {
                           <img src="/icon.svg" alt="" className="h-7 w-7 flex-none rounded-full" />
                           <div className="min-w-0 flex-1 pt-0.5">
                             {m.images?.length ? (
-                              <div className="mb-2 flex flex-wrap gap-2">
+                              <div className="mb-3 flex flex-col gap-3">
                                 {m.images.map((src, xi) => (
-                                  <a key={xi} href={src} download={`aisathi-${Date.now()}-${xi}.png`} title="Click to download">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={src} alt="generated" className="max-h-80 max-w-full rounded-xl object-contain transition-opacity hover:opacity-90" style={{ border: "1px solid var(--border-strong)" }} />
-                                  </a>
+                                  <div key={xi} className="w-fit max-w-full">
+                                    <div className="relative overflow-hidden rounded-2xl" style={{ border: "1px solid var(--border-strong)" }}>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={src}
+                                        alt=""
+                                        className="block max-h-[26rem] max-w-full object-contain"
+                                        style={{ background: "var(--surface-inset)" }}
+                                      />
+                                      {/* Action bar sits ON the image (always visible — hover
+                                          overlays are invisible on phones, which is most users). */}
+                                      <div
+                                        className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 pb-3 pt-8"
+                                        style={{ background: "linear-gradient(to top, rgba(0,0,0,.55), transparent)" }}
+                                      >
+                                        <button
+                                          onClick={() => editImage(src)}
+                                          disabled={busy}
+                                          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/70 disabled:opacity-50"
+                                          style={{ background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.18)" }}
+                                          title="Change this image with a new instruction"
+                                        >
+                                          <Pencil size={12} /> Edit
+                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            onClick={() => shareImage(src)}
+                                            className="flex h-8 w-8 items-center justify-center rounded-full text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                                            style={{ background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.18)" }}
+                                            title="Share this image"
+                                          >
+                                            {imgShared === src ? <Check size={13} /> : <Share2 size={13} />}
+                                          </button>
+                                          <a
+                                            href={src}
+                                            download={`aisathi-${xi + 1}.png`}
+                                            className="flex h-8 w-8 items-center justify-center rounded-full text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                                            style={{ background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.18)" }}
+                                            title="Download this image"
+                                          >
+                                            <Download size={13} />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => editImage(src)}
+                                      disabled={busy}
+                                      className="mt-2 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                                      style={{ background: "var(--ev-red)", color: "#fff" }}
+                                    >
+                                      <Sparkles size={13} /> Edit image
+                                    </button>
+                                    {imgShared === src && (
+                                      <span className="ml-2 text-[11px]" style={{ color: "var(--text-faint)" }}>link copied</span>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             ) : null}
@@ -2709,7 +2814,12 @@ export default function Playground() {
                               // Only show photos that actually loaded; a dead
                               // thumbnail must never leave a broken-image box,
                               // and if every photo fails the strip disappears.
-                              const ok = (m.refImages ?? []).filter((im) => !badThumbs.has(im.thumb));
+                              // Chats saved before the fix still hold Openverse
+                              // proxy URLs, which now 424 — drop those on sight
+                              // so old conversations repair themselves.
+                              const ok = (m.refImages ?? []).filter(
+                                (im) => !badThumbs.has(im.thumb) && !/api\.openverse\.org\/.*\/thumb/.test(im.thumb),
+                              );
                               if (!ok.length) return null;
                               return (
                                 <div className="mb-3">
