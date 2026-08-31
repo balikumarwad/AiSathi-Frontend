@@ -59,10 +59,10 @@ cp .env.example .env.local     # then fill in:
 1. **`OPENROUTER_API_KEY`** — the upstream key (we pay this side in USD).
 2. **Supabase** — create your own free project (do not point a dev machine at
    production), then run **every file in `supabase/migrations/` in numerical
-   order** in the SQL editor — `001_init.sql` through `009_knowledge.sql`.
+   order** in the SQL editor — `001_init.sql` through `010_routing_specs.sql`.
    Running only `001` leaves you on the first-week schema with no chats,
-   payments or knowledge tables, and everything after it fails in ways that
-   look like application bugs. Then paste `NEXT_PUBLIC_SUPABASE_URL`,
+   payments, knowledge or routing tables, and everything after it fails in
+   ways that look like application bugs. Then paste `NEXT_PUBLIC_SUPABASE_URL`,
    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` into
    `.env.local` — all three come from *your* project, Settings → API.
 3. **`NEPALAI_DEV_KEY`** — any string; lets you call the gateway *before*
