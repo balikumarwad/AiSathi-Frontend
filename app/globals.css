@@ -1,43 +1,161 @@
 @import "tailwindcss";
 
-/* AIsathi design tokens (from design/SathiAI.dc.html — EVEREST-derived system).
-   Dark-first: near-black page, red accent, hairline borders, sharp radii. */
-:root {
-  --ev-black: #0a0a0a;
-  --ev-ink: #050505;
-  --ev-white: #f5f5f5;
-  --ev-red: #e11d2e;
-  --ev-red-hover: #b91c1c;
-  --ev-red-15: rgba(225, 29, 46, 0.15);
-  --ev-red-60: rgba(225, 29, 46, 0.6);
-  --ev-white-02: rgba(245, 245, 245, 0.02);
-  --ev-white-05: rgba(245, 245, 245, 0.05);
-  --ev-white-10: rgba(245, 245, 245, 0.1);
-  --ev-white-15: rgba(245, 245, 245, 0.15);
+/* ===========================================================================
+   AI Sathi design tokens.
 
-  --surface-page: var(--ev-black);
-  --surface-header: rgba(10, 10, 10, 0.85);
+   Dark is the default experience, so the bare :root IS the dark palette.
+   Light is defined below but is currently applied ONLY on an explicit
+   [data-theme="light"] stamp — see the note on that block before enabling
+   prefers-color-scheme.
+
+   Rules this encodes:
+     1  three surfaces, two text weights, one border
+     2  one accent (#10A37F), used sparingly
+     3  radius scale 4 / 8 / 12 / 16 / 24 / pill
+     5  Inter + Mukta + Geist Mono
+     6  dark default, light supported
+     7  4px spacing grid, 150-250ms transitions
+
+   The red rule: --brand-* belongs to the logo and nowhere else. --danger is
+   the only red permitted in the interface. If red is on a button, that button
+   deletes something.
+   =========================================================================== */
+:root {
+  /* --- surfaces ------------------------------------------------------- */
+  --bg: #0d0d0d;
+  --surface: #171717;
+  --elevated: #1f1f1f;
+  --text: #ffffff;
+  --text-2: #a3a3a3;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Channel values so translucent tokens can flip with the theme. */
+  --fg-rgb: 255, 255, 255;
+  --bg-rgb: 13, 13, 13;
+
+  /* --- accent --------------------------------------------------------- */
+  --primary: #10a37f;
+  --primary-hover: #0e8e6e;
+  --primary-press: #0c7a5e;
+  --on-primary: #ffffff;
+  --primary-ghost: rgba(16, 163, 127, 0.12);
+
+  --danger: #e5484d;
+  --danger-ghost: rgba(229, 72, 77, 0.12);
+  --warning: #e5a34d;
+  --warning-ghost: rgba(229, 163, 77, 0.12);
+
+  /* --- brand: LOGO ONLY, never in the interface ----------------------- */
+  --brand-red: #c8202d;
+  --brand-cream: #f2efe7;
+  --brand-ink: #1b2029;
+
+  /* --- radius --------------------------------------------------------- */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 9999px;
+
+  /* --- spacing + motion ----------------------------------------------- */
+  --space: 4px;
+  --t: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* --- typography ------------------------------------------------------
+     --font-display and --font-script are kept as aliases so the ~50 existing
+     usages keep compiling. Bebas Neue is now Inter 700; Give You Glory is now
+     Mukta, which is the correct face for the Devanagari those two call sites
+     were actually rendering. Both aliases go away as pages migrate. */
+  --font-display: var(--font-body);
+  --font-script: var(--font-np);
+}
+
+/* ---------------------------------------------------------------------------
+   LIGHT THEME
+
+   Deliberately gated behind an explicit stamp for now. Turning on
+   prefers-color-scheme today would hand a half-broken light site to every
+   visitor whose OS is set to light, because roughly half the platform still
+   hardcodes Tailwind zinc/red classes that do not respond to tokens.
+
+   When the page migrations are done, wrap this block and delete this note:
+
+     @media (prefers-color-scheme: light) {
+       :root:not([data-theme="dark"]) { ...the declarations below... }
+     }
+   --------------------------------------------------------------------------- */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --elevated: #ffffff;
+  --text: #171717;
+  --text-2: #737373;
+  --border: rgba(23, 23, 23, 0.1);
+  --border-strong: rgba(23, 23, 23, 0.18);
+
+  --fg-rgb: 23, 23, 23;
+  --bg-rgb: 255, 255, 255;
+
+  --primary-ghost: rgba(16, 163, 127, 0.1);
+  --danger-ghost: rgba(229, 72, 77, 0.1);
+  --warning-ghost: rgba(229, 163, 77, 0.12);
+
+  --shadow: 0 1px 2px rgba(23, 23, 23, 0.06);
+  --shadow-lg: 0 8px 24px rgba(23, 23, 23, 0.08);
+}
+
+/* ---------------------------------------------------------------------------
+   LEGACY ALIASES — EVEREST names mapped onto the new tokens.
+
+   These exist so this change is a safe foundation: 105 --ev-* references
+   across 10 files keep working and the site looks the same today. Each page
+   migration replaces its legacy names with semantic ones and this block
+   shrinks. Do not add new usages.
+
+   Note --ev-red maps to --brand-red, not --primary, so nothing flips colour
+   before its page is actually redesigned. That is transitional, and the one
+   place brand red is temporarily tolerated in the interface.
+   --------------------------------------------------------------------------- */
+:root {
+  --ev-black: var(--bg);
+  --ev-ink: var(--bg);
+  --ev-white: var(--text);
+  --ev-red: var(--brand-red);
+  --ev-red-hover: #a81a25;
+  --ev-red-15: rgba(200, 32, 45, 0.15);
+  --ev-red-60: rgba(200, 32, 45, 0.6);
+  --ev-white-02: rgba(var(--fg-rgb), 0.02);
+  --ev-white-05: rgba(var(--fg-rgb), 0.05);
+  --ev-white-10: rgba(var(--fg-rgb), 0.1);
+  --ev-white-15: rgba(var(--fg-rgb), 0.15);
+
+  --surface-page: var(--bg);
+  --surface-header: rgba(var(--bg-rgb), 0.85);
   --surface-inset: var(--ev-white-05);
 
-  --text-strong: var(--ev-white);
-  --text-body: rgba(245, 245, 245, 0.78);
-  --text-muted: rgba(245, 245, 245, 0.55);
-  --text-faint: rgba(245, 245, 245, 0.35);
+  --text-strong: var(--text);
+  --text-body: rgba(var(--fg-rgb), 0.78);
+  --text-muted: var(--text-2);
+  --text-faint: rgba(var(--fg-rgb), 0.35);
 
-  --border-hairline: var(--ev-white-10);
-  --border-strong: var(--ev-white-15);
+  --border-hairline: var(--border);
   --border-accent: var(--ev-red-60);
 
-  --accent: var(--ev-red);
+  --accent: var(--brand-red);
   --accent-hover: var(--ev-red-hover);
 
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-pill: 9999px;
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-pill: var(--r-pill);
 
-  --background: var(--ev-black);
-  --foreground: var(--ev-white);
+  --background: var(--bg);
+  --foreground: var(--text);
 }
 
 @theme inline {
@@ -47,9 +165,21 @@
   --font-mono: var(--font-mono);
 }
 
+/* The browser resolves font-family per glyph, so Latin stays in Inter while
+   every Devanagari character reaches Mukta - no page has to opt in.
+
+   "Inter" is named literally rather than via var(--font-body) on purpose.
+   next/font expands that variable to `"Inter", "Inter Fallback"`, and the
+   fallback is a local metric-matched face that resolves to Roboto on Android -
+   which DOES carry Devanagari and would therefore shadow Mukta for the largest
+   share of our users. Naming Inter directly puts Mukta ahead of that fallback.
+   var(--font-body) still trails the stack so the metric-matched fallback is
+   available for Latin while Inter is loading. */
 body {
-  background: var(--surface-page);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", var(--font-np), var(--font-body), system-ui,
+    -apple-system, "Segoe UI", sans-serif;
 }
 
 ::placeholder {
@@ -62,7 +192,7 @@ body {
 }
 .sathi-scroll::-webkit-scrollbar-thumb {
   background: var(--ev-white-15);
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 /* Claude-style "thinking" shimmer: a light band sweeps through the text

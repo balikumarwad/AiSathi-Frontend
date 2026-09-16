@@ -2,7 +2,7 @@
 
 /**
  * Login / signup — implements the AIsathi design (design/SathiAI.dc.html):
- * Bebas display "Welcome back", red script फेरि स्वागत छ, "Signing in as"
+ * Inter display "Welcome back", Mukta फेरि स्वागत छ, "Signing in as"
  * email chip with Change, Show/Hide password, red pill CTA. Two doors only:
  * Google one-tap or email+password (confirmation email link, kept ON).
  * Signup captures name (for greetings) + optional billing address.

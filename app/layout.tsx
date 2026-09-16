@@ -2,30 +2,38 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Bebas_Neue, Geist_Mono, Give_You_Glory, Inter } from "next/font/google";
+import { Geist_Mono, Inter, Mukta } from "next/font/google";
 import "./globals.css";
 
 // Microsoft Clarity project id (public analytics tag — ships to the browser).
 const CLARITY_ID = "xijrot3a41";
 
-// AIsathi design system typography: Bebas Neue for display (tall condensed
-// headlines), Inter for body, Give You Glory for the handwritten script
-// accents, Geist Mono for code. Self-hosted at build time via next/font.
-const display = Bebas_Neue({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
-});
-
+// AIsathi design system typography. Three families, not four:
+//
+//   Inter  - all Latin UI text. Headings get their weight from Inter 700 with
+//            tight tracking rather than from a separate display face.
+//   Mukta  - all Devanagari. Drawn by Ek Type to pair with Latin at matching
+//            weights, so mixed lines like "रू499" sit on one baseline.
+//   Geist  - code, API keys, token counts, prices.
+//
+// Removed: Bebas Neue (condensed poster face, reads as event flyer) and
+// Give You Glory (handwriting, on pages that take payment details).
+//
+// Why Mukta matters: every face here was previously loaded subsets:["latin"],
+// so NONE contained a Devanagari glyph. Every "रू" price, the hero "रुपैयाँ"
+// and the whole Nepali interface fell back to whatever the visitor's OS
+// happened to supply - different on Windows, Android and iOS, missing on some.
+// Mukta is listed after Inter in the body stack, so the browser reaches it
+// per-glyph for Devanagari while Latin stays in Inter.
 const body = Inter({
   variable: "--font-body",
   subsets: ["latin"],
 });
 
-const script = Give_You_Glory({
-  variable: "--font-script",
-  subsets: ["latin"],
-  weight: "400",
+const nepali = Mukta({
+  variable: "--font-np",
+  subsets: ["devanagari", "latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const mono = Geist_Mono({
@@ -64,9 +72,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${script.variable} ${mono.variable} h-full antialiased`}
+      className={`${body.variable} ${nepali.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
+      <body className="min-h-full flex flex-col">
         {children}
         {/* Microsoft Clarity — session recordings + heatmaps (audit item). */}
         <Script id="ms-clarity" strategy="afterInteractive">

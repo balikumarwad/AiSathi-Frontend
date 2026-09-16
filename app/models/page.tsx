@@ -2,7 +2,7 @@
 
 /**
  * Models catalog — implements the AIsathi design (design/SathiAI.dc.html):
- * Bebas display title, plain-language NPR explainer, search, pill filter
+ * Inter display title, plain-language NPR explainer, search, pill filter
  * chips, hairline table with uppercase headers, Free/badges in red outline.
  */
 
