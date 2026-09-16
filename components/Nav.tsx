@@ -42,21 +42,20 @@ export default function Nav() {
     >
       <div className="flex items-center justify-between px-5 py-4 sm:px-8">
         <Link href="/" className="group flex items-center gap-2.5 text-[22px] font-bold tracking-tight" style={{ color: "var(--text-strong)" }}>
-          {/* Lockup: ink rhino in front of a red rising sun. On hover the sun
-              swells and the rhino breaks into a gallop (animated loader swap). */}
-          <span className="relative flex h-8 w-12 flex-none items-center justify-center">
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-300 group-hover:scale-125"
-              style={{ background: "var(--ev-red)" }}
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rhino.svg" alt="" className="relative h-6 w-auto group-hover:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rhino-loader.svg" alt="" aria-hidden className="relative hidden h-7 w-auto group-hover:block" />
-          </span>
+          {/* Lockup: the honeycomb mark plus the wordmark. Brand red lives in
+              the logo and nowhere else in the interface — see the red rule in
+              globals.css. The mark is decorative; the adjacent text names us. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mark.svg"
+            alt=""
+            aria-hidden
+            width={35}
+            height={36}
+            className="h-9 w-auto flex-none transition-transform duration-200 group-hover:scale-110"
+          />
           <span>
-            <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
+            <span style={{ color: "var(--brand-red)" }}>AI</span>sathi
           </span>
         </Link>
 
