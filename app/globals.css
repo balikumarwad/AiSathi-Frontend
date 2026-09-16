@@ -67,12 +67,26 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
 
   /* --- typography ------------------------------------------------------
-     --font-display and --font-script are kept as aliases so the ~50 existing
-     usages keep compiling. Bebas Neue is now Inter 700; Give You Glory is now
-     Mukta, which is the correct face for the Devanagari those two call sites
-     were actually rendering. Both aliases go away as pages migrate. */
-  --font-display: var(--font-body);
-  --font-script: var(--font-np);
+     ONE stack, used everywhere. Fonts resolve per glyph, so Latin stays in
+     Inter and Devanagari reaches Mukta.
+
+     "Inter" is named literally rather than through var(--font-body) because
+     next/font expands that variable to `"Inter", "Inter Fallback"`, and that
+     fallback is a local metric-matched face which resolves to Roboto on
+     Android - which DOES carry Devanagari and would shadow Mukta for our
+     largest group of users. Naming Inter directly puts Mukta ahead of it.
+     var(--font-body) still trails so the metric-matched fallback covers Latin
+     while Inter is loading.
+
+     --font-display and --font-script remain as aliases so the ~50 existing
+     usages keep compiling. They MUST resolve to the full stack: any element
+     that sets font-family replaces the body stack outright, so a display
+     heading pointing at bare Inter loses Mukta and its Devanagari silently
+     falls back to the OS. Both aliases go away as pages migrate. */
+  --stack-ui: "Inter", var(--font-np), var(--font-body), system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--stack-ui);
+  --font-script: var(--font-np), var(--font-body), sans-serif;
 }
 
 /* ---------------------------------------------------------------------------
@@ -165,21 +179,10 @@
   --font-mono: var(--font-mono);
 }
 
-/* The browser resolves font-family per glyph, so Latin stays in Inter while
-   every Devanagari character reaches Mukta - no page has to opt in.
-
-   "Inter" is named literally rather than via var(--font-body) on purpose.
-   next/font expands that variable to `"Inter", "Inter Fallback"`, and the
-   fallback is a local metric-matched face that resolves to Roboto on Android -
-   which DOES carry Devanagari and would therefore shadow Mukta for the largest
-   share of our users. Naming Inter directly puts Mukta ahead of that fallback.
-   var(--font-body) still trails the stack so the metric-matched fallback is
-   available for Latin while Inter is loading. */
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", var(--font-np), var(--font-body), system-ui,
-    -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--stack-ui);
 }
 
 ::placeholder {
