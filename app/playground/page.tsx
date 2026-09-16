@@ -206,7 +206,7 @@ const IMAGE_MIN_CREDITS = 15; // NPR
 
 const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
   { icon: Mountain, text: "Write a short poem about the Himalayas in Nepali" },
-  { icon: Palette, text: "Create an image of a rhino galloping past Everest at sunrise" },
+  { icon: Palette, text: "Create an image of prayer flags over the Kathmandu valley at dawn" },
   { icon: FileText, text: "Write a professional cover letter for a software engineer job" },
   { icon: Plane, text: "Plan a perfect 3-day trip to Pokhara on a budget" },
 ];
@@ -2325,7 +2325,7 @@ export default function Playground() {
           }}
           placeholder={
             mode === "image" && images.length > 0 ? "Describe the change — e.g. make it sunset, add snow, turn it into a logo…"
-            : mode === "image" ? "Describe an image to create — e.g. a rhino on Everest at sunrise…"
+            : mode === "image" ? "Describe an image to create — e.g. prayer flags over Kathmandu at dawn…"
             : mode === "doc" ? "Describe the document — e.g. a 3-day leave application to my office…"
             : apiKey ? "Ask your साथी anything…  ( / for commands )"
             : demoMode ? `Ask anything — ${demoLeft} free ${demoLeft === 1 ? "message" : "messages"}, no sign-up…`
@@ -2916,7 +2916,7 @@ export default function Playground() {
                     {waiting && (
                       <div className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/rhino-loader.svg" alt="" className="h-9 w-auto flex-none" />
+                        <img src="/mark-loader.svg" alt="" aria-hidden className="h-9 w-auto flex-none" />
                         <span className="thinking-shimmer text-sm font-medium">साथी सोच्दै छ…</span>
                       </div>
                     )}

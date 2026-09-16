@@ -43,7 +43,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
       {!share ? (
         <main className="mx-auto max-w-2xl px-6 py-24 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/rhino.svg" alt="" aria-hidden className="mx-auto h-16 w-auto opacity-70" />
+          <img src="/mark.svg" alt="" aria-hidden className="mx-auto h-16 w-auto opacity-70" />
           <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-bold">This shared chat isn&apos;t available</h1>
           <p className="mt-3 text-zinc-400">The link may be wrong, or the conversation was deleted.</p>
           <Link href="/playground" className="mt-8 inline-block rounded-full bg-red-600 px-7 py-3 font-medium transition hover:bg-red-500">

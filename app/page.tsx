@@ -318,7 +318,7 @@ export default function Home() {
               className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-red-500 to-red-800 shadow-[0_0_60px_rgba(225,29,46,0.45)] sm:h-24 sm:w-24"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rhino.svg" alt="The AIsathi rhino — Nepal's one-horned rhino, our mascot" className="relative h-20 w-auto sm:h-24" />
+            <img src="/mark.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
           </div>
           <h2 lang="ne" className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।

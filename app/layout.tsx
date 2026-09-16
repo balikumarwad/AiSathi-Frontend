@@ -52,7 +52,7 @@ export const metadata: Metadata = {
       "Hundreds of AI models behind one login. Pay in rupees with eSewa, Khalti, or card — free models to start.",
     url: "https://aisathi.io",
     siteName: "AIsathi",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "AIsathi — the rhino galloping past the rising sun" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "AIsathi — any AI model, pay in rupees" }],
     locale: "en_US",
     type: "website",
   },

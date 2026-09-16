@@ -63,7 +63,7 @@ for await (const chunk of stream) {
   -H "Content-Type: application/json" \\
   -d '{
     "model": "google/gemini-3.1-flash-image",
-    "messages": [{"role": "user", "content": "A rhino in front of Everest, flat logo style"}],
+    "messages": [{"role": "user", "content": "A honeycomb pattern, flat logo style"}],
     "modalities": ["image", "text"]
   }'`,
   },
