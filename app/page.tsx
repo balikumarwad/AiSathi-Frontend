@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
-import HeroVideo from "@/components/HeroVideo";
+import HeroMedia from "@/components/HeroMedia";
 import Nav from "@/components/Nav";
 import CopyButton from "@/components/CopyButton";
 
@@ -80,7 +80,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        <HeroVideo />
+        <HeroMedia />
 
         {/* Animated aurora underlay — pure CSS drift, so the hero visibly
             moves on every device even when the video is skipped or blocked.
