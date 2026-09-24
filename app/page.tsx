@@ -103,20 +103,40 @@ export default function Home() {
               Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
             </p>
 
-            <div className="mt-9 flex flex-col items-center gap-3 lg:items-start">
-              <Link
-                href="/playground"
-                className="rounded-full bg-[var(--primary)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--primary-hover)]"
-              >
-                Start free
-              </Link>
-              <Link href="/models" className="text-sm text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
-                No card needed · browse 340+ models &amp; prices
-              </Link>
+            {/* Two doors, because two people arrive here. Someone who wants to
+                chat goes left; someone who already has code calling OpenAI goes
+                right, and the line underneath tells them what they will find
+                before they spend a click on it. */}
+            <div className="mt-9 flex flex-col items-center gap-4 lg:items-start">
+              <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <Link
+                  href="/playground"
+                  className="rounded-full bg-[var(--primary)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--primary-hover)]"
+                >
+                  Start free
+                </Link>
+                <Link
+                  href="/docs"
+                  className="rounded-full border border-zinc-800 bg-[var(--elevated)] px-8 py-3.5 text-base font-semibold text-zinc-100 transition hover:border-zinc-700 hover:bg-[var(--surface)]"
+                >
+                  Read the docs
+                </Link>
+              </div>
+              <p className="max-w-lg text-sm leading-relaxed text-zinc-400">
+                No card needed. The docs are the OpenAI-compatible API — swap one
+                base URL, keep your existing SDK and code.{" "}
+                <Link href="/models" className="underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
+                  Browse 340+ models &amp; prices
+                </Link>
+              </p>
             </div>
           </div>
 
-          <div className="w-full">
+          {/* On a phone the galaxy leads: it is the one thing on the page that
+              is the product rather than a picture of it, and above the fold is
+              where that has to land. On lg the grid takes over and source
+              order returns — copy left, galaxy right. */}
+          <div className="order-first w-full lg:order-none">
             <HeroGalaxy />
           </div>
 
