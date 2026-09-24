@@ -1,191 +1,62 @@
-"use client";
-
 /**
- * Models catalog — implements the AIsathi design (design/SathiAI.dc.html):
- * Bebas display title, plain-language NPR explainer, search, pill filter
- * chips, hairline table with uppercase headers, Free/badges in red outline.
+ * The model catalogue — server-rendered.
+ *
+ * This is the page with the most to gain from search: 450-odd model names,
+ * each with a rupee price, is exactly the long tail people type ("claude
+ * sonnet price nepal", "gpt api npr"). It used to be a client component that
+ * fetched on mount, so the HTML a crawler received was 21 KB with no model in
+ * it — not one name, not one price — and it inherited the homepage <title>.
+ *
+ * Now the list is fetched on the server and handed to the table as its initial
+ * state, so the markup contains the models and the page still filters and
+ * searches instantly on the client.
+ *
+ * ISR rather than per-request: the catalogue changes a few times a week, and
+ * making every visitor wait on an upstream call to see a price list would be a
+ * poor trade.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import Nav from "@/components/Nav";
+import type { Metadata } from "next";
 
-type Model = {
-  id: string;
-  name: string;
-  context_length: number | null;
-  pricing: { prompt_npr_per_m: number; completion_npr_per_m: number };
+import Nav from "@/components/Nav";
+import { publicCatalogue, type PublicModel } from "@/lib/catalog-server";
+
+import ModelsTable from "./ModelsTable";
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "AI model prices in NPR — GPT, Claude, Gemini, Llama | AIsathi",
+  description:
+    "Every AI model AIsathi serves, priced in Nepali Rupees per million tokens. GPT, Claude, Gemini, Llama, DeepSeek and more — FX and margin already included. Free models to start.",
+  alternates: { canonical: "/models" },
+  openGraph: {
+    title: "AI model prices in NPR — GPT, Claude, Gemini, Llama",
+    description:
+      "Every model we serve, priced in rupees per million tokens. No FX surprises.",
+    url: "/models",
+  },
 };
 
-type Filter = "all" | "free" | "cheap" | "premium";
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "free", label: "Free" },
-  { key: "cheap", label: "Cheap" },
-  { key: "premium", label: "Premium" },
-];
-
-function fmtPrice(n: number) {
-  if (n === 0) return "Free";
-  return "रू" + (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2));
-}
-
-function tagOf(m: Model): Filter {
-  const p = m.pricing.prompt_npr_per_m;
-  if (p === 0 && m.pricing.completion_npr_per_m === 0) return "free";
-  if (p < 50) return "cheap";
-  if (p >= 300) return "premium";
-  return "all";
-}
-
-export default function ModelsPage() {
-  const [models, setModels] = useState<Model[]>([]);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/v1/models")
-      .then((r) => r.json())
-      .then((j) => (j.data ? setModels(j.data) : setError(j.error?.message ?? "failed")))
-      .catch((e) => setError(String(e)));
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return models.filter((m) => {
-      const matchesQuery = !q || (m.id + " " + m.name).toLowerCase().includes(q);
-      const matchesFilter = filter === "all" || tagOf(m) === filter;
-      return matchesQuery && matchesFilter;
-    });
-  }, [models, query, filter]);
-
-  const th = {
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase" as const,
-    color: "var(--text-muted)",
-  };
+export default async function ModelsPage() {
+  // A missing upstream key at build time must not fail the build or blank the
+  // page: the table falls back to fetching on the client.
+  let initial: PublicModel[] = [];
+  try {
+    initial = await publicCatalogue();
+  } catch {
+    initial = [];
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
-      <main className="mx-auto w-full max-w-[1100px] px-6 pb-20 pt-10">
-        <h1 className="m-0 mb-2 font-[family-name:var(--font-display)] text-[34px] font-normal tracking-tight">
-          Models
-        </h1>
-        <p className="m-0 mb-6 max-w-[640px] text-[15px] leading-relaxed" style={{ color: "var(--text-body)" }}>
-          Prices are already converted to Nepali Rupees per million tokens — roughly 750,000
-          words. FX and our margin are included, so the number you see is what you pay.
-        </p>
-
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search models…"
-          className="mb-4 w-full text-sm outline-none"
-          style={{
-            padding: "13px 16px",
-            background: "var(--surface-inset)",
-            color: "var(--text-strong)",
-            borderRadius: "var(--radius-xs)",
-            border: "1px solid var(--border-strong)",
-          }}
-        />
-
-        <div className="mb-6 flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className="px-4 py-[7px] text-[13px] font-semibold transition-colors"
-              style={{
-                borderRadius: "var(--radius-pill)",
-                border: "1px solid " + (filter === f.key ? "var(--ev-red)" : "var(--border-strong)"),
-                background: filter === f.key ? "var(--ev-red-15)" : "transparent",
-                color: filter === f.key ? "var(--ev-white)" : "var(--text-muted)",
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {error && <p className="mb-4 text-sm" style={{ color: "var(--ev-red)" }}>{error}</p>}
-
-        <div style={{ border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
-          <div
-            className="grid px-5 py-3.5 max-sm:hidden"
-            style={{
-              gridTemplateColumns: "2.2fr 1fr 1fr 1fr",
-              background: "var(--ev-white-02)",
-              borderBottom: "1px solid var(--border-hairline)",
-            }}
-          >
-            <span style={th}>Model</span>
-            <span style={th} title="How much text the model can read at once, in tokens (~0.75 words each).">
-              Context ⓘ
-            </span>
-            <span style={th}>Input · NPR/1M</span>
-            <span style={th}>Output · NPR/1M</span>
-          </div>
-          {filtered.slice(0, 120).map((m) => {
-            const free = tagOf(m) === "free";
-            return (
-              <div
-                key={m.id}
-                className="grid items-center gap-y-1 px-5 py-4 max-sm:grid-cols-1 sm:[grid-template-columns:2.2fr_1fr_1fr_1fr]"
-                style={{ borderBottom: "1px solid var(--border-hairline)" }}
-              >
-                <div>
-                  <div className="leading-snug">
-                    <span className="text-[15px] font-semibold">{m.name}</span>
-                    {free && (
-                      <span
-                        className="ml-2 inline-block align-middle text-[10px] font-bold uppercase tracking-wider"
-                        style={{
-                          padding: "2px 7px",
-                          borderRadius: "var(--radius-xs)",
-                          border: "1px solid var(--border-accent)",
-                          color: "var(--ev-red)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Free
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1.5 font-[family-name:var(--font-mono)] text-xs" style={{ color: "var(--text-faint)" }}>
-                    {m.id}
-                  </div>
-                </div>
-                <span className="text-sm" style={{ color: "var(--text-body)" }}>
-                  {m.context_length?.toLocaleString() ?? "—"}
-                </span>
-                <span className="text-sm font-semibold">{fmtPrice(m.pricing.prompt_npr_per_m)}</span>
-                <span className="text-sm font-semibold">{fmtPrice(m.pricing.completion_npr_per_m)}</span>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && !error && (
-            <div className="px-5 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-              No models match &quot;{query}&quot;. Try a different search or clear the filter.
-            </div>
-          )}
-          {filtered.length > 120 && (
-            <p className="px-5 py-2.5 text-xs" style={{ color: "var(--text-faint)" }}>
-              Showing first 120 of {filtered.length} — refine your search.
-            </p>
-          )}
-        </div>
-      </main>
-
+      <ModelsTable initial={initial} />
       <footer
         className="p-6 text-center text-xs"
         style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-hairline)" }}
       >
-        AIsathi · तपाईंको AI साथी · aisathi.io
+        AIsathi · <span lang="ne">तपाईंको AI साथी</span> · aisathi.io
       </footer>
     </div>
   );

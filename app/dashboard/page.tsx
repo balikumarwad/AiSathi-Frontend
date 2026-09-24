@@ -108,7 +108,7 @@ export default function Dashboard() {
         </h1>
         {session && (
           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-            नमस्ते, {name} — your usage updates automatically.
+            <span lang="ne">नमस्ते</span>, {name} — your usage updates automatically.
           </p>
         )}
 
@@ -160,7 +160,7 @@ export default function Dashboard() {
                   Balance
                 </div>
                 <div className="mt-1 text-3xl font-bold">
-                  रू {Number(data.balance_npr ?? 0).toLocaleString()}
+                  <span lang="ne">रू</span> {Number(data.balance_npr ?? 0).toLocaleString()}
                 </div>
                 <a href="/topup" className="mt-1 inline-block text-xs font-semibold no-underline" style={{ color: "var(--ev-red)" }}>
                   Top up →
@@ -171,7 +171,7 @@ export default function Dashboard() {
                   Total spent
                 </div>
                 <div className="mt-1 text-3xl font-bold">
-                  {Number.isNaN(data.total_spent_npr) ? "—" : `रू ${data.total_spent_npr.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                  {Number.isNaN(data.total_spent_npr) ? "—" : <><span lang="ne">रू</span> {data.total_spent_npr.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>}
                 </div>
               </div>
               <div className="p-5" style={card}>
@@ -218,7 +218,7 @@ export default function Dashboard() {
                       <td className="px-4 py-2" style={{ color: "var(--text-muted)" }}>
                         {u.prompt_tokens}→{u.completion_tokens}
                       </td>
-                      <td className="px-4 py-2">रू {u.cost_npr}</td>
+                      <td className="px-4 py-2"><span lang="ne">रू</span> {u.cost_npr}</td>
                       <td className="px-4 py-2">
                         <span style={{ color: u.status === "ok" ? "#4ade80" : "var(--ev-red)" }}>{u.status}</span>
                       </td>

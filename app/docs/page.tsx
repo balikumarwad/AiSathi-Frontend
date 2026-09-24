@@ -63,7 +63,7 @@ for await (const chunk of stream) {
   -H "Content-Type: application/json" \\
   -d '{
     "model": "google/gemini-3.1-flash-image",
-    "messages": [{"role": "user", "content": "A rhino in front of Everest, flat logo style"}],
+    "messages": [{"role": "user", "content": "A honeycomb pattern, flat logo style"}],
     "modalities": ["image", "text"]
   }'`,
   },
@@ -98,9 +98,9 @@ export default function Docs() {
         <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-sm">
           <div className="grid gap-2 sm:grid-cols-[130px_1fr]">
             <span className="font-semibold text-zinc-500">Base URL</span>
-            <code className="font-[family-name:var(--font-mono)] text-red-400">{BASE}</code>
+            <code className="font-[family-name:var(--font-mono)] text-[var(--primary)]">{BASE}</code>
             <span className="font-semibold text-zinc-500">Auth</span>
-            <span><code className="font-[family-name:var(--font-mono)] text-zinc-300">Authorization: Bearer np-…</code> — create keys on your <Link href="/account" className="text-red-400 underline underline-offset-2">account page</Link></span>
+            <span><code className="font-[family-name:var(--font-mono)] text-zinc-300">Authorization: Bearer np-…</code> — create keys on your <Link href="/account" className="text-[var(--primary)] underline underline-offset-2">account page</Link></span>
             <span className="font-semibold text-zinc-500">Billing</span>
             <span>Per token, in NPR, deducted from your prepaid balance. Every response includes a <code className="font-[family-name:var(--font-mono)]">nepalai.cost_npr</code> field.</span>
             <span className="font-semibold text-zinc-500">Streaming</span>
@@ -128,7 +128,7 @@ export default function Docs() {
               <tbody>
                 {ERRORS.map(([code, what, fix]) => (
                   <tr key={code} className="border-b border-zinc-900 last:border-0">
-                    <td className="px-4 py-3 font-[family-name:var(--font-mono)] font-bold text-red-400">{code}</td>
+                    <td className="px-4 py-3 font-[family-name:var(--font-mono)] font-bold text-[var(--primary)]">{code}</td>
                     <td className="px-4 py-3 text-zinc-300">{what}</td>
                     <td className="px-4 py-3 text-zinc-500">{fix}</td>
                   </tr>
@@ -149,8 +149,8 @@ export default function Docs() {
         </section>
 
         <p className="mt-10 text-sm text-zinc-500">
-          Questions? <a href="mailto:neupaneoscar143@gmail.com" className="text-red-400 underline underline-offset-2">Contact us</a> — or try everything in the{" "}
-          <Link href="/playground" className="text-red-400 underline underline-offset-2">playground</Link> first.
+          Questions? <a href="mailto:neupaneoscar143@gmail.com" className="text-[var(--primary)] underline underline-offset-2">Contact us</a> — or try everything in the{" "}
+          <Link href="/playground" className="text-[var(--primary)] underline underline-offset-2">playground</Link> first.
         </p>
       </main>
     </div>

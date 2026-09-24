@@ -63,7 +63,7 @@ export default function Terms() {
             <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-zinc-100">Contact</h2>
             <p className="mt-3 text-zinc-400">
               AIsathi is operated from Kathmandu, Nepal. Reach us at{" "}
-              <a href="mailto:neupaneoscar143@gmail.com" className="text-red-400 underline underline-offset-2">our contact email</a>.
+              <a href="mailto:neupaneoscar143@gmail.com" className="text-[var(--primary)] underline underline-offset-2">our contact email</a>.
             </p>
           </section>
         </div>
