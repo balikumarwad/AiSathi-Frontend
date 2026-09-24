@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
 import Nav from "@/components/Nav";
-import HeroFlow from "@/components/HeroFlow";
+import HeroGalaxy from "@/components/HeroGalaxy";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -116,8 +116,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
-            <HeroFlow />
+          <div className="w-full">
+            <HeroGalaxy />
           </div>
 
         </div>
