@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
 import Nav from "@/components/Nav";
+import HeroFlow from "@/components/HeroFlow";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -79,49 +80,51 @@ export default function Home() {
     <div className="min-h-screen overflow-x-clip bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        {/* No video and no aurora — but not a flat white field either. One
-            soft warm wash fading out of the top gives the hero depth at
-            zero bytes. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_0%,var(--surface),transparent_72%)]"
-        />
 
         <div className="relative z-10">
           <Nav />
         </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 text-center 2xl:max-w-6xl">
-          <p className="mb-6 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-4 py-1.5 text-xs tracking-widest text-zinc-300 backdrop-blur">
-            <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-bold leading-[1.05] sm:text-7xl md:text-8xl 2xl:text-[8.5rem]">
-            Any AI model.
-            <br />
-            <span style={{ color: "var(--primary)" }}>
-              Pay in <span lang="ne">रुपैयाँ</span>.
-            </span>
-          </h1>
-          <p className="mt-8 max-w-2xl text-lg text-zinc-300 sm:text-xl 2xl:max-w-3xl 2xl:text-2xl">
-            One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
-            Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
-          </p>
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:gap-8">
+          <div className="text-center lg:text-left">
+            <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-[var(--elevated)] px-3.5 py-1.5 text-xs tracking-wide text-zinc-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+              <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] text-[2.6rem] font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.2rem]">
+              Any AI model.
+              <br />
+              <span style={{ color: "var(--primary)" }}>
+                Pay in <span lang="ne">रुपैयाँ</span>.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base text-zinc-400 sm:text-lg lg:mx-0">
+              One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
+              Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
+            </p>
 
-          {/* One dominant CTA; secondary de-emphasized (audit item 3) */}
-          <div className="mt-10 flex flex-col items-center gap-4">
-            <Link
-              href="/playground"
-              className="rounded-full bg-[var(--primary)] px-10 py-4 text-lg font-semibold text-white transition hover:bg-[var(--primary-hover)]"
-            >
-              Start free — no card needed →
-            </Link>
-            <Link href="/models" className="text-sm text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
-              or browse all 340+ models & prices
-            </Link>
+            <div className="mt-9 flex flex-col items-center gap-3 lg:items-start">
+              <Link
+                href="/playground"
+                className="rounded-full bg-[var(--primary)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--primary-hover)]"
+              >
+                Start free
+              </Link>
+              <Link href="/models" className="text-sm text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
+                No card needed · browse 340+ models &amp; prices
+              </Link>
+            </div>
           </div>
 
-          {/* Trust bar (audit item 1) */}
-          <dl className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          <div className="flex justify-center lg:justify-end">
+            <HeroFlow />
+          </div>
+
+        </div>
+
+        {/* Trust bar (audit item 1) */}
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-6">
+          <dl className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-zinc-800 py-8">
             {TRUST.map(([big, small]) => (
               <div key={small} className="text-center">
                 <dt className="sr-only">{small}</dt>
@@ -133,7 +136,7 @@ export default function Home() {
         </div>
 
         {/* Model ticker */}
-        <div className="relative z-10 border-t border-zinc-800/60 bg-black/40 py-4 backdrop-blur">
+        <div className="relative z-10 border-y border-zinc-800 bg-[var(--surface)] py-4">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-6 text-sm text-zinc-500">
             {MODELS.map((m) => (
               <span key={m} className="font-[family-name:var(--font-display)] tracking-wide">{m}</span>
