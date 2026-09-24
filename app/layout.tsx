@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Geist_Mono, Inter, Mukta } from "next/font/google";
 import "./globals.css";
+import { ldScript, organizationLd, websiteLd } from "@/lib/seo";
 
 // Microsoft Clarity project id (public analytics tag — ships to the browser).
 const CLARITY_ID = "xijrot3a41";
@@ -49,13 +50,26 @@ export const metadata: Metadata = {
   title: "AIsathi — Any AI model. Pay in NPR.",
   description:
     "Chat with and build on hundreds of AI models — GPT, Claude, Gemini. Top up with eSewa, Khalti or card. Free models to start. Built for Nepal.",
+  // Each page sets its own canonical against metadataBase. The site shipped
+  // none at all, so aisathi.io, /?ref=… and any other parameterised copy were
+  // separate documents as far as a crawler was concerned.
+  alternates: { canonical: "/" },
   openGraph: {
     title: "AIsathi — Any AI model. Pay in NPR.",
     description:
       "Hundreds of AI models behind one login. Pay in rupees with eSewa, Khalti, or card — free models to start.",
     url: "https://aisathi.io",
     siteName: "AIsathi",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "AIsathi — any AI model, pay in rupees" }],
+    // The alt text described "the rhino galloping past the rising sun" — a
+    // logo retired in #38, on a card that has since been redrawn entirely.
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "AIsathi — any AI model, paid in Nepali Rupees, over a galaxy of the models we serve",
+      },
+    ],
     locale: "en_US",
     type: "website",
   },
@@ -77,6 +91,12 @@ export default function RootLayout({
       lang="en"
       className={`${body.variable} ${nepali.variable} ${mono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Who we are and what site this is. Sitewide, because both describe
+            the domain rather than any one page. */}
+        <script {...ldScript(organizationLd())} />
+        <script {...ldScript(websiteLd())} />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
         {/* Microsoft Clarity — session recordings + heatmaps (audit item). */}
