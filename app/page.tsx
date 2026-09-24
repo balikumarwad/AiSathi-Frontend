@@ -76,12 +76,16 @@ const FAQ: [string, string][] = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
+    <div className="min-h-screen overflow-x-clip bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        {/* No hero media and no colour wash. On a light ground the type is
-            the hero; the video, the aurora and the black scrim all existed to
-            keep text readable over a dark image that is no longer there. */}
+        {/* No video and no aurora — but not a flat white field either. One
+            soft warm wash fading out of the top gives the hero depth at
+            zero bytes. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_0%,var(--surface),transparent_72%)]"
+        />
 
         <div className="relative z-10">
           <Nav />
@@ -139,7 +143,7 @@ export default function Home() {
       </section>
 
       {/* ============ VALUE PROPS ============ */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
+      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
         <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
           Built for Nepal. <span className="text-zinc-500">Open to the world.</span>
         </h2>
@@ -151,7 +155,7 @@ export default function Home() {
           ] as const).map(([Icon, title, body]) => (
             <div
               key={title}
-              className="group rounded-2xl border border-zinc-800 bg-zinc-950 p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
+              className="group rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
             >
               <Icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-semibold">{title}</div>
@@ -170,7 +174,7 @@ export default function Home() {
           Chat free forever, or get a credit package — cheaper than ChatGPT Go, paid in rupees.
         </p>
         <div className="mt-14 grid gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
@@ -179,7 +183,7 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
             </ul>
           </div>
-          <div className="relative rounded-2xl border border-[var(--primary)]/40 bg-zinc-950 p-8 shadow-lg shadow-zinc-950/20">
+          <div className="relative rounded-2xl border border-[var(--primary)]/40 bg-[var(--elevated)] p-8 shadow-lg shadow-zinc-950/20">
             <div className="absolute -top-3 left-8 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Starter</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>499</div>
@@ -189,11 +193,11 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />~1,200 smart replies or 6,000 fast ones</li>
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Pay with Khalti, eSewa, or card</li>
             </ul>
-            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-800">
+            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
               Get Starter →
             </Link>
           </div>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pro</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>999</div>
             <div className="mt-1 text-sm font-semibold text-green-400">12,990 credits — 30% bonus</div>
@@ -225,7 +229,7 @@ export default function Home() {
         <div className="mt-12 overflow-x-auto rounded-2xl border border-zinc-800">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-950 text-left">
+              <tr className="border-b border-zinc-800 bg-[var(--elevated)] text-left">
                 <th className="px-5 py-4 font-medium text-zinc-500"></th>
                 <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-[var(--primary)]">AIsathi</th>
                 <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-zinc-500">Going direct</th>
@@ -245,7 +249,7 @@ export default function Home() {
       </section>
 
       {/* ============ WHICH MODEL? (audit item 6) ============ */}
-      <section className="mx-auto max-w-6xl px-6 pb-24">
+      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
         <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
           Which model should I use?
         </h2>
@@ -254,7 +258,7 @@ export default function Home() {
         </p>
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {USE_CASES.map((u) => (
-            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-zinc-600">
+            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 transition hover:border-zinc-600">
               <u.icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
               <div className="mt-1 text-xs font-bold uppercase tracking-wider text-[var(--primary)]">→ {u.pick}</div>
@@ -271,11 +275,11 @@ export default function Home() {
         </h2>
         <div className="relative mt-6">
           <CopyButton text={CURL} />
-          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
+          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
             {CURL}
           </pre>
         </div>
-        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-800">
+        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
           Full API documentation →
         </Link>
       </section>
@@ -287,7 +291,7 @@ export default function Home() {
         </h2>
         <div className="mt-12 space-y-3">
           {FAQ.map(([q, a]) => (
-            <details key={q} className="group rounded-xl border border-zinc-800 bg-zinc-950 px-6 py-4 transition hover:border-zinc-700">
+            <details key={q} className="group rounded-xl border border-zinc-800 bg-[var(--elevated)] px-6 py-4 transition hover:border-zinc-700">
               <summary className="cursor-pointer list-none text-[15px] font-semibold text-zinc-200 marker:content-none">
                 <span className="mr-2 inline-block text-zinc-400 transition-transform group-open:rotate-90">›</span>
                 {q}
@@ -299,7 +303,7 @@ export default function Home() {
       </section>
 
       {/* ============ CTA ============ */}
-      <section className="border-t border-zinc-900">
+      <section className="border-t border-zinc-800 bg-[var(--surface)]">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
           {/* The mark, on its own. */}
           <div className="relative mx-auto mb-8 w-fit">

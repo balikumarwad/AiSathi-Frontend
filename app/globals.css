@@ -25,17 +25,17 @@
      Light is the default. The page ground is off-white, not #fff: a flat
      pure white leaves no room for an elevated surface to read as raised,
      and glares on the cheap LCDs most of our users are on. */
-  --bg: #fafaf9;
-  --surface: #f4f4f2;
+  --bg: #fbfaf7;
+  --surface: #f3efe7;
   --elevated: #ffffff;
-  --text: #1a1a19;
-  --text-2: #6b6b68;
-  --border: rgba(26, 26, 25, 0.1);
-  --border-strong: rgba(26, 26, 25, 0.16);
+  --text: #1c1a17;
+  --text-2: #6b655c;
+  --border: rgba(28, 26, 23, 0.1);
+  --border-strong: rgba(28, 26, 23, 0.16);
 
   /* Channel values so translucent tokens can flip with the theme. */
-  --fg-rgb: 26, 26, 25;
-  --bg-rgb: 250, 250, 249;
+  --fg-rgb: 28, 26, 23;
+  --bg-rgb: 251, 250, 247;
 
   /* --- accent --------------------------------------------------------- */
   --primary: #10a37f;
@@ -66,8 +66,8 @@
   --space: 4px;
   --t: 180ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  --shadow: 0 1px 2px rgba(26, 26, 25, 0.05);
-  --shadow-lg: 0 8px 24px rgba(26, 26, 25, 0.07);
+  --shadow: 0 1px 2px rgba(28, 26, 23, 0.05);
+  --shadow-lg: 0 8px 24px rgba(28, 26, 23, 0.07);
 
   /* --- typography ------------------------------------------------------
      Script routing is explicit, via each face's own unicode-range.
@@ -199,15 +199,24 @@
   --color-black: var(--bg);
   --color-zinc-950: var(--bg);
   --color-zinc-900: var(--surface);
-  --color-zinc-800: #e6e6e3;
-  --color-zinc-700: #d6d6d2;
-  --color-zinc-600: #a3a29e;
-  --color-zinc-500: #8a8a86;
+  --color-zinc-800: #e8e3d9;
+  --color-zinc-700: #d8d2c6;
+  --color-zinc-600: #a5a096;
+  --color-zinc-500: #8b867c;
   --color-zinc-400: var(--text-2);
-  --color-zinc-300: #55554f;
-  --color-zinc-200: #3a3a36;
+  --color-zinc-300: #57524a;
+  --color-zinc-200: #3a3630;
   --color-zinc-100: var(--text);
-  --color-zinc-50: #111110;
+  --color-zinc-50: #141210;
+
+  /* One accent, so stray greens/emeralds match the brand rather than
+     shipping a second, brighter green next to it. */
+  --color-green-300: var(--primary);
+  --color-green-400: var(--primary);
+  --color-green-500: var(--primary);
+  --color-green-600: var(--primary);
+  --color-emerald-400: var(--primary);
+  --color-emerald-500: var(--primary);
 
   /* Red now means one thing only: something failed or is destructive. */
   --color-red-300: var(--danger);
