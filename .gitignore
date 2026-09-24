@@ -45,3 +45,6 @@ next-env.d.ts
 !.env.example
 design/asset_*
 backups/
+
+# build artifact of scripts/og-card
+scripts/og-card/card.html
