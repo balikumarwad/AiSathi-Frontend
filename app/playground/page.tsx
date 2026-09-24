@@ -2916,7 +2916,7 @@ export default function Playground() {
                     {waiting && (
                       <div className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/mark-loader.svg" alt="" aria-hidden className="h-9 w-auto flex-none" />
+                        <img src="/mark-loader-light.svg" alt="" aria-hidden className="h-9 w-auto flex-none" />
                         <span className="thinking-shimmer text-sm font-medium">साथी सोच्दै छ…</span>
                       </div>
                     )}

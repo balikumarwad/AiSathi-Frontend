@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
-import HeroMedia from "@/components/HeroMedia";
 import Nav from "@/components/Nav";
 import CopyButton from "@/components/CopyButton";
 
@@ -80,18 +79,9 @@ export default function Home() {
     <div className="min-h-screen bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        <HeroMedia />
-
-        {/* Animated aurora underlay — pure CSS drift, so the hero visibly
-            moves on every device even when the video is skipped or blocked.
-            (Respects reduced motion via the sathi-aurora classes.) */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="sathi-aurora-a absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] rounded-full bg-red-600/20 blur-[120px]" />
-          <div className="sathi-aurora-b absolute bottom-0 left-0 h-[50vh] w-[50vw] rounded-full bg-purple-700/20 blur-[100px]" />
-          <div className="sathi-aurora-c absolute right-0 top-1/3 h-[40vh] w-[40vw] rounded-full bg-blue-700/15 blur-[100px]" />
-        </div>
-
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black" />
+        {/* No hero media and no colour wash. On a light ground the type is
+            the hero; the video, the aurora and the black scrim all existed to
+            keep text readable over a dark image that is no longer there. */}
 
         <div className="relative z-10">
           <Nav />
@@ -104,7 +94,7 @@ export default function Home() {
           <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-bold leading-[1.05] sm:text-7xl md:text-8xl 2xl:text-[8.5rem]">
             Any AI model.
             <br />
-            <span className="bg-gradient-to-r from-red-500 via-rose-400 to-purple-500 bg-clip-text text-transparent">
+            <span style={{ color: "var(--primary)" }}>
               Pay in <span lang="ne">रुपैयाँ</span>.
             </span>
           </h1>
@@ -117,7 +107,7 @@ export default function Home() {
           <div className="mt-10 flex flex-col items-center gap-4">
             <Link
               href="/playground"
-              className="rounded-full bg-red-600 px-10 py-4 text-lg font-semibold shadow-lg shadow-red-900/40 transition hover:bg-red-500 hover:shadow-red-800/50"
+              className="rounded-full bg-[var(--primary)] px-10 py-4 text-lg font-semibold text-white transition hover:bg-[var(--primary-hover)]"
             >
               Start free — no card needed →
             </Link>
@@ -189,8 +179,8 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
             </ul>
           </div>
-          <div className="relative rounded-2xl border border-red-800/60 bg-zinc-950 p-8 shadow-lg shadow-red-950/20">
-            <div className="absolute -top-3 left-8 rounded-full bg-red-600 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
+          <div className="relative rounded-2xl border border-[var(--primary)]/40 bg-zinc-950 p-8 shadow-lg shadow-zinc-950/20">
+            <div className="absolute -top-3 left-8 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Starter</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>499</div>
             <div className="mt-1 text-sm font-semibold text-green-400">5,990 credits — 20% bonus</div>
@@ -199,7 +189,7 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />~1,200 smart replies or 6,000 fast ones</li>
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Pay with Khalti, eSewa, or card</li>
             </ul>
-            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-800">
               Get Starter →
             </Link>
           </div>
@@ -237,7 +227,7 @@ export default function Home() {
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-950 text-left">
                 <th className="px-5 py-4 font-medium text-zinc-500"></th>
-                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-red-400">AIsathi</th>
+                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-[var(--primary)]">AIsathi</th>
                 <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-zinc-500">Going direct</th>
               </tr>
             </thead>
@@ -267,7 +257,7 @@ export default function Home() {
             <div key={u.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-zinc-600">
               <u.icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
-              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-red-400">→ {u.pick}</div>
+              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-[var(--primary)]">→ {u.pick}</div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{u.detail}</p>
             </div>
           ))}
@@ -285,7 +275,7 @@ export default function Home() {
             {CURL}
           </pre>
         </div>
-        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-800">
           Full API documentation →
         </Link>
       </section>
@@ -299,7 +289,7 @@ export default function Home() {
           {FAQ.map(([q, a]) => (
             <details key={q} className="group rounded-xl border border-zinc-800 bg-zinc-950 px-6 py-4 transition hover:border-zinc-700">
               <summary className="cursor-pointer list-none text-[15px] font-semibold text-zinc-200 marker:content-none">
-                <span className="mr-2 inline-block text-red-500 transition-transform group-open:rotate-90">›</span>
+                <span className="mr-2 inline-block text-zinc-400 transition-transform group-open:rotate-90">›</span>
                 {q}
               </summary>
               <p className="mt-3 pl-5 text-sm leading-relaxed text-zinc-400">{a}</p>
@@ -311,14 +301,10 @@ export default function Home() {
       {/* ============ CTA ============ */}
       <section className="border-t border-zinc-900">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          {/* Rhino crossing a crimson sun — the brand lockup, big. */}
+          {/* The mark, on its own. */}
           <div className="relative mx-auto mb-8 w-fit">
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-red-500 to-red-800 shadow-[0_0_60px_rgba(225,29,46,0.45)] sm:h-24 sm:w-24"
-            />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mark.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
+            <img src="/mark-light.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
           </div>
           <h2 lang="ne" className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।
@@ -326,7 +312,7 @@ export default function Home() {
           <p className="mt-4 text-lg text-zinc-400">Make a friend. Free models are waiting.</p>
           <Link
             href="/playground"
-            className="mt-10 inline-block rounded-full bg-gradient-to-r from-red-600 to-purple-600 px-10 py-4 font-medium shadow-xl shadow-purple-950/40 transition hover:from-red-500 hover:to-purple-500"
+            className="mt-10 inline-block rounded-full bg-[var(--primary)] px-10 py-4 font-medium text-white transition hover:bg-[var(--primary-hover)]"
           >
             Start chatting free →
           </Link>

@@ -209,7 +209,7 @@ function TopupInner() {
                 onClick={() => setAmount(p)}
                 className={
                   "flex-1 rounded-lg border px-3 py-2 text-sm " +
-                  (amount === p ? "border-red-500 bg-red-600/20" : "border-zinc-800 hover:border-zinc-600")
+                  (amount === p ? "border-[var(--primary)] bg-[var(--primary-ghost)]" : "border-zinc-800 hover:border-zinc-600")
                 }
               >
                 <span lang="ne">रू</span> {p}
