@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
+import { Brain, Check, MapPin, Palette, Rocket, Zap } from "lucide-react";
 import Nav from "@/components/Nav";
 import HeroGalaxy from "@/components/HeroGalaxy";
 import ModelPaper from "@/components/ModelPaper";
+import ValueCards from "@/components/ValueCards";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -175,22 +176,7 @@ export default function Home() {
         <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
           Built for Nepal. <span className="text-zinc-500">Open to the world.</span>
         </h2>
-        <div className="mt-16 grid gap-6 sm:grid-cols-3">
-          {([
-            [MapPin, "Local payments", "Top up credits with eSewa or Khalti in seconds — or card via Stripe from anywhere."],
-            [Receipt, "NPR pricing", "Transparent per-token prices in rupees. Start free. No FX surprises."],
-            [Plug, "Drop-in API", "OpenAI-compatible. Point any SDK at our base URL — your code doesn't change."],
-          ] as const).map(([Icon, title, body]) => (
-            <div
-              key={title}
-              className="group rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
-            >
-              <Icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
-              <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-semibold">{title}</div>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{body}</p>
-            </div>
-          ))}
-        </div>
+        <ValueCards />
 
         <ModelPaper />
       </section>
