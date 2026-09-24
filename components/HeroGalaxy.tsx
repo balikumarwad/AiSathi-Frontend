@@ -42,6 +42,12 @@ export default function HeroGalaxy() {
     const dpr = Math.min(window.devicePixelRatio || 1, small ? 1.4 : 2);
 
     let W = 0, H = 0, CX = 0, CY = 0;
+    // The nebula is rendered on a square the size of the canvas DIAGONAL and
+    // blitted centred, because it is the one layer that rotates: on a W x H
+    // bitmap the corners sweep through the frame and its own straight edge
+    // becomes a visible diagonal seam. D x D means no edge can ever reach the
+    // viewport, whatever the angle.
+    let D = 0, NX = 0, NY = 0;
     let nebula: HTMLCanvasElement | null = null;
     let field: HTMLCanvasElement | null = null;
     let stars: Star[] = [];
@@ -54,8 +60,9 @@ export default function HeroGalaxy() {
     };
 
     function buildNebula() {
-      const c = layer(W, H);
+      const c = layer(D, D);
       const x = c.getContext("2d")!;
+      const cx = D / 2, cy = D / 2;
       x.globalCompositeOperation = "lighter";
       const arms = small ? 2 : 3;
       const per = small ? 30 : 46;
@@ -64,8 +71,8 @@ export default function HeroGalaxy() {
         for (let i = 0; i < per; i++) {
           const a = off + i * 0.19 + Math.random() * 0.06;
           const r = 26 + i * (H / 68);
-          const px = CX + Math.cos(a) * r * 1.62 + (Math.random() - 0.5) * 42;
-          const py = CY + Math.sin(a) * r * 0.74 + (Math.random() - 0.5) * 24;
+          const px = cx + Math.cos(a) * r * 1.62 + (Math.random() - 0.5) * 42;
+          const py = cy + Math.sin(a) * r * 0.74 + (Math.random() - 0.5) * 24;
           const rad = (H / 5.4) * (0.5 + Math.random()) - i * 0.22;
           const hue = HUES[(arm + (i % 2)) % HUES.length] + (Math.random() * 18 - 9);
           const alpha = 0.085 * (1 - i / 60) + 0.012;
@@ -77,7 +84,7 @@ export default function HeroGalaxy() {
           x.beginPath(); x.arc(px, py, Math.max(rad, 8), 0, 7); x.fill();
         }
       }
-      const b = layer(W, H);
+      const b = layer(D, D);
       const bx = b.getContext("2d")!;
       bx.filter = "blur(16px)";
       bx.drawImage(c, 0, 0);
@@ -128,6 +135,8 @@ export default function HeroGalaxy() {
       if (!W || !H) return;
       cv!.width = W; cv!.height = H;
       CX = W / 2; CY = H / 2;
+      D = Math.ceil(Math.hypot(W, H));
+      NX = CX - D / 2; NY = CY - D / 2;
       nebula = buildNebula();
       field = buildField();
     }
@@ -142,7 +151,7 @@ export default function HeroGalaxy() {
         ctx!.save();
         ctx!.globalCompositeOperation = "lighter";
         ctx!.translate(CX, CY); ctx!.rotate(t * 0.012); ctx!.translate(-CX, -CY);
-        ctx!.globalAlpha = 0.72; ctx!.drawImage(nebula, 0, 0);
+        ctx!.globalAlpha = 0.72; ctx!.drawImage(nebula, NX, NY);
         ctx!.restore();
       }
       if (field) { ctx!.globalAlpha = 0.85; ctx!.drawImage(field, 0, 0); ctx!.globalAlpha = 1; }

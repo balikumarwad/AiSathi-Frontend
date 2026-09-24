@@ -311,7 +311,7 @@ export default function Home() {
           {/* The mark, on its own. */}
           <div className="relative mx-auto mb-8 w-fit">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mark-light.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
+            <img src="/mark.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
           </div>
           <h2 lang="ne" className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
             साथी बनाउनुहोस्।

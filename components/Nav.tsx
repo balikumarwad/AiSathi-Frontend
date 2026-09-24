@@ -47,7 +47,7 @@ export default function Nav() {
               globals.css. The mark is decorative; the adjacent text names us. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/mark-light.svg"
+            src="/mark.svg"
             alt=""
             aria-hidden
             width={35}
