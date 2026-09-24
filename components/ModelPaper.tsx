@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * The vendor board: every AI we serve, pegged to a string like a pinboard.
+ * The vendor board: the AI we serve, pegged to strings like a pinboard.
  *
  * A deliberate light island on a dark page — the rest of the site is the
  * product, this is the wall it gets planned on.
  *
- * The tags carry vendor NAMES, not logos. A dozen third-party marks would be a
- * dozen trademarked files to license, keep current and ship, and at this size
- * a name is more legible than a mark anyway.
+ * Only vendors we hold a logo for hang here, joined by name against
+ * lib/vendor-logos.ts. The board is a picture, not an index: it hangs the
+ * marks a reader recognises and admits the rest on a blank tag. The complete
+ * list is at /models.
  *
  * Colours are literal hex rather than Tailwind classes. Nearly every colour
  * class on this site is remapped to a dark token in globals.css, so a
@@ -19,6 +20,7 @@
 import { useEffect, useState } from "react";
 
 import { loadCatalogue, vendorOf } from "@/lib/catalogue";
+import { VENDOR_LOGOS } from "@/lib/vendor-logos";
 
 /* Shown until the catalogue lands, and kept if it never does. Real counts from
    the 2026-09-25 snapshot, so the board is never blank — and the caption only
@@ -27,13 +29,11 @@ const FALLBACK: [string, number][] = [
   ["OpenAI", 104], ["Qwen", 54], ["Google", 43], ["Anthropic", 32],
   ["Mistral", 23], ["Z.ai", 21], ["DeepSeek", 19], ["Meta", 13],
   ["Moonshot", 9], ["xAI", 9], ["MiniMax", 8], ["NVIDIA", 8],
-  ["Tencent", 7], ["Aion Labs", 6], ["Cohere", 6], ["Amazon", 5],
-  ["Perplexity", 5], ["Xiaomi", 5], ["Poolside", 4], ["Sakana", 4],
-  ["Nous Research", 3], ["Microsoft", 2], ["IBM Granite", 2], ["StepFun", 2],
-  ["Baidu", 1],
+  ["Tencent", 7], ["Aion Labs", 6], ["Cohere", 6], ["OpenRouter", 6],
+  ["ByteDance Seed", 6], ["Amazon", 5],
 ];
 
-type Tag = { label: string; count: number | null };
+type Tag = { vendor: string; count: number | null; logo: string | null };
 
 /* Deterministic jitter. Math.random() would re-roll on every render — React
    renders twice in development — and the tags would twitch. Hashing the name
@@ -49,6 +49,7 @@ function noise(seed: string, salt: number): number {
 export default function ModelPaper() {
   const [rows, setRows] = useState<[string, number][]>(FALLBACK);
   const [total, setTotal] = useState(0);
+  const [vendors, setVendors] = useState(0);
   const [narrow, setNarrow] = useState(false);
 
   useEffect(() => {
@@ -68,34 +69,41 @@ export default function ModelPaper() {
         const v = vendorOf(m.id);
         byVendor.set(v, (byVendor.get(v) ?? 0) + 1);
       }
-      setRows([...byVendor].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
+      const all = [...byVendor].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      setVendors(all.length);
+      // Only the ones we can actually show a mark for. A vendor whose logo we
+      // do not hold is still counted in the total and in "+N more" — it just
+      // does not hang.
+      setRows(all.filter(([v]) => VENDOR_LOGOS[v]));
       setTotal(models.length);
     });
     return () => { alive = false; };
   }, []);
 
-  // A pinboard is not an index: it shows enough to make the point and admits
-  // how much it left out. The complete list lives at /models.
-  const shown = narrow ? 11 : 21;
-  const tags: Tag[] = rows.slice(0, shown).map(([label, count]) => ({ label, count }));
-  if (rows.length > shown) tags.push({ label: `+${rows.length - shown} more`, count: null });
+  const shown = narrow ? 11 : 18;
+  const tags: Tag[] = rows.slice(0, shown).map(([vendor, count]) => ({
+    vendor, count, logo: VENDOR_LOGOS[vendor] ?? null,
+  }));
+  const hidden = Math.max((vendors || rows.length) - tags.length, 0);
+  if (hidden > 0) tags.push({ vendor: `+${hidden} more`, count: null, logo: null });
 
   const W = narrow ? 420 : 1040;
-  const LINES = narrow ? 5 : 4;
-  const PAD = narrow ? 14 : 28;
-  const TOP = narrow ? 30 : 38;
-  const GAP = narrow ? 98 : 104;
-  const TH = narrow ? 28 : 33;   // tag height
-  const FS = narrow ? 12 : 14;   // label size
-  const CS = FS - 3.5;           // the count, a size down
+  const LINES = 4;
+  const PAD = narrow ? 12 : 26;
+  const TOP = narrow ? 26 : 34;
+  const GAP = narrow ? 98 : 114;
+  const CW = narrow ? 88 : 112;   // card
+  const CH = narrow ? 46 : 58;
+  const FS = narrow ? 8.5 : 9.5;  // the count, under the card
+
   // Contiguous slices, so the heaviest vendors hang on the top string and the
-  // long tail settles to the bottom — the board still reads top-down.
+  // tail settles to the bottom — the board still reads top-down.
   const per = Math.ceil(tags.length / LINES);
-  // ...and the height follows the strings actually used, not the strings asked
-  // for. Ceil-dividing 12 tags over 5 lines fills 4 and leaves the fifth empty,
+  // The height follows the strings actually used, not the strings asked for.
+  // Ceil-dividing 12 tags over 5 lines fills four and leaves the fifth empty,
   // which on a phone was a blank third of the sheet.
   const used = Math.ceil(tags.length / per);
-  const H = TOP + (used - 1) * GAP + 92;
+  const H = TOP + (used - 1) * GAP + CH + (narrow ? 42 : 50);
 
   return (
     <figure
@@ -114,7 +122,7 @@ export default function ModelPaper() {
           Every AI we serve
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: "#9a9488" }}>
-          {total ? `${total} models · ${rows.length} vendors · live` : `${rows.length} vendors`}
+          {total ? `${total} models · ${vendors} vendors · live` : `${rows.length} vendors`}
         </span>
       </figcaption>
 
@@ -123,14 +131,14 @@ export default function ModelPaper() {
         width="100%"
         className="mt-1 block h-auto"
         role="img"
-        aria-label={`AI vendors AIsathi serves: ${rows.slice(0, shown).map(([v]) => v).join(", ")}${rows.length > shown ? `, and ${rows.length - shown} more` : ""}.`}
+        aria-label={`AI vendors AIsathi serves: ${tags.filter((t) => t.logo).map((t) => t.vendor).join(", ")}${hidden ? `, and ${hidden} more` : ""}.`}
       >
         {Array.from({ length: used }, (_, line) => {
           const group = tags.slice(line * per, line * per + per);
           if (!group.length) return null;
 
           const y = TOP + line * GAP;
-          const sag = narrow ? 12 : 18;
+          const sag = narrow ? 11 : 16;
           // A string fixed at both ends dips in the middle. At this sag a
           // parabola is indistinguishable from a catenary and is one line.
           const dip = (x: number) => y + sag * (1 - ((2 * x) / W - 1) ** 2);
@@ -146,66 +154,58 @@ export default function ModelPaper() {
               />
               {group.map((tag) => {
                 const i = group.indexOf(tag);
-                const x = PAD + step * (i + 0.5) + (noise(tag.label, 1) - 0.5) * step * 0.22;
+                const x = PAD + step * (i + 0.5) + (noise(tag.vendor, 1) - 0.5) * step * 0.16;
                 const pin = dip(x);
-                const yTop = pin + (narrow ? 12 : 15) + noise(tag.label, 2) * (narrow ? 12 : 20);
-                const tilt = (noise(tag.label, 3) - 0.5) * 7;
-                const muted = tag.count === null;
-                // Name and count each get their own column: sizing the tag off
-                // the name alone printed them on top of each other ("OpenAI104").
-                // Inter runs ~0.58em average at this weight, the mono count
-                // ~0.62em, and the rest is padding — a hand-pinned tag is
-                // allowed to be loose.
-                const nameW = tag.label.length * FS * 0.58;
-                const countW = muted ? 0 : String(tag.count).length * CS * 0.62 + 9;
-                const tw = Math.max(nameW + countW + 26, 66);
-                const left = x - tw / 2;
+                const yTop = pin + (narrow ? 11 : 14) + noise(tag.vendor, 2) * (narrow ? 8 : 14);
+                const tilt = (noise(tag.vendor, 3) - 0.5) * 6;
+                const left = x - CW / 2;
 
                 return (
-                  <g key={tag.label} transform={`rotate(${tilt} ${x} ${pin})`}>
+                  <g key={tag.vendor} transform={`rotate(${tilt} ${x} ${pin})`}>
                     <line x1={x} y1={pin} x2={x} y2={yTop} stroke="#cdc7ba" strokeWidth="1" />
-                    {/* the peg: a stub across the string, so the tag reads as
+                    {/* the peg: a stub across the string, so the card reads as
                         clipped on rather than floating under it */}
                     <rect x={x - 4} y={pin - 3.5} width="8" height="7" rx="2" fill="#b9b2a2" />
-                    {!muted && (
-                      <rect
-                        x={left + 1.5} y={yTop + 2} width={tw} height={TH} rx="4"
-                        fill="rgba(24,24,27,0.07)"
-                      />
-                    )}
-                    <rect
-                      x={left}
-                      y={yTop}
-                      width={tw}
-                      height={TH}
-                      rx="4"
-                      fill={muted ? "transparent" : "#ffffff"}
-                      stroke={muted ? "#d6d0c2" : "#e2ded3"}
-                      strokeWidth="1"
-                      strokeDasharray={muted ? "3 3" : undefined}
-                    />
-                    <text
-                      x={muted ? x : left + 13}
-                      y={yTop + TH / 2 + FS * 0.35}
-                      textAnchor={muted ? "middle" : "start"}
-                      fontSize={FS}
-                      fontWeight="500"
-                      fill={muted ? "#9a9488" : "#18181b"}
-                      style={{ fontFamily: "var(--font-body), Inter, sans-serif" }}
-                    >
-                      {tag.label}
-                    </text>
-                    {!muted && (
-                      <text
-                        x={left + tw - 11}
-                        y={yTop + TH / 2 + FS * 0.32}
-                        textAnchor="end"
-                        fontSize={CS}
-                        fill="#a8a294"
-                        style={{ fontFamily: "var(--font-mono), monospace" }}
-                      >
-                        {tag.count}
-                      </text>
+
+                    {tag.logo ? (
+                      <>
+                        <rect
+                          x={left + 1.5} y={yTop + 2.5} width={CW} height={CH} rx="3"
+                          fill="rgba(24,24,27,0.10)"
+                        />
+                        <image
+                          href={tag.logo}
+                          x={left} y={yTop} width={CW} height={CH}
+                          preserveAspectRatio="xMidYMid meet"
+                        />
+                        <rect
+                          x={left} y={yTop} width={CW} height={CH} rx="3"
+                          fill="none" stroke="rgba(24,24,27,0.16)" strokeWidth="1"
+                        />
+                        <text
+                          x={x} y={yTop + CH + (narrow ? 12 : 14)}
+                          textAnchor="middle" fontSize={FS}
+                          fill="#a8a294"
+                          style={{ fontFamily: "var(--font-mono), monospace" }}
+                        >
+                          {tag.count}
+                        </text>
+                      </>
+                    ) : (
+                      <>
+                        <rect
+                          x={left} y={yTop} width={CW} height={CH} rx="3"
+                          fill="transparent" stroke="#d6d0c2" strokeWidth="1" strokeDasharray="3 3"
+                        />
+                        <text
+                          x={x} y={yTop + CH / 2 + 4}
+                          textAnchor="middle" fontSize={narrow ? 11 : 12.5} fontWeight="500"
+                          fill="#9a9488"
+                          style={{ fontFamily: "var(--font-body), Inter, sans-serif" }}
+                        >
+                          {tag.vendor}
+                        </text>
+                      </>
                     )}
                   </g>
                 );
