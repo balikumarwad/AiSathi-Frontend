@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
 import Nav from "@/components/Nav";
 import HeroGalaxy from "@/components/HeroGalaxy";
+import ModelPaper from "@/components/ModelPaper";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -190,6 +191,8 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <ModelPaper />
       </section>
 
       {/* ============ PRICING (audit item 2) ============ */}

@@ -25,10 +25,21 @@
 
 import { useEffect, useRef } from "react";
 
+import { loadCatalogue } from "@/lib/catalogue";
+
 type Star = {
   x: number; y: number; r: number; size: number;
   pn: number; cn: number; a: number; drift: number; tw: number;
+  /* Carried so the readout can name what you are pointing at. Empty on the
+     placeholder sky, which is how hover knows to stay quiet until the real
+     catalogue lands. */
+  name: string; price: number;
 };
+
+type Row = { name: string; price: number; ctx: number };
+
+const fmtPrice = (n: number) =>
+  n > 0 ? `रू${Math.round(n).toLocaleString("en-IN")} / M tokens` : "free";
 
 /* Brand coral and its neighbours. Kept off a single hue on purpose: a galaxy
    built from one number reads as a flat gradient, so these walk from orange
@@ -52,6 +63,12 @@ const MASK =
 
 export default function HeroGalaxy() {
   const ref = useRef<HTMLCanvasElement>(null);
+  /* The overlay is written to imperatively rather than through state: the
+     readout changes on pointermove, and re-rendering the tree on every mouse
+     move to retype one line would be a poor trade next to a canvas that is
+     already painting at 60fps. */
+  const titleRef = useRef<HTMLParagraphElement>(null);
+  const subRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     const cv = ref.current;
@@ -74,6 +91,7 @@ export default function HeroGalaxy() {
     let field: HTMLCanvasElement | null = null;
     let stars: Star[] = [];
     let raf = 0, t = 0, visible = true, alive = true;
+    let hover: Star | null = null;
 
     const layer = (w: number, h: number) => {
       const c = document.createElement("canvas");
@@ -129,7 +147,7 @@ export default function HeroGalaxy() {
       return c;
     }
 
-    function makeStars(rows: { price: number; ctx: number }[]) {
+    function makeStars(rows: Row[]) {
       const prices = rows.map((r) => r.price).filter((v) => v > 0);
       const lo = Math.log(Math.min(...prices, 1)), hi = Math.log(Math.max(...prices, 2));
       const cl = Math.log(4096), ch = Math.log(2_000_000);
@@ -146,7 +164,7 @@ export default function HeroGalaxy() {
         const pn = row.price > 0 ? norm(row.price, lo, hi) : 0.02;
         const cn = row.ctx > 0 ? norm(row.ctx, cl, ch) : 0.2;
         return {
-          x: 0, y: 0, pn, cn,
+          x: 0, y: 0, pn, cn, name: row.name, price: row.price,
           r: H * 0.07 + pn * reach,
           size: (0.8 + cn * 2.6) * (small ? 0.8 : 1),
           a: i * 2.399963,
@@ -193,7 +211,7 @@ export default function HeroGalaxy() {
         const v = s.pn;
         ctx!.fillStyle = `rgb(${Math.round(COOL[0] + (HOT[0] - COOL[0]) * v)},${Math.round(COOL[1] + (HOT[1] - COOL[1]) * v)},${Math.round(COOL[2] + (HOT[2] - COOL[2]) * v)})`;
         ctx!.globalAlpha = (0.3 + 0.5 * s.cn) * tw;
-        ctx!.beginPath(); ctx!.arc(s.x, s.y, s.size * dpr, 0, 7); ctx!.fill();
+        ctx!.beginPath(); ctx!.arc(s.x, s.y, s.size * dpr * (s === hover ? 2.4 : 1), 0, 7); ctx!.fill();
       }
       ctx!.restore();
 
@@ -227,21 +245,55 @@ export default function HeroGalaxy() {
 
     resize();
     // A believable sky before the catalogue lands, replaced once it does.
-    makeStars(Array.from({ length: 180 }, () => ({ price: Math.random() * 400 + 5, ctx: 128000 })));
+    makeStars(Array.from({ length: 180 }, () => ({ name: "", price: Math.random() * 400 + 5, ctx: 128000 })));
     draw();
 
-    fetch("/api/v1/models")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!j?.data || !alive) return;
-        makeStars(
-          j.data.map((m: { pricing?: { prompt_npr_per_m?: number }; context_length?: number }) => ({
-            price: Number(m.pricing?.prompt_npr_per_m ?? 0),
-            ctx: Number(m.context_length ?? 0),
-          })),
-        );
-      })
-      .catch(() => { /* the placeholder sky stays; the hero never looks broken */ });
+    // Shared with the reference sheet, so the page asks for the catalogue once.
+    // On failure this resolves to [], and the placeholder sky simply stays —
+    // the hero never looks broken.
+    loadCatalogue().then((rows) => {
+      if (!rows.length || !alive) return;
+      makeStars(
+        rows.map((m) => ({
+          name: m.name || m.id,
+          price: Number(m.pricing?.prompt_npr_per_m ?? 0),
+          ctx: Number(m.context_length ?? 0),
+        })),
+      );
+      if (titleRef.current) {
+        titleRef.current.textContent = `${rows.length} models, one gateway`;
+      }
+    });
+
+    /* Hover is desktop-only by capability, not by width: a touch screen has
+       no persistent pointer, so the caption promises something else there. */
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const IDLE = canHover ? "Hover a star" : "Live from our catalogue";
+    if (subRef.current) subRef.current.textContent = IDLE;
+
+    const onMove = (e: PointerEvent) => {
+      const b = cv.getBoundingClientRect();
+      const mx = (e.clientX - b.left) * (W / b.width);
+      const my = (e.clientY - b.top) * (H / b.height);
+      let best: Star | null = null, bd = Infinity;
+      for (const st of stars) {
+        const d = (st.x - mx) ** 2 + (st.y - my) ** 2;
+        if (d < bd) { bd = d; best = st; }
+      }
+      const reach = (20 * dpr) ** 2;
+      hover = bd < reach && best?.name ? best : null;
+      if (subRef.current) {
+        subRef.current.textContent = hover ? `${hover.name} — ${fmtPrice(hover.price)}` : IDLE;
+      }
+    };
+    const onLeave = () => {
+      hover = null;
+      if (subRef.current) subRef.current.textContent = IDLE;
+    };
+    if (canHover) {
+      cv.addEventListener("pointermove", onMove);
+      cv.addEventListener("pointerleave", onLeave);
+    }
 
     const io = new IntersectionObserver((e) => { visible = e[0].isIntersecting; }, { threshold: 0 });
     io.observe(cv);
@@ -253,25 +305,51 @@ export default function HeroGalaxy() {
       cancelAnimationFrame(raf);
       io.disconnect();
       window.removeEventListener("resize", onResize);
+      cv.removeEventListener("pointermove", onMove);
+      cv.removeEventListener("pointerleave", onLeave);
     };
   }, []);
 
   return (
-    <canvas
-      ref={ref}
-      aria-label="A galaxy of every AI model AIsathi serves. Distance from the centre is price, size is context window."
-      role="img"
-      className="h-[280px] w-full sm:h-[360px] lg:h-[420px]"
-      style={{
-        // Two halves of one idea. The canvas paints no ground of its own
-        // (draw() clears to transparent), so the page colour IS the space
-        // between the stars; and this mask fades the outer third to nothing,
-        // so the sky runs out instead of stopping at a border. The ellipse is
-        // wider than tall to match the galaxy's own 1.6 : 0.73 proportions,
-        // otherwise the mask clips the arms before it reaches the corners.
-        WebkitMaskImage: MASK,
-        maskImage: MASK,
-      }}
-    />
+    <div className="relative">
+      <canvas
+        ref={ref}
+        aria-label="A galaxy of every AI model AIsathi serves. Distance from the centre is price, size is context window."
+        role="img"
+        className="h-[280px] w-full sm:h-[360px] lg:h-[420px]"
+        style={{
+          // Two halves of one idea. The canvas paints no ground of its own
+          // (draw() clears to transparent), so the page colour IS the space
+          // between the stars; and this mask fades the outer third to nothing,
+          // so the sky runs out instead of stopping at a border. The ellipse is
+          // wider than tall to match the galaxy's own 1.6 : 0.73 proportions,
+          // otherwise the mask clips the arms before it reaches the corners.
+          WebkitMaskImage: MASK,
+          maskImage: MASK,
+        }}
+      />
+
+      {/* The readout sits in the corner the mask has already faded to nothing,
+          so it reads against the page rather than against stars. aria-hidden
+          because the count is prose the canvas label already carries, and
+          pointer-events-none so it never eats a hover meant for a star. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1 top-1 text-left sm:left-2 sm:top-2"
+      >
+        <p
+          ref={titleRef}
+          className="font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-zinc-100 sm:text-lg"
+        >
+          340+ models, one gateway
+        </p>
+        <p
+          ref={subRef}
+          className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500 sm:text-[11px]"
+        >
+          Live from our catalogue
+        </p>
+      </div>
+    </div>
   );
 }
