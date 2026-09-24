@@ -20,7 +20,7 @@ const MODELS = [
 /* Honest signals only — no invented user counts (audit item 1). */
 const TRUST: [ReactNode, string][] = [
   ["340+", "live models"],
-  ["रू0", "to start — free models"],
+  [<><span lang="ne">रू</span>0</>, "to start — free models"],
   ["eSewa · Khalti · card", "local payments"],
   [<MapPin key="np" size={22} className="mx-auto" aria-hidden />, "built in Nepal"],
 ];
@@ -34,7 +34,7 @@ const COMPARISON: [string, string, string][] = [
 ];
 
 const USE_CASES = [
-  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: "Homework, translations, quick answers. From रू44 per million tokens." },
+  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: <>Homework, translations, quick answers. From <span lang="ne">रू</span>44 per million tokens.</> },
   { icon: Brain, title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
   { icon: Rocket, title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
   { icon: Palette, title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },

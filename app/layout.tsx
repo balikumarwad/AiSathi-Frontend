@@ -30,9 +30,12 @@ const body = Inter({
   subsets: ["latin"],
 });
 
+// Preload the Devanagari subset only. `subsets` controls preloading, not which
+// @font-face rules exist - Mukta's Latin faces are still declared, just never
+// fetched, because Inter sits ahead of Mukta in --stack-ui and claims Latin.
 const nepali = Mukta({
   variable: "--font-np",
-  subsets: ["devanagari", "latin"],
+  subsets: ["devanagari"],
   weight: ["400", "500", "600", "700"],
 });
 

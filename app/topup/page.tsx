@@ -183,7 +183,7 @@ function TopupInner() {
                     )}
                   </div>
                   <div className="mt-1 text-2xl font-bold">
-                    {p.currency === "NPR" ? "रू" : "$"}
+                    {p.currency === "NPR" ? <span lang="ne">रू</span> : "$"}
                     {Number(p.price).toLocaleString()}
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
@@ -212,7 +212,7 @@ function TopupInner() {
                   (amount === p ? "border-red-500 bg-red-600/20" : "border-zinc-800 hover:border-zinc-600")
                 }
               >
-                रू {p}
+                <span lang="ne">रू</span> {p}
               </button>
             ))}
           </div>
@@ -229,10 +229,10 @@ function TopupInner() {
             disabled={busy || !apiKey || amount < 50}
             className="w-full rounded-lg bg-purple-600 px-5 py-3 font-medium hover:bg-purple-500 disabled:opacity-40"
           >
-            {busy ? "Starting…" : `Pay रू ${amount.toLocaleString()} with Khalti`}
+            {busy ? "Starting…" : <>Pay <span lang="ne">रू</span> {amount.toLocaleString()} with Khalti</>}
           </button>
           <p className="text-xs text-zinc-500">
-            Minimum रू50. You&apos;ll be taken to Khalti to pay, then brought back here.
+            Minimum <span lang="ne">रू</span>50. You&apos;ll be taken to Khalti to pay, then brought back here.
           </p>
           </>
           )}

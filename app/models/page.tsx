@@ -6,7 +6,7 @@
  * chips, hairline table with uppercase headers, Free/badges in red outline.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Nav from "@/components/Nav";
 
 type Model = {
@@ -25,9 +25,9 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "premium", label: "Premium" },
 ];
 
-function fmtPrice(n: number) {
+function fmtPrice(n: number): ReactNode {
   if (n === 0) return "Free";
-  return "रू" + (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2));
+  return <><span lang="ne">रू</span>{Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2)}</>;
 }
 
 function tagOf(m: Model): Filter {
@@ -185,7 +185,7 @@ export default function ModelsPage() {
         className="p-6 text-center text-xs"
         style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-hairline)" }}
       >
-        AIsathi · तपाईंको AI साथी · aisathi.io
+        AIsathi · <span lang="ne">तपाईंको AI साथी</span> · aisathi.io
       </footer>
     </div>
   );
