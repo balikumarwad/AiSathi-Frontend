@@ -5,6 +5,7 @@ import Nav from "@/components/Nav";
 import HeroGalaxy from "@/components/HeroGalaxy";
 import ModelPaper from "@/components/ModelPaper";
 import ValueCards from "@/components/ValueCards";
+import { faqLd, ldScript, offersLd } from "@/lib/seo";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -41,6 +42,15 @@ const USE_CASES = [
   { icon: Rocket, title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
   { icon: Palette, title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
 ];
+
+/* The credit packages, for structured data. Mirrors the pricing cards below;
+   if one changes, change both — a price in schema that the page contradicts is
+   worse than no schema at all. */
+const PLAN_OFFERS = [
+  { name: "Free", npr: 0, description: "26+ free models, 150 messages a day. No card required." },
+  { name: "Starter", npr: 499, description: "5,990 credits — 20% bonus. Every model, paid with Khalti, eSewa or card." },
+  { name: "Pro", npr: 999, description: "12,990 credits — 30% bonus. Credits never expire." },
+] as const;
 
 const FAQ: [string, string][] = [
   [
@@ -80,6 +90,10 @@ const FAQ: [string, string][] = [
 export default function Home() {
   return (
     <div className="min-h-screen overflow-x-clip bg-black text-zinc-100">
+      {/* Built from the same FAQ and plan constants this page renders, so the
+          markup cannot claim a question or a price the page does not show. */}
+      <script {...ldScript(faqLd(FAQ))} />
+      <script {...ldScript(offersLd(PLAN_OFFERS))} />
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
 
