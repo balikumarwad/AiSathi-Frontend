@@ -17,7 +17,8 @@
  * paper. This element opts out of the theme on purpose, and says so.
  */
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 import { loadCatalogue, vendorOf } from "@/lib/catalogue";
 import { VENDOR_LOGOS } from "@/lib/vendor-logos";
@@ -51,6 +52,7 @@ export default function ModelPaper() {
   const [total, setTotal] = useState(0);
   const [vendors, setVendors] = useState(0);
   const [narrow, setNarrow] = useState(false);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -79,6 +81,111 @@ export default function ModelPaper() {
     });
     return () => { alive = false; };
   }, []);
+
+  /* Scrolling swings the cards.
+   *
+   * They hang on strings, so the page moving under them should move them. Each
+   * card is a damped pendulum pinned at its peg: scrolling kicks it, and it
+   * oscillates back to rest. The stiffness and damping vary per card off the
+   * same name hash as the tilt, so they do not swing in lockstep — that
+   * synchronised look is what makes this kind of effect read as fake.
+   *
+   * Written straight to the transform attribute, never through state: this
+   * runs at 60fps and re-rendering a tree of 19 cards per frame to change one
+   * number would be indefensible.
+   *
+   * The loop is not permanent. It starts on scroll and stops itself once
+   * everything has settled, so a still page costs nothing.
+   */
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    type Node = {
+      el: SVGGElement; base: number; x: number; y: number;
+      k: number; c: number; kick: number; a: number; v: number;
+    };
+
+    const nodes: Node[] = Array.from(
+      svg.querySelectorAll<SVGGElement>("[data-swing]"),
+    ).map((el) => {
+      const n = Number(el.dataset.n ?? 0.5);
+      return {
+        el,
+        base: Number(el.dataset.base ?? 0),
+        x: Number(el.dataset.px ?? 0),
+        y: Number(el.dataset.py ?? 0),
+        k: 22 + n * 20,        // stiffness -> period, roughly 1.0-1.3s
+        c: 2.2 + n * 1.4,      // damping   -> settles in a second or two
+        kick: 11 + n * 7,      // how hard this one takes a scroll
+        a: 0,
+        v: 0,
+      };
+    });
+    if (!nodes.length) return;
+
+    let raf = 0, running = false, last = 0, visible = true;
+    let lastY = window.scrollY;
+
+    const step = (ts: number) => {
+      const dt = Math.min((ts - last) / 1000, 1 / 30);
+      last = ts;
+      let moving = false;
+      for (const n of nodes) {
+        n.v += (-n.k * n.a - n.c * n.v) * dt;
+        n.a += n.v * dt;
+        if (n.a > 9) { n.a = 9; n.v = 0; }        // no helicopters
+        if (n.a < -9) { n.a = -9; n.v = 0; }
+        if (Math.abs(n.a) > 0.015 || Math.abs(n.v) > 0.015) moving = true;
+        n.el.setAttribute("transform", `rotate(${n.base + n.a} ${n.x} ${n.y})`);
+      }
+      if (moving) {
+        raf = requestAnimationFrame(step);
+      } else {
+        running = false;
+        for (const n of nodes) {
+          n.a = 0; n.v = 0;
+          n.el.setAttribute("transform", `rotate(${n.base} ${n.x} ${n.y})`);
+        }
+      }
+    };
+
+    const wake = () => {
+      if (running || !visible) return;
+      running = true;
+      last = performance.now();
+      raf = requestAnimationFrame(step);
+    };
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const d = y - lastY;
+      lastY = y;
+      if (!visible) return;
+      // Clamped, so a flung scroll gives the same shove as a firm one. A raw
+      // delta on a trackpad fling sends every card past the clamp at once.
+      const imp = Math.max(-1, Math.min(1, d / 55));
+      for (const n of nodes) n.v += imp * n.kick;
+      wake();
+    };
+
+    const io = new IntersectionObserver(
+      (e) => {
+        visible = e[0].isIntersecting;
+        if (!visible && running) { cancelAnimationFrame(raf); running = false; }
+      },
+      { threshold: 0 },
+    );
+    io.observe(svg);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [rows, narrow]);
 
   const shown = narrow ? 11 : 18;
   const tags: Tag[] = rows.slice(0, shown).map(([vendor, count]) => ({
@@ -127,6 +234,7 @@ export default function ModelPaper() {
       </figcaption>
 
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
         className="mt-1 block h-auto"
@@ -161,7 +269,15 @@ export default function ModelPaper() {
                 const left = x - CW / 2;
 
                 return (
-                  <g key={tag.vendor} transform={`rotate(${tilt} ${x} ${pin})`}>
+                  <g
+                    key={tag.vendor}
+                    transform={`rotate(${tilt} ${x} ${pin})`}
+                    data-swing=""
+                    data-base={tilt}
+                    data-px={x}
+                    data-py={pin}
+                    data-n={noise(tag.vendor, 4)}
+                  >
                     <line x1={x} y1={pin} x2={x} y2={yTop} stroke="#cdc7ba" strokeWidth="1" />
                     {/* the peg: a stub across the string, so the card reads as
                         clipped on rather than floating under it */}
@@ -215,10 +331,25 @@ export default function ModelPaper() {
         })}
       </svg>
 
-      <p className="mt-1 border-t pt-4 text-xs leading-relaxed" style={{ borderColor: "#e4e0d8", color: "#6b675f" }}>
-        One key reaches all of them, billed together in rupees. Switching vendor
-        is one word in your request — no new account, no second card.
-      </p>
+      {/* The board hangs 18 of 55 and says so on a blank tag — this is the tag
+          made clickable, because "+37 more" should lead somewhere. */}
+      <div
+        className="mt-1 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
+        style={{ borderColor: "#e4e0d8" }}
+      >
+        <p className="max-w-md text-xs leading-relaxed" style={{ color: "#6b675f" }}>
+          One key reaches all of them, billed together in rupees. Switching
+          vendor is one word in your request — no new account, no second card.
+        </p>
+        <Link
+          href="/models"
+          className="inline-flex flex-none items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-[#f1ede1]"
+          style={{ borderColor: "#d9d3c4", color: "#18181b" }}
+        >
+          Browse all {total || 454} models
+          <span aria-hidden style={{ color: "#f4564e" }}>→</span>
+        </Link>
+      </div>
     </figure>
   );
 }
