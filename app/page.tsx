@@ -85,8 +85,13 @@ export default function Home() {
           <Nav />
         </div>
 
-        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:gap-8">
-          <div className="text-center lg:text-left">
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-x-8 gap-y-9 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:gap-y-6">
+          {/* Three grid items, not two: the headline and the rest of the copy
+              are separate so the galaxy can fall between them on a phone. On lg
+              they are placed back into column 1 as rows 1 and 2, and the galaxy
+              spans both — the desktop layout is unchanged. Placement rather
+              than a second instance, so the canvas still mounts once. */}
+          <div className="text-center lg:col-start-1 lg:row-start-1 lg:text-left">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-[var(--elevated)] px-3.5 py-1.5 text-xs tracking-wide text-zinc-400">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
               <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
@@ -98,7 +103,14 @@ export default function Home() {
                 Pay in <span lang="ne">रुपैयाँ</span>.
               </span>
             </h1>
-            <p className="mt-6 max-w-xl text-base text-zinc-400 sm:text-lg lg:mx-0">
+          </div>
+
+          <div className="w-full lg:col-start-2 lg:row-start-1 lg:row-span-2">
+            <HeroGalaxy />
+          </div>
+
+          <div className="text-center lg:col-start-1 lg:row-start-2 lg:text-left">
+            <p className="max-w-xl text-base text-zinc-400 sm:text-lg lg:mx-0">
               One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
               Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
             </p>
@@ -130,14 +142,6 @@ export default function Home() {
                 </Link>
               </p>
             </div>
-          </div>
-
-          {/* On a phone the galaxy leads: it is the one thing on the page that
-              is the product rather than a picture of it, and above the fold is
-              where that has to land. On lg the grid takes over and source
-              order returns — copy left, galaxy right. */}
-          <div className="order-first w-full lg:order-none">
-            <HeroGalaxy />
           </div>
 
         </div>
