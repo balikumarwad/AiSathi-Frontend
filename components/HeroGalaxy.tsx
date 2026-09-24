@@ -4,9 +4,13 @@
  * Hero: the live model catalogue drawn as a galaxy.
  *
  * Every star is a real model from /api/v1/models — distance from the centre is
- * price, size is context window, colour runs cool to coral. The gateway sits at
- * the core. It is the product, not decoration: when we add models, the hero
- * changes on its own.
+ * price, size is context window, colour runs pale to brand coral. The gateway
+ * sits at the core. It is the product, not decoration: when we add models, the
+ * hero changes on its own.
+ *
+ * It has no edge. The canvas clears to transparent and a radial mask fades the
+ * outer third away, so it dissolves into the page rather than sitting on it in
+ * a box.
  *
  * Budget, because this hero used to be a 5 MB video:
  *   - canvas 2D, no 3D library, no image request
@@ -26,7 +30,25 @@ type Star = {
   pn: number; cn: number; a: number; drift: number; tw: number;
 };
 
-const HUES = [258, 272, 288, 246];
+/* Brand coral and its neighbours. Kept off a single hue on purpose: a galaxy
+   built from one number reads as a flat gradient, so these walk from orange
+   through coral into pink and the arms separate. */
+const HUES = [8, 352, 20, 340];
+
+/* The cool end of the star ramp — the palest models. Warm, not lavender, so
+   the whole sky belongs to one family. The hot end is --primary itself. */
+const COOL: [number, number, number] = [255, 233, 226];
+const HOT: [number, number, number] = [244, 86, 78];
+
+/* The radii are 50%/50% — an ellipse inscribed in the box — and that is not a
+   taste call. A radial-gradient measures its stops along its own radius, so an
+   ellipse wider than the box runs out of gradient before it runs out of box
+   and the mid-edges stay half opaque: a softer rectangle, still a rectangle. At
+   50% the top, bottom, left and right edges all land exactly on the final
+   stop, and the corners are past it. The star orbit is sized to fit inside
+   this same ellipse — see rMax in makeStars. */
+const MASK =
+  "radial-gradient(ellipse 50% 50% at 50% 50%, #000 0%, #000 46%, rgba(0,0,0,0.5) 74%, transparent 100%)";
 
 export default function HeroGalaxy() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -94,7 +116,7 @@ export default function HeroGalaxy() {
     function buildField() {
       const c = layer(W, H);
       const x = c.getContext("2d")!;
-      x.fillStyle = "#e9e4ff";
+      x.fillStyle = `rgb(${COOL[0]},${COOL[1]},${COOL[2]})`;
       const n = small ? 480 : 1200;
       for (let i = 0; i < n; i++) {
         const px = Math.random() * W, py = Math.random() * H;
@@ -113,7 +135,13 @@ export default function HeroGalaxy() {
       const cl = Math.log(4096), ch = Math.log(2_000_000);
       const norm = (v: number, a: number, b: number) =>
         Math.max(0, Math.min(1, (Math.log(Math.max(v, 1)) - a) / (b - a)));
-      const reach = Math.min(W, H) * 0.42;
+      // The orbit is 1.6 wide by 0.73 tall against a mask ellipse of W/2 by
+      // H/2, so the horizontal extent is what binds: a reach tuned to the
+      // short side used to push the priciest models straight out through the
+      // left and right edges, where the mask now deletes them. 0.94 leaves
+      // the outermost star inside the fade rather than exactly on zero.
+      const rMax = Math.min((W / 2) * 0.94 / 1.6, (H / 2) * 0.94 / 0.73);
+      const reach = Math.max(rMax - H * 0.07, H * 0.12);
       stars = rows.map((row, i) => {
         const pn = row.price > 0 ? norm(row.price, lo, hi) : 0.02;
         const cn = row.ctx > 0 ? norm(row.ctx, cl, ch) : 0.2;
@@ -144,8 +172,7 @@ export default function HeroGalaxy() {
     function draw() {
       if (!alive) return;
       if (!visible || document.hidden) { raf = requestAnimationFrame(draw); return; }
-      ctx!.fillStyle = "#05050a";
-      ctx!.fillRect(0, 0, W, H);
+      ctx!.clearRect(0, 0, W, H);
 
       if (nebula) {
         ctx!.save();
@@ -164,7 +191,7 @@ export default function HeroGalaxy() {
         s.y = CY + Math.sin(a) * s.r * 0.73;
         const tw = reduce ? 1 : 0.7 + 0.3 * Math.sin(t * 2 + s.tw);
         const v = s.pn;
-        ctx!.fillStyle = `rgb(${Math.round(233 + (244 - 233) * v)},${Math.round(228 + (86 - 228) * v)},${Math.round(255 + (78 - 255) * v)})`;
+        ctx!.fillStyle = `rgb(${Math.round(COOL[0] + (HOT[0] - COOL[0]) * v)},${Math.round(COOL[1] + (HOT[1] - COOL[1]) * v)},${Math.round(COOL[2] + (HOT[2] - COOL[2]) * v)})`;
         ctx!.globalAlpha = (0.3 + 0.5 * s.cn) * tw;
         ctx!.beginPath(); ctx!.arc(s.x, s.y, s.size * dpr, 0, 7); ctx!.fill();
       }
@@ -178,18 +205,18 @@ export default function HeroGalaxy() {
       ctx!.save(); ctx!.translate(CX, CY); ctx!.scale(0.075, 1);
       const g1 = ctx!.createRadialGradient(0, 0, 0, 0, 0, beam);
       g1.addColorStop(0, "rgba(255,255,255,0.8)");
-      g1.addColorStop(0.25, "rgba(226,214,255,0.2)");
-      g1.addColorStop(1, "rgba(180,150,255,0)");
+      g1.addColorStop(0.25, "rgba(255,214,204,0.2)");
+      g1.addColorStop(1, "rgba(255,150,132,0)");
       ctx!.fillStyle = g1; ctx!.beginPath(); ctx!.arc(0, 0, beam, 0, 7); ctx!.fill(); ctx!.restore();
       ctx!.save(); ctx!.translate(CX, CY); ctx!.scale(1, 0.1);
       const g2 = ctx!.createRadialGradient(0, 0, 0, 0, 0, beam * 0.74);
       g2.addColorStop(0, "rgba(255,255,255,0.5)");
-      g2.addColorStop(1, "rgba(190,160,255,0)");
+      g2.addColorStop(1, "rgba(255,160,140,0)");
       ctx!.fillStyle = g2; ctx!.beginPath(); ctx!.arc(0, 0, beam * 0.74, 0, 7); ctx!.fill(); ctx!.restore();
       const g3 = ctx!.createRadialGradient(CX, CY, 0, CX, CY, H * 0.06 * pulse);
       g3.addColorStop(0, "#ffffff");
-      g3.addColorStop(0.35, "rgba(255,255,255,0.55)");
-      g3.addColorStop(1, "rgba(255,255,255,0)");
+      g3.addColorStop(0.35, "rgba(255,246,244,0.55)");
+      g3.addColorStop(1, "rgba(255,246,244,0)");
       ctx!.fillStyle = g3; ctx!.beginPath(); ctx!.arc(CX, CY, H * 0.06 * pulse, 0, 7); ctx!.fill();
       ctx!.restore();
 
@@ -234,8 +261,17 @@ export default function HeroGalaxy() {
       ref={ref}
       aria-label="A galaxy of every AI model AIsathi serves. Distance from the centre is price, size is context window."
       role="img"
-      className="h-[280px] w-full rounded-2xl sm:h-[360px] lg:h-[420px]"
-      style={{ background: "#05050a" }}
+      className="h-[280px] w-full sm:h-[360px] lg:h-[420px]"
+      style={{
+        // Two halves of one idea. The canvas paints no ground of its own
+        // (draw() clears to transparent), so the page colour IS the space
+        // between the stars; and this mask fades the outer third to nothing,
+        // so the sky runs out instead of stopping at a border. The ellipse is
+        // wider than tall to match the galaxy's own 1.6 : 0.73 proportions,
+        // otherwise the mask clips the arms before it reaches the corners.
+        WebkitMaskImage: MASK,
+        maskImage: MASK,
+      }}
     />
   );
 }
