@@ -15,7 +15,7 @@ export default function NotFound() {
           This page has wandered off. Let&apos;s get you back.
         </p>
         <div className="mt-10 flex gap-4">
-          <Link href="/" className="rounded-full bg-red-600 px-7 py-3 font-medium transition hover:bg-red-500">
+          <Link href="/" className="rounded-full bg-[var(--primary)] px-7 py-3 font-medium text-white transition hover:bg-[var(--primary-hover)]">
             Go home
           </Link>
           <Link href="/playground" className="rounded-full border border-zinc-700 px-7 py-3 font-medium transition hover:border-zinc-500">

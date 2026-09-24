@@ -55,7 +55,7 @@ export default function Nav() {
             className="h-9 w-auto flex-none transition-transform duration-200 group-hover:scale-110"
           />
           <span>
-            <span style={{ color: "var(--brand-red)" }}>AI</span>sathi
+            <span style={{ color: "var(--primary)" }}>AI</span>sathi
           </span>
         </Link>
 

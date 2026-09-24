@@ -162,13 +162,14 @@ export default function LoginPage() {
             {isSignup ? "Create account" : "Welcome back"}
           </h1>
           <div
+            lang="ne"
             className="mt-1.5 font-[family-name:var(--font-script)] text-xl"
             style={{ color: "var(--ev-red)" }}
           >
             {isSignup ? "खाता बनाउनुहोस्" : "फेरि स्वागत छ"}
           </div>
           <p className="mb-9 mt-2.5 text-[15px]" style={{ color: "var(--text-body)" }}>
-            Your AI assistant, साथी, is ready when you are.
+            Your AI assistant, <span lang="ne">साथी</span>, is ready when you are.
           </p>
 
           {!sb ? (
@@ -222,7 +223,7 @@ export default function LoginPage() {
                     />
                   </div>
                   <button onClick={continueWithEmail} disabled={!email.includes("@")} style={pillBtn} className="disabled:opacity-40">
-                    Continue — जारी राख्नुहोस्
+                    Continue — <span lang="ne">जारी राख्नुहोस्</span>
                   </button>
                 </>
               )}
@@ -306,7 +307,7 @@ export default function LoginPage() {
                   )}
 
                   <button onClick={submitPassword} disabled={busy || password.length < 6} style={pillBtn} className="disabled:opacity-40">
-                    {busy ? "One moment…" : isSignup ? "Create account — खाता बनाउनुहोस्" : "Sign in — साइन इन"}
+                    {busy ? "One moment…" : isSignup ? <>Create account — <span lang="ne">खाता बनाउनुहोस्</span></> : <>Sign in — <span lang="ne">साइन इन</span></>}
                   </button>
                 </>
               )}
@@ -341,7 +342,7 @@ export default function LoginPage() {
       </main>
 
       <footer className="pb-6 text-center text-xs" style={{ color: "var(--text-faint)" }}>
-        AIsathi · तपाईंको AI साथी · <Link href="/" className="hover:underline">aisathi.io</Link>
+        AIsathi · <span lang="ne">तपाईंको AI साथी</span> · <Link href="/" className="hover:underline">aisathi.io</Link>
       </footer>
     </div>
   );

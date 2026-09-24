@@ -10,7 +10,7 @@
 
    Rules this encodes:
      1  three surfaces, two text weights, one border
-     2  one accent (#10A37F), used sparingly
+     2  one accent (#f4564e coral), used sparingly
      3  radius scale 4 / 8 / 12 / 16 / 24 / pill
      5  Inter + Mukta + Geist Mono
      6  dark default, light supported
@@ -21,7 +21,14 @@
    deletes something.
    =========================================================================== */
 :root {
-  /* --- surfaces ------------------------------------------------------- */
+  /* --- surfaces -------------------------------------------------------
+     Dark is the default and the only theme we ship. The ground is #0d0d0d,
+     not #000: pure black gives an elevated surface nothing to lift away
+     from, and on OLED it smears where a panel edge meets the page.
+
+     The light palette is kept intact below, behind [data-theme="light"].
+     Nothing reads it today — it is there so the work is not lost and so a
+     future toggle is a one-attribute change, not a rewrite. */
   --bg: #0d0d0d;
   --surface: #171717;
   --elevated: #1f1f1f;
@@ -34,13 +41,27 @@
   --fg-rgb: 255, 255, 255;
   --bg-rgb: 13, 13, 13;
 
-  /* --- accent --------------------------------------------------------- */
-  --primary: #10a37f;
-  --primary-hover: #0e8e6e;
-  --primary-press: #0c7a5e;
-  --on-primary: #ffffff;
-  --primary-ghost: rgba(16, 163, 127, 0.12);
+  /* Mid-ramp greys, consumed only by the Tailwind shim at the bottom of this
+     file. They live here rather than in @theme because they must flip with
+     the theme like everything else: a text-zinc-300 that stays dark would be
+     invisible on a dark ground. Dark uses the stock zinc ramp; light
+     inverts it. */
+  --ramp-600: #52525b;
+  --ramp-500: #71717a;
+  --ramp-300: #d4d4d8;
+  --ramp-200: #e4e4e7;
+  --ramp-50: #fafafa;
 
+  /* --- accent --------------------------------------------------------- */
+  --primary: #f4564e;
+  --primary-hover: #e2463e;
+  --primary-press: #c93b34;
+  --on-primary: #ffffff;
+  --primary-ghost: rgba(244, 86, 78, 0.1);
+
+  /* Deliberately darker and less saturated than --primary. The accent is now
+     a red family colour, so destructive actions are ALSO given an outline
+     treatment rather than a solid fill - never a solid red button. */
   --danger: #e5484d;
   --danger-ghost: rgba(229, 72, 77, 0.12);
   --warning: #e5a34d;
@@ -67,60 +88,76 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
 
   /* --- typography ------------------------------------------------------
-     ONE stack, used everywhere. Fonts resolve per glyph, so Latin stays in
-     Inter and Devanagari reaches Mukta.
+     Script routing is explicit, via each face's own unicode-range.
 
-     "Inter" is named literally rather than through var(--font-body) because
-     next/font expands that variable to `"Inter", "Inter Fallback"`, and that
-     fallback is a local metric-matched face which resolves to Roboto on
-     Android - which DOES carry Devanagari and would shadow Mukta for our
-     largest group of users. Naming Inter directly puts Mukta ahead of it.
-     var(--font-body) still trails so the metric-matched fallback covers Latin
-     while Inter is loading.
+     Inter's @font-face rules cover Latin, Cyrillic and Greek and EXCLUDE the
+     Devanagari block. So with Inter first, every Latin glyph resolves in
+     Inter, and every Devanagari glyph finds no Inter face and falls to the
+     next family, Mukta, whose Devanagari face declares U+0900-097F.
 
-     --font-display and --font-script remain as aliases so the ~50 existing
-     usages keep compiling. They MUST resolve to the full stack: any element
-     that sets font-family replaces the body stack outright, so a display
-     heading pointing at bare Inter loses Mukta and its Devanagari silently
-     falls back to the OS. Both aliases go away as pages migrate. */
-  --stack-ui: "Inter", var(--font-np), var(--font-body), system-ui,
-    -apple-system, "Segoe UI", sans-serif;
+     Order matters in one direction only. Mukta must NOT come first:
+     next/font emits Mukta's Latin faces too (the `subsets` option only
+     controls preloading), so "Mukta" first would draw all English in Mukta.
+
+     Families are named literally ("Inter", "Mukta" are the names next/font
+     gives its @font-face rules) rather than via var(--font-body) and
+     var(--font-np), because those expand to include metric-matched local
+     fallbacks with no unicode-range. "Inter Fallback" resolves to Roboto on
+     Android, which carries Devanagari and would steal it from Mukta - so it
+     sits after Mukta, where it only covers Latin while Inter is loading.
+
+     --font-display and --font-script are aliases for the ~50 legacy call
+     sites. They MUST resolve to the full stack: an element that sets
+     font-family replaces the body stack outright. */
+  --stack-ui: "Inter", "Mukta", "Inter Fallback", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
   --font-display: var(--stack-ui);
-  --font-script: var(--font-np), var(--font-body), sans-serif;
+  --font-script: var(--stack-ui);
 }
 
 /* ---------------------------------------------------------------------------
-   LIGHT THEME
+   LIGHT THEME — dormant.
 
-   Deliberately gated behind an explicit stamp for now. Turning on
-   prefers-color-scheme today would hand a half-broken light site to every
-   visitor whose OS is set to light, because roughly half the platform still
-   hardcodes Tailwind zinc/red classes that do not respond to tokens.
+   Opt-in only, via an explicit [data-theme="light"] stamp on <html>. Nothing
+   sets it today, and prefers-color-scheme is deliberately NOT wired up.
 
-   When the page migrations are done, wrap this block and delete this note:
-
-     @media (prefers-color-scheme: light) {
-       :root:not([data-theme="dark"]) { ...the declarations below... }
-     }
+   Two things must be handled before this is switched on, because tokens alone
+   do not cover them:
+     - the logo. /mark.svg has cream cells that vanish on a light ground;
+       /mark-light.svg is the inverted artwork and would have to be swapped in.
+     - ~20 hover:bg-white/5 states in the playground, which are a white film
+       on a white surface. They need hover:bg-[var(--surface-inset)].
    --------------------------------------------------------------------------- */
 :root[data-theme="light"] {
-  --bg: #ffffff;
+  /* Off-white, not #fff: a flat pure white leaves no room for an elevated
+     surface to read as raised, and glares on the cheap LCDs most of our
+     users are on. */
+  --bg: #fcfcfc;
   --surface: #f7f7f7;
   --elevated: #ffffff;
-  --text: #171717;
-  --text-2: #737373;
-  --border: rgba(23, 23, 23, 0.1);
-  --border-strong: rgba(23, 23, 23, 0.18);
+  --text: #18181b;
+  --text-2: #71717a;
+  --border: #ececec;
+  --border-strong: #dcdcdc;
 
-  --fg-rgb: 23, 23, 23;
-  --bg-rgb: 255, 255, 255;
+  --fg-rgb: 24, 24, 27;
+  --bg-rgb: 252, 252, 252;
 
-  --primary-ghost: rgba(16, 163, 127, 0.1);
-  --danger-ghost: rgba(229, 72, 77, 0.1);
-  --warning-ghost: rgba(229, 163, 77, 0.12);
+  --ramp-600: #a1a1aa;
+  --ramp-500: #8b8b93;
+  --ramp-300: #52525b;
+  --ramp-200: #3f3f46;
+  --ramp-50: #111113;
 
-  --shadow: 0 1px 2px rgba(23, 23, 23, 0.06);
-  --shadow-lg: 0 8px 24px rgba(23, 23, 23, 0.08);
+  /* Darker and less saturated than --primary, so a destructive action never
+     reads as the accent. */
+  --danger: #9f1239;
+  --danger-ghost: rgba(159, 18, 57, 0.08);
+  --warning: #9a6114;
+  --warning-ghost: rgba(154, 97, 20, 0.12);
+
+  --shadow: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-lg: 0 8px 24px rgba(24, 24, 27, 0.06);
 }
 
 /* ---------------------------------------------------------------------------
@@ -139,10 +176,14 @@
   --ev-black: var(--bg);
   --ev-ink: var(--bg);
   --ev-white: var(--text);
-  --ev-red: var(--brand-red);
-  --ev-red-hover: #a81a25;
-  --ev-red-15: rgba(200, 32, 45, 0.15);
-  --ev-red-60: rgba(200, 32, 45, 0.6);
+  /* Was brand red. The interface no longer uses red at all: this alias now
+     resolves to the green accent, so the ~12 remaining legacy call sites
+     pick up the new palette without individual edits. Brand red survives
+     only inside the logo artwork (mark.svg), never in the UI. */
+  --ev-red: var(--primary);
+  --ev-red-hover: var(--primary-hover);
+  --ev-red-15: var(--primary-ghost);
+  --ev-red-60: var(--primary);
   --ev-white-02: rgba(var(--fg-rgb), 0.02);
   --ev-white-05: rgba(var(--fg-rgb), 0.05);
   --ev-white-10: rgba(var(--fg-rgb), 0.1);
@@ -160,8 +201,8 @@
   --border-hairline: var(--border);
   --border-accent: var(--ev-red-60);
 
-  --accent: var(--brand-red);
-  --accent-hover: var(--ev-red-hover);
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
 
   --radius-xs: var(--r-xs);
   --radius-sm: var(--r-sm);
@@ -172,7 +213,55 @@
   --foreground: var(--text);
 }
 
+/* ---------------------------------------------------------------------------
+   TAILWIND PALETTE REMAP — transitional.
+
+   ~370 hardcoded colour classes (bg-zinc-950, text-zinc-400, bg-black …)
+   predate the token system. Rewriting all of them at once would be a huge,
+   unreviewable diff across 12 files, including the playground that is mid
+   split in #11. Instead the scale itself is redefined, so every existing
+   class resolves to a token.
+
+   Every entry resolves to a token, so the whole ramp flips with the theme:
+   bg-zinc-950 is whatever the current ground is, text-zinc-100 the current
+   ink. Under the dark default that lands almost exactly on stock zinc, which
+   is what these classes were written against.
+
+   This is a shim, not the destination. As pages migrate to semantic tokens
+   (#20-#28) their classes leave and this block shrinks. Do not add new uses.
+   --------------------------------------------------------------------------- */
 @theme inline {
+  --color-black: var(--bg);
+  --color-zinc-950: var(--bg);
+  --color-zinc-900: var(--surface);
+  --color-zinc-800: var(--border);
+  --color-zinc-700: var(--border-strong);
+  --color-zinc-600: var(--ramp-600);
+  --color-zinc-500: var(--ramp-500);
+  --color-zinc-400: var(--text-2);
+  --color-zinc-300: var(--ramp-300);
+  --color-zinc-200: var(--ramp-200);
+  --color-zinc-100: var(--text);
+  --color-zinc-50: var(--ramp-50);
+
+  /* One accent, so stray greens/emeralds match the brand rather than
+     shipping a second, brighter green next to it. */
+  --color-green-300: var(--primary);
+  --color-green-400: var(--primary);
+  --color-green-500: var(--primary);
+  --color-green-600: var(--primary);
+  --color-emerald-400: var(--primary);
+  --color-emerald-500: var(--primary);
+
+  /* Red now means one thing only: something failed or is destructive. */
+  --color-red-300: var(--danger);
+  --color-red-400: var(--danger);
+  --color-red-500: var(--danger);
+  --color-red-600: var(--danger);
+  --color-red-800: var(--danger);
+  --color-red-900: var(--danger);
+  --color-red-950: var(--danger);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
@@ -184,6 +273,40 @@ body {
   color: var(--text);
   font-family: var(--stack-ui);
 }
+
+/* ---------------------------------------------------------------------------
+   TWO-SCRIPT LINE-HEIGHT RAMP — a hard rule, not a preference.
+
+   Devanagari needs vertical room Latin does not: matras and the chandrabindu
+   rise above Latin cap-height, and vowel signs like ु ू and conjuncts hang
+   below the baseline. At Latin display ratios (1.05, 1.00) they ride the edge
+   of the line box and clip the moment a font version or fallback changes.
+
+   Devanagari never shares a line-height ratio with Latin. Minimums:
+
+                        Latin    Devanagari
+     display  >= 60px   1.05     1.30
+     heading  24-59px   1.20     1.45
+     body     <  24px   1.50     1.65
+
+   :lang(ne) applies it automatically wherever the language is marked, using
+   one size-aware curve:  min(1.65em, 1.3em + 0.5625rem).  It meets or beats
+   every minimum above at every size (16px -> 1.65, 36px -> 1.55,
+   59px -> 1.45, 136px -> 1.37) without per-size breakpoints.
+
+   The .np-* utilities set the exact ramp value when a surface needs it.
+
+   These rules are deliberately UNLAYERED. Tailwind v4 utilities live in
+   @layer utilities, so a leading-[1.05] on a Devanagari heading loses to
+   this rule instead of silently reverting it to a Latin ratio. To tune a
+   Devanagari element, use an .np-* class — not a Tailwind leading-*.
+   --------------------------------------------------------------------------- */
+:lang(ne) {
+  line-height: min(1.65em, calc(1.3em + 0.5625rem));
+}
+.np-display { line-height: 1.3; }
+.np-heading { line-height: 1.45; }
+.np-body { line-height: 1.65; }
 
 ::placeholder {
   color: var(--text-faint);

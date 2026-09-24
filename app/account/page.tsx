@@ -97,7 +97,7 @@ export default function AccountPage() {
             <p className="text-zinc-400">You&apos;re not signed in.</p>
             <a
               href="/login"
-              className="mt-4 inline-block rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium hover:bg-red-500"
+              className="mt-4 inline-block rounded-lg bg-[var(--primary)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--primary-hover)]"
             >
               Sign in / create account →
             </a>
@@ -150,7 +150,7 @@ export default function AccountPage() {
                 <button
                   onClick={createKey}
                   disabled={busy}
-                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium hover:bg-red-500 disabled:opacity-40"
+                  className="rounded-lg bg-[var(--primary)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--primary-hover)] disabled:opacity-40"
                 >
                   Create key
                 </button>

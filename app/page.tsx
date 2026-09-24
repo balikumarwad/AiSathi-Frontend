@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Check, MapPin, Palette, Plug, Receipt, Rocket, Zap } from "lucide-react";
-import HeroMedia from "@/components/HeroMedia";
 import Nav from "@/components/Nav";
+import HeroGalaxy from "@/components/HeroGalaxy";
 import CopyButton from "@/components/CopyButton";
 
 const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
@@ -20,7 +20,7 @@ const MODELS = [
 /* Honest signals only — no invented user counts (audit item 1). */
 const TRUST: [ReactNode, string][] = [
   ["340+", "live models"],
-  ["रू0", "to start — free models"],
+  [<><span lang="ne">रू</span>0</>, "to start — free models"],
   ["eSewa · Khalti · card", "local payments"],
   [<MapPin key="np" size={22} className="mx-auto" aria-hidden />, "built in Nepal"],
 ];
@@ -34,7 +34,7 @@ const COMPARISON: [string, string, string][] = [
 ];
 
 const USE_CASES = [
-  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: "Homework, translations, quick answers. From रू44 per million tokens." },
+  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: <>Homework, translations, quick answers. From <span lang="ne">रू</span>44 per million tokens.</> },
   { icon: Brain, title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
   { icon: Rocket, title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
   { icon: Palette, title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
@@ -77,57 +77,74 @@ const FAQ: [string, string][] = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
+    <div className="min-h-screen overflow-x-clip bg-black text-zinc-100">
       {/* ============ HERO ============ */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        <HeroMedia />
-
-        {/* Animated aurora underlay — pure CSS drift, so the hero visibly
-            moves on every device even when the video is skipped or blocked.
-            (Respects reduced motion via the sathi-aurora classes.) */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="sathi-aurora-a absolute -top-1/3 left-1/2 h-[80vh] w-[80vw] rounded-full bg-red-600/20 blur-[120px]" />
-          <div className="sathi-aurora-b absolute bottom-0 left-0 h-[50vh] w-[50vw] rounded-full bg-purple-700/20 blur-[100px]" />
-          <div className="sathi-aurora-c absolute right-0 top-1/3 h-[40vh] w-[40vw] rounded-full bg-blue-700/15 blur-[100px]" />
-        </div>
-
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black" />
 
         <div className="relative z-10">
           <Nav />
         </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 text-center 2xl:max-w-6xl">
-          <p className="mb-6 rounded-full border border-zinc-700/60 bg-zinc-900/60 px-4 py-1.5 text-xs tracking-widest text-zinc-300 backdrop-blur">
-            <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-bold leading-[1.05] sm:text-7xl md:text-8xl 2xl:text-[8.5rem]">
-            Any AI model.
-            <br />
-            <span className="bg-gradient-to-r from-red-500 via-rose-400 to-purple-500 bg-clip-text text-transparent">
-              Pay in <span lang="ne">रुपैयाँ</span>.
-            </span>
-          </h1>
-          <p className="mt-8 max-w-2xl text-lg text-zinc-300 sm:text-xl 2xl:max-w-3xl 2xl:text-2xl">
-            One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
-            Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
-          </p>
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:gap-8">
+          <div className="text-center lg:text-left">
+            <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-[var(--elevated)] px-3.5 py-1.5 text-xs tracking-wide text-zinc-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+              <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] text-[2.6rem] font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.2rem]">
+              Any AI model.
+              <br />
+              <span style={{ color: "var(--primary)" }}>
+                Pay in <span lang="ne">रुपैयाँ</span>.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base text-zinc-400 sm:text-lg lg:mx-0">
+              One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
+              Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
+            </p>
 
-          {/* One dominant CTA; secondary de-emphasized (audit item 3) */}
-          <div className="mt-10 flex flex-col items-center gap-4">
-            <Link
-              href="/playground"
-              className="rounded-full bg-red-600 px-10 py-4 text-lg font-semibold shadow-lg shadow-red-900/40 transition hover:bg-red-500 hover:shadow-red-800/50"
-            >
-              Start free — no card needed →
-            </Link>
-            <Link href="/models" className="text-sm text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
-              or browse all 340+ models & prices
-            </Link>
+            {/* Two doors, because two people arrive here. Someone who wants to
+                chat goes left; someone who already has code calling OpenAI goes
+                right, and the line underneath tells them what they will find
+                before they spend a click on it. */}
+            <div className="mt-9 flex flex-col items-center gap-4 lg:items-start">
+              <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <Link
+                  href="/playground"
+                  className="rounded-full bg-[var(--primary)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--primary-hover)]"
+                >
+                  Start free
+                </Link>
+                <Link
+                  href="/docs"
+                  className="rounded-full border border-zinc-800 bg-[var(--elevated)] px-8 py-3.5 text-base font-semibold text-zinc-100 transition hover:border-zinc-700 hover:bg-[var(--surface)]"
+                >
+                  Read the docs
+                </Link>
+              </div>
+              <p className="max-w-lg text-sm leading-relaxed text-zinc-400">
+                No card needed. The docs are the OpenAI-compatible API — swap one
+                base URL, keep your existing SDK and code.{" "}
+                <Link href="/models" className="underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
+                  Browse 340+ models &amp; prices
+                </Link>
+              </p>
+            </div>
           </div>
 
-          {/* Trust bar (audit item 1) */}
-          <dl className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          {/* On a phone the galaxy leads: it is the one thing on the page that
+              is the product rather than a picture of it, and above the fold is
+              where that has to land. On lg the grid takes over and source
+              order returns — copy left, galaxy right. */}
+          <div className="order-first w-full lg:order-none">
+            <HeroGalaxy />
+          </div>
+
+        </div>
+
+        {/* Trust bar (audit item 1) */}
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-6">
+          <dl className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-zinc-800 py-8">
             {TRUST.map(([big, small]) => (
               <div key={small} className="text-center">
                 <dt className="sr-only">{small}</dt>
@@ -139,7 +156,7 @@ export default function Home() {
         </div>
 
         {/* Model ticker */}
-        <div className="relative z-10 border-t border-zinc-800/60 bg-black/40 py-4 backdrop-blur">
+        <div className="relative z-10 border-y border-zinc-800 bg-[var(--surface)] py-4">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-6 text-sm text-zinc-500">
             {MODELS.map((m) => (
               <span key={m} className="font-[family-name:var(--font-display)] tracking-wide">{m}</span>
@@ -149,7 +166,7 @@ export default function Home() {
       </section>
 
       {/* ============ VALUE PROPS ============ */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
+      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
         <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
           Built for Nepal. <span className="text-zinc-500">Open to the world.</span>
         </h2>
@@ -161,7 +178,7 @@ export default function Home() {
           ] as const).map(([Icon, title, body]) => (
             <div
               key={title}
-              className="group rounded-2xl border border-zinc-800 bg-zinc-950 p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
+              className="group rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8 transition hover:border-zinc-600 hover:bg-zinc-900/60"
             >
               <Icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-semibold">{title}</div>
@@ -180,7 +197,7 @@ export default function Home() {
           Chat free forever, or get a credit package — cheaper than ChatGPT Go, paid in rupees.
         </p>
         <div className="mt-14 grid gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
             <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
@@ -189,8 +206,8 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
             </ul>
           </div>
-          <div className="relative rounded-2xl border border-red-800/60 bg-zinc-950 p-8 shadow-lg shadow-red-950/20">
-            <div className="absolute -top-3 left-8 rounded-full bg-red-600 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
+          <div className="relative rounded-2xl border border-[var(--primary)]/40 bg-[var(--elevated)] p-8 shadow-lg shadow-zinc-950/20">
+            <div className="absolute -top-3 left-8 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Starter</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>499</div>
             <div className="mt-1 text-sm font-semibold text-green-400">5,990 credits — 20% bonus</div>
@@ -199,11 +216,11 @@ export default function Home() {
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />~1,200 smart replies or 6,000 fast ones</li>
               <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Pay with Khalti, eSewa, or card</li>
             </ul>
-            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
               Get Starter →
             </Link>
           </div>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
+          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
             <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pro</div>
             <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>999</div>
             <div className="mt-1 text-sm font-semibold text-green-400">12,990 credits — 30% bonus</div>
@@ -235,9 +252,9 @@ export default function Home() {
         <div className="mt-12 overflow-x-auto rounded-2xl border border-zinc-800">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-950 text-left">
+              <tr className="border-b border-zinc-800 bg-[var(--elevated)] text-left">
                 <th className="px-5 py-4 font-medium text-zinc-500"></th>
-                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-red-400">AIsathi</th>
+                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-[var(--primary)]">AIsathi</th>
                 <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-zinc-500">Going direct</th>
               </tr>
             </thead>
@@ -255,7 +272,7 @@ export default function Home() {
       </section>
 
       {/* ============ WHICH MODEL? (audit item 6) ============ */}
-      <section className="mx-auto max-w-6xl px-6 pb-24">
+      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
         <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
           Which model should I use?
         </h2>
@@ -264,10 +281,10 @@ export default function Home() {
         </p>
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {USE_CASES.map((u) => (
-            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 transition hover:border-zinc-600">
+            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 transition hover:border-zinc-600">
               <u.icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
               <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
-              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-red-400">→ {u.pick}</div>
+              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-[var(--primary)]">→ {u.pick}</div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{u.detail}</p>
             </div>
           ))}
@@ -281,11 +298,11 @@ export default function Home() {
         </h2>
         <div className="relative mt-6">
           <CopyButton text={CURL} />
-          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
+          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
             {CURL}
           </pre>
         </div>
-        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-red-400 hover:text-red-300">
+        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
           Full API documentation →
         </Link>
       </section>
@@ -297,9 +314,9 @@ export default function Home() {
         </h2>
         <div className="mt-12 space-y-3">
           {FAQ.map(([q, a]) => (
-            <details key={q} className="group rounded-xl border border-zinc-800 bg-zinc-950 px-6 py-4 transition hover:border-zinc-700">
+            <details key={q} className="group rounded-xl border border-zinc-800 bg-[var(--elevated)] px-6 py-4 transition hover:border-zinc-700">
               <summary className="cursor-pointer list-none text-[15px] font-semibold text-zinc-200 marker:content-none">
-                <span className="mr-2 inline-block text-red-500 transition-transform group-open:rotate-90">›</span>
+                <span className="mr-2 inline-block text-zinc-400 transition-transform group-open:rotate-90">›</span>
                 {q}
               </summary>
               <p className="mt-3 pl-5 text-sm leading-relaxed text-zinc-400">{a}</p>
@@ -309,14 +326,10 @@ export default function Home() {
       </section>
 
       {/* ============ CTA ============ */}
-      <section className="border-t border-zinc-900">
+      <section className="border-t border-zinc-800 bg-[var(--surface)]">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          {/* Rhino crossing a crimson sun — the brand lockup, big. */}
+          {/* The mark, on its own. */}
           <div className="relative mx-auto mb-8 w-fit">
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-red-500 to-red-800 shadow-[0_0_60px_rgba(225,29,46,0.45)] sm:h-24 sm:w-24"
-            />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/mark.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
           </div>
@@ -326,7 +339,7 @@ export default function Home() {
           <p className="mt-4 text-lg text-zinc-400">Make a friend. Free models are waiting.</p>
           <Link
             href="/playground"
-            className="mt-10 inline-block rounded-full bg-gradient-to-r from-red-600 to-purple-600 px-10 py-4 font-medium shadow-xl shadow-purple-950/40 transition hover:from-red-500 hover:to-purple-500"
+            className="mt-10 inline-block rounded-full bg-[var(--primary)] px-10 py-4 font-medium text-white transition hover:bg-[var(--primary-hover)]"
           >
             Start chatting free →
           </Link>
