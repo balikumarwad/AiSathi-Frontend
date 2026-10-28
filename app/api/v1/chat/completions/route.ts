@@ -13,7 +13,7 @@ import { NextResponse, after } from "next/server";
 import { bearerFrom, hashApiKey } from "@/lib/keys";
 import { findCredential } from "@/lib/messageFilter";
 import { streamStoreEnabled, streamWrite, validStreamId } from "@/lib/streamStore";
-import { allowAsync } from "@/lib/ratelimit";
+import { allowAsync, release } from "@/lib/ratelimit";
 import { usdToNpr, round4 } from "@/lib/pricing";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { upstreamChat, upstreamModels } from "@/lib/upstream";
@@ -202,9 +202,13 @@ export async function POST(req: Request) {
   // "provider error". The 1024-token cap plus the 25/hr per-IP limit keep the
   // worst-case cost of that fallback tiny. Other paid models still nudge to signup.
   const DEMO_SAFETY_MODEL = "openai/gpt-4o-mini";
+  // Whether the caller asked for a free model — enables the server-side free
+  // fallback below for API clients that only ever send one model.
+  let requestedFree = false;
   if (auth.mode === "demo") {
     const price = await modelPricing(String(body.model));
     const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
+    requestedFree = isFree;
     if (!isFree && String(body.model) !== DEMO_SAFETY_MODEL) {
       return NextResponse.json(
         {
@@ -228,6 +232,10 @@ export async function POST(req: Request) {
   const FREE_BACKSTOP_MODEL = "openai/gpt-4o-mini";
   const FREE_BACKSTOP_DAILY = 30;
   let freeBackstop = false;
+  // Set when this request was counted against the daily free-model cap, so an
+  // upstream failure can hand the hit back instead of burning the quota.
+  let freeDayId: string | null = null;
+  const FREE_DAY_MS = 24 * 3_600_000;
 
   // Balance gate (db mode only): require enough to cover the WORST-CASE cost of
   // this request (whole prompt + capped completion), not merely a positive
@@ -243,10 +251,11 @@ export async function POST(req: Request) {
     }
     const price = await modelPricing(String(body.model));
     const isFree = price.known && price.promptUsd === 0 && price.completionUsd === 0;
+    requestedFree = isFree;
     // Free models stay free for every signed-in user, but with a generous daily
     // cap (~3x a heavy chatter) so the free tier can't be scripted into a bulk
     // pipeline. Heavy users are nudged to a package.
-    if (isFree && !(await allowAsync(`freeDay:${auth.keyId}`, 150, 24 * 3_600_000))) {
+    if (isFree && !(await allowAsync(`freeDay:${auth.keyId}`, 150, FREE_DAY_MS))) {
       return NextResponse.json(
         {
           error: {
@@ -258,6 +267,7 @@ export async function POST(req: Request) {
         { status: 429 },
       );
     }
+    if (isFree) freeDayId = `freeDay:${auth.keyId}`;
     if (!isFree) {
       // Rough prompt-token estimate (~4 chars/token) — good enough to gate on.
       const estPromptTok = Math.ceil(JSON.stringify(body.messages).length / 4);
@@ -299,17 +309,46 @@ export async function POST(req: Request) {
   // OpenAI-standard `stream_options.include_usage` is what actually makes the
   // final usage chunk (tokens + cached_tokens) show up — without it a streamed
   // response can arrive with no usage, and we'd bill nothing.
-  const upstreamBody = {
-    ...body,
-    stream: wantStream,
-    usage: { include: true },
-    ...(wantStream ? { stream_options: { include_usage: true } } : {}),
-  };
+  const callUpstream = () =>
+    upstreamChat({
+      ...body,
+      stream: wantStream,
+      usage: { include: true },
+      ...(wantStream ? { stream_options: { include_usage: true } } : {}),
+    });
+
+  // Server-side free fallback. The playground walks a whole chain of free
+  // models in the browser, but API clients (SillyTavern, SDKs) send exactly
+  // one model — so when the shared free pool is rate-limited upstream they got
+  // a bare 429. Mirror the playground here: requested free model ->
+  // OpenRouter's free router -> the cheap backstop (signed-in users, on the
+  // house, under its daily cap). The response's `model` field names whichever
+  // model actually answered.
+  const FREE_ROUTER_MODEL = "openrouter/free";
+  const retryable = (status: number) => status === 429 || status >= 500;
 
   let upstream: Response;
   try {
-    upstream = await upstreamChat(upstreamBody);
+    upstream = await callUpstream();
+    if (requestedFree && retryable(upstream.status) && body.model !== FREE_ROUTER_MODEL) {
+      await upstream.body?.cancel().catch(() => {});
+      body.model = FREE_ROUTER_MODEL;
+      upstream = await callUpstream();
+    }
+    if (
+      requestedFree &&
+      retryable(upstream.status) &&
+      auth.mode === "db" &&
+      (await allowAsync(`freebk:${auth.userId}`, FREE_BACKSTOP_DAILY, FREE_DAY_MS))
+    ) {
+      await upstream.body?.cancel().catch(() => {});
+      body.model = FREE_BACKSTOP_MODEL;
+      body.max_tokens = Math.min(Number(body.max_tokens) || 1024, 1024);
+      freeBackstop = true;
+      upstream = await callUpstream();
+    }
   } catch (e) {
+    if (freeDayId) await release(freeDayId, FREE_DAY_MS);
     return NextResponse.json(
       { error: { message: `Upstream unreachable: ${String(e)}`, code: 502 } },
       { status: 502 },
@@ -502,7 +541,10 @@ export async function POST(req: Request) {
   const payload = await upstream.json().catch(() => null);
 
   if (!upstream.ok || !payload) {
-    // Upstream failed: no charge; log for observability.
+    // Upstream failed: no charge, and it doesn't count toward the daily free
+    // cap (otherwise retries against a rate-limited pool lock the user out
+    // for a day). Log for observability.
+    if (freeDayId) await release(freeDayId, FREE_DAY_MS);
     if (auth.mode === "db" && db) {
       await db.from("usage_log").insert({
         user_id: auth.userId,

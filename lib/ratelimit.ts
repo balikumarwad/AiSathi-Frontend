@@ -25,6 +25,31 @@ export function allow(id: string, limit: number, windowMs: number): boolean {
 }
 
 /**
+ * Hand back one hit previously counted by allowAsync() for the same id and
+ * window — for quotas that should only count requests that actually got
+ * served (an upstream failure must not burn a user's daily free cap).
+ * Best-effort: a failed release just leaves the hit counted.
+ */
+export async function release(id: string, windowMs: number): Promise<void> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    windows.get(id)?.pop();
+    return;
+  }
+  const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
+  try {
+    await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["DECR", `rl:${id}:${windowSec}`]]),
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
  * Distributed rate limit backed by Upstash Redis (fixed window). Real limits
  * that hold across all serverless instances. Falls back to the in-memory
  * limiter above when Upstash isn't configured or a request fails, so the
