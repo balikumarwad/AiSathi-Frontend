@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/reconcile",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/refill",
+      "schedule": "15 2 * * *"
+    }
+  ]
+}

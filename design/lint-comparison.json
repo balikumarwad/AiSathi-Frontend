@@ -1,0 +1,37 @@
+[
+  {
+    "file": "app/admin/page.tsx",
+    "baselineErrors": 1,
+    "currentErrors": 1
+  },
+  {
+    "file": "app/dashboard/page.tsx",
+    "baselineErrors": 1,
+    "currentErrors": 1
+  },
+  {
+    "file": "app/login/page.tsx",
+    "baselineErrors": 1,
+    "currentErrors": 1
+  },
+  {
+    "file": "app/playground/page.tsx",
+    "baselineErrors": 15,
+    "currentErrors": 15
+  },
+  {
+    "file": "app/privacy/page.tsx",
+    "baselineErrors": 3,
+    "currentErrors": 3
+  },
+  {
+    "file": "app/terms/page.tsx",
+    "baselineErrors": 5,
+    "currentErrors": 5
+  },
+  {
+    "file": "app/topup/page.tsx",
+    "baselineErrors": 3,
+    "currentErrors": 3
+  }
+]
