@@ -64,3 +64,49 @@ document.querySelectorAll('a[href^="#"]').forEach(link => {
     if (target?.tagName === 'DETAILS') target.open = true;
   });
 });
+
+// One lifecycle for decorative motion; native scrolling and content remain independent.
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+const scene = document.querySelector('.orbital-scene');
+const depth = document.querySelector('.orbital-depth');
+let motionCleanup = () => {};
+function initializeMotion() {
+  motionCleanup();
+  if (motionPreference.matches) return;
+  document.body.classList.add('motion-active');
+  const controller = new AbortController();
+  const options = { signal: controller.signal, passive: true };
+  const observer = new IntersectionObserver(([entry]) => {
+    scene.classList.toggle('motion-paused', !entry.isIntersecting || document.hidden);
+  });
+  observer.observe(scene);
+  const onVisibility = () => scene.classList.toggle('motion-paused', document.hidden || scene.getBoundingClientRect().bottom < 0);
+  document.addEventListener('visibilitychange', onVisibility, options);
+  scene.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse' || smallScreen.matches) return;
+    const bounds = scene.getBoundingClientRect();
+    depth.style.setProperty('--tilt-x', `${((event.clientX-bounds.left)/bounds.width-.5)*7}deg`);
+    depth.style.setProperty('--tilt-y', `${-((event.clientY-bounds.top)/bounds.height-.5)*5}deg`);
+  }, options);
+  scene.addEventListener('pointerleave', () => {
+    depth.style.removeProperty('--tilt-x'); depth.style.removeProperty('--tilt-y');
+  }, options);
+  const sections = document.querySelectorAll('.steps article, .idea-board, .code-card');
+  const reveals = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.animate([{transform:'translateY(18px)',opacity:.65},{transform:'translateY(0)',opacity:1}],{duration:750,easing:'cubic-bezier(.2,.7,.2,1)'});
+      reveals.unobserve(entry.target);
+    }
+  },{threshold:.15});
+  sections.forEach(section => reveals.observe(section));
+  motionCleanup = () => {
+    controller.abort(); observer.disconnect(); reveals.disconnect();
+    sections.forEach(section => section.getAnimations().forEach(animation => animation.cancel()));
+    document.body.classList.remove('motion-active'); depth.removeAttribute('style');
+  };
+}
+motionPreference.addEventListener('change', initializeMotion);
+window.addEventListener('pagehide', () => motionCleanup());
+window.addEventListener('pageshow', initializeMotion);
+initializeMotion();

@@ -28,3 +28,6 @@
 ## Limits
 
 The request outline has not been sent to a live API. No payment, auth, legal, supplier, or pricing claims are operationally verified. Contrast and failure fallback received source review; this is not a formal accessibility audit. Original logo and verified service destinations remain integration dependencies.
+
+## Orbital evolution
+The supplied A:\mark.svg is reused unchanged as favicon.svg and all brand imagery. SVG/CSS and native Web Animations provide orbital light travel, entrance sequencing, pointer depth, and intersection-triggered reveals. No WebGL or animation dependencies were added. Motion observers/listeners are cleaned up on page exit and preference changes; ambient animation pauses offscreen. Browser checked five widths with no document overflow or broken images; selector behavior confirmed. Reduced-motion rules and cleanup were inspected in source; device throttling and OS preference switching were not exercised.

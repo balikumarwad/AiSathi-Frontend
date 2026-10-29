@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const files = new Set(['index.html', 'styles.css', 'app.js', 'favicon.svg']);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const files = new Set(['index.html', 'styles.css', 'app.js', 'favicon.svg', 'galaxy.png', 'astral.css', 'astral.js']);
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png':'image/png' };
 const port = Number(process.env.PORT || 3010);
 const server = createServer(async (request, response) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
