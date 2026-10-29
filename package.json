@@ -2,11 +2,16 @@
   "name": "nepalai",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:static": "node scripts/serve.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test tests/page.test.mjs",
+    "test:motion": "node --test scripts/motion-lifecycle.test.cjs",
+    "check": "node --check app.js && node --check scripts/serve.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",

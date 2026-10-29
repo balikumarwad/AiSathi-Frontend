@@ -117,6 +117,13 @@ RAG over pgvector with a relevance floor, full-text chat search, chat
 branching and sharing, the credential filter, and the DB-driven routing table.
 The old roadmap listed most of these as upcoming — it was a month out of date.
 
+## Static homepage prototype
+
+The original lightweight homepage prototype is also retained at the repository
+root (`index.html`, `styles.css`, and `app.js`). To preview it independently of
+the Next.js app, run `npm run dev:static`; run `npm test` and `npm run check` to
+validate that prototype.
+
 ## What's actually left
 
 Each of these is finished code waiting on a key or a decision, not work:
