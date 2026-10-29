@@ -3,7 +3,7 @@
  * get re-queried at their gateway and settled or failed. Catches dropped
  * callbacks — common on Nepali mobile networks.
  *
- * Trigger: Vercel Cron (vercel.json, every 15 min) or manually:
+ * Trigger: Vercel Cron (daily on Hobby) or manually:
  *   curl -X POST /api/cron/reconcile -H "Authorization: Bearer $CRON_SECRET"
  */
 
