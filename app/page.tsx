@@ -1,372 +1,61 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
-import { Brain, Check, MapPin, Palette, Rocket, Zap } from "lucide-react";
+import PortalLink from "@/components/PortalLink";
+import OrbitArtwork from "@/components/OrbitArtwork";
+import CosmicJourney from "@/components/CosmicJourney";
 import Nav from "@/components/Nav";
+import Brand, { BrandMark } from "@/components/Brand";
 import HeroGalaxy from "@/components/HeroGalaxy";
 import ModelPaper from "@/components/ModelPaper";
-import ValueCards from "@/components/ValueCards";
-import { faqLd, ldScript, offersLd } from "@/lib/seo";
 import CopyButton from "@/components/CopyButton";
 
-const CURL = `curl https://aisathi.io/api/v1/chat/completions \\
+const request = `curl https://aisathi.io/api/v1/chat/completions \\
   -H "Authorization: Bearer np-your-key" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "model": "openai/gpt-4o-mini",
-    "messages": [{"role": "user", "content": "नमस्ते!"}]
-  }'`;
-
-const MODELS = [
-  "GPT-5.2", "Claude Sonnet 5", "Gemini 3 Flash", "Llama 4", "DeepSeek V3.2", "Claude Haiku 4.5",
+  -d '{"model":"MODEL_ID_FROM_CATALOGUE",
+       "messages":[{"role":"user","content":"नमस्ते!"}]}'`;
+const questions = [
+  ["How do I choose a model?","Browse the model catalogue for availability, context limits, and input/output prices in NPR. The catalogue is the source of truth; availability can change."],
+  ["How do local payments work?","The top-up page shows the payment options and plans available from the service. A payment is credited only after server-side verification. Check your balance after returning from checkout."],
+  ["Can I use AIsathi in my application?","The developer documentation covers the chat-completions gateway, streaming, model IDs, and authentication. Create an API key in your account and keep it on your server."],
+  ["Where are my conversations stored?","The playground keeps browser conversation history and can sync signed-in conversations through the existing service. Prompts are sent to the selected model provider. Read the privacy policy before sharing sensitive information."],
+  ["What do credits cover?","Usage depends on the selected model and its input/output rates. Review current model pricing and the top-up plan details before purchasing."],
 ];
-
-/* Honest signals only — no invented user counts (audit item 1). */
-const TRUST: [ReactNode, string][] = [
-  ["340+", "live models"],
-  [<><span lang="ne">रू</span>0</>, "to start — free models"],
-  ["eSewa · Khalti · card", "local payments"],
-  [<MapPin key="np" size={22} className="mx-auto" aria-hidden />, "built in Nepal"],
-];
-
-const COMPARISON: [string, string, string][] = [
-  ["Payment", "eSewa, Khalti, or any card — in NPR", "USD credit card only"],
-  ["Accounts", "One login for every model", "Separate account per provider"],
-  ["Models", "GPT, Claude, Gemini, Llama + 340 more", "One vendor's models"],
-  ["Starting cost", "Free models, no card needed", "$5+ minimum, card upfront"],
-  ["Switching models", "Change one word in your request", "Rewrite your integration"],
-];
-
-const USE_CASES = [
-  { icon: Zap, title: "Everyday questions", pick: "Fast", detail: <>Homework, translations, quick answers. From <span lang="ne">रू</span>44 per million tokens.</> },
-  { icon: Brain, title: "Writing & coding", pick: "Smart", detail: "Claude Sonnet 5 — essays, documents, real programming help." },
-  { icon: Rocket, title: "Hardest problems", pick: "Genius", detail: "Claude Fable 5 — deep reasoning for research and complex work." },
-  { icon: Palette, title: "Images & documents", pick: "Create", detail: "Say \"make an image of…\" or \"write a cover letter\" — the playground routes it." },
-];
-
-/* The credit packages, for structured data. Mirrors the pricing cards below;
-   if one changes, change both — a price in schema that the page contradicts is
-   worse than no schema at all. */
-const PLAN_OFFERS = [
-  { name: "Free", npr: 0, description: "26+ free models, 150 messages a day. No card required." },
-  { name: "Starter", npr: 499, description: "5,990 credits — 20% bonus. Every model, paid with Khalti, eSewa or card." },
-  { name: "Pro", npr: 999, description: "12,990 credits — 30% bonus. Credits never expire." },
-] as const;
-
-const FAQ: [string, string][] = [
-  [
-    "Is AIsathi a real, working product?",
-    "Yes. AIsathi is live — every chat message is metered and billed to the paisa through our credit ledger, and the playground, API, and dashboard all run on the same production gateway. Try a free model right now without paying anything.",
-  ],
-  [
-    "How do payments work?",
-    "You top up credits in Nepali rupees via Khalti or eSewa (or an international card via Stripe). Credits are spent per token at the NPR prices shown on the models page — no subscription required, no hidden FX fees.",
-  ],
-  [
-    "What happens to my chats and prompts?",
-    "Signed-in chats are stored in your account so they sync across devices — only you can read them. Prompts are passed to the model provider you chose to generate the answer. We never sell your data and never use your chats to train models. See our privacy policy.",
-  ],
-  [
-    "What's free, exactly?",
-    "26+ models are completely free to chat with after signup — no card, no top-up. Free models are best-effort (they can be busy at peak times). Paid models unlock when you add credits.",
-  ],
-  [
-    "Which AI models do you support?",
-    "340+ models through one gateway: OpenAI (GPT-5.x), Anthropic (Claude Fable, Sonnet, Haiku), Google (Gemini), Meta (Llama), DeepSeek, Mistral and more — including image-generation models. The models page shows live NPR prices for all of them.",
-  ],
-  [
-    "Can I get a refund?",
-    "If something went wrong with a top-up (double charge, failed credit), contact us and we'll fix it. For unused credits, write to us within 7 days of purchase and we'll work it out.",
-  ],
-  [
-    "Are there rate limits?",
-    "Yes — 60 requests per minute per API key, and free models have daily caps set upstream. If you hit a limit, the response tells you exactly how long to wait.",
-  ],
-  [
-    "I'm a developer — is the API really OpenAI-compatible?",
-    "Yes. Point any OpenAI SDK at https://aisathi.io/api/v1 with your np- key and your existing code works, including streaming. See the docs for copy-paste examples.",
-  ],
-];
-
-export default function Home() {
-  return (
-    <div className="min-h-screen overflow-x-clip bg-black text-zinc-100">
-      {/* Built from the same FAQ and plan constants this page renders, so the
-          markup cannot claim a question or a price the page does not show. */}
-      <script {...ldScript(faqLd(FAQ))} />
-      <script {...ldScript(offersLd(PLAN_OFFERS))} />
-      {/* ============ HERO ============ */}
-      <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-
+export default function Home(){return <CosmicJourney><div className="cosmic-home">
+  <Nav/>
+  <main id="main-content" tabIndex={-1}>
+    <section className="cosmic-hero" data-chapter="arrival">
+      <div className="hero-coordinate"><span>AI / SATHI</span><span>27.7172° N · 85.3240° E</span></div>
+      <div className="home-wrap grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
         <div className="relative z-10">
-          <Nav />
+          <p className="hero-eyebrow"><span lang="ne">तपाईंको AI साथी</span>&nbsp; · YOUR AI COMPANION</p>
+          <h1>Your AI.<br/>Your choice.<br/><span className="cosmic-gradient">Closer to home.</span></h1>
+          <p className="home-copy mt-7 max-w-lg text-lg">A universe of models, one local connection. Explore ideas in chat or bring AI into your application, with usage priced in Nepali rupees.</p>
+          <div className="home-cta"><PortalLink /><Link className="home-secondary" href="/docs">Read the docs</Link></div>
+          <p className="mt-7 text-sm text-zinc-400"><span lang="ne">सँगै, अझ अगाडि।</span> &nbsp; Made with Nepal in mind.</p>
         </div>
-
-        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-x-8 gap-y-9 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:gap-y-6">
-          {/* Three grid items, not two: the headline and the rest of the copy
-              are separate so the galaxy can fall between them on a phone. On lg
-              they are placed back into column 1 as rows 1 and 2, and the galaxy
-              spans both — the desktop layout is unchanged. Placement rather
-              than a second instance, so the canvas still mounts once. */}
-          <div className="text-center lg:col-start-1 lg:row-start-1 lg:text-left">
-            <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-[var(--elevated)] px-3.5 py-1.5 text-xs tracking-wide text-zinc-400">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
-              <span lang="ne">तपाईंको AI साथी</span> — YOUR AI COMPANION
-            </p>
-            <h1 className="font-[family-name:var(--font-display)] text-[2.6rem] font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.2rem]">
-              Any AI model.
-              <br />
-              <span style={{ color: "var(--primary)" }}>
-                Pay in <span lang="ne">रुपैयाँ</span>.
-              </span>
-            </h1>
-          </div>
-
-          <div className="w-full lg:col-start-2 lg:row-start-1 lg:row-span-2">
-            <HeroGalaxy />
-          </div>
-
-          <div className="text-center lg:col-start-1 lg:row-start-2 lg:text-left">
-            <p className="max-w-xl text-base text-zinc-400 sm:text-lg lg:mx-0">
-              One login for hundreds of AI models — GPT, Claude, Gemini, Llama and more.
-              Top up with eSewa, Khalti, or card. No USD card. No foreign billing.
-            </p>
-
-            {/* Two doors, because two people arrive here. Someone who wants to
-                chat goes left; someone who already has code calling OpenAI goes
-                right, and the line underneath tells them what they will find
-                before they spend a click on it. */}
-            <div className="mt-9 flex flex-col items-center gap-4 lg:items-start">
-              <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                <Link
-                  href="/playground"
-                  className="rounded-full bg-[var(--primary)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--primary-hover)]"
-                >
-                  Start free
-                </Link>
-                <Link
-                  href="/docs"
-                  className="rounded-full border border-zinc-800 bg-[var(--elevated)] px-8 py-3.5 text-base font-semibold text-zinc-100 transition hover:border-zinc-700 hover:bg-[var(--surface)]"
-                >
-                  Read the docs
-                </Link>
-              </div>
-              <p className="max-w-lg text-sm leading-relaxed text-zinc-400">
-                No card needed. The docs are the OpenAI-compatible API — swap one
-                base URL, keep your existing SDK and code.{" "}
-                <Link href="/models" className="underline decoration-zinc-700 underline-offset-4 transition hover:text-zinc-200">
-                  Browse 340+ models &amp; prices
-                </Link>
-              </p>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Trust bar (audit item 1) */}
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-6">
-          <dl className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-zinc-800 py-8">
-            {TRUST.map(([big, small]) => (
-              <div key={small} className="text-center">
-                <dt className="sr-only">{small}</dt>
-                <dd className="font-[family-name:var(--font-display)] text-xl text-zinc-100">{big}</dd>
-                <dd className="text-[11px] uppercase tracking-wider text-zinc-500">{small}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        {/* Model ticker */}
-        <div className="relative z-10 border-y border-zinc-800 bg-[var(--surface)] py-4">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-6 text-sm text-zinc-500">
-            {MODELS.map((m) => (
-              <span key={m} className="font-[family-name:var(--font-display)] tracking-wide">{m}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ============ VALUE PROPS ============ */}
-      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
-        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
-          Built for Nepal. <span className="text-zinc-500">Open to the world.</span>
-        </h2>
-        <ValueCards />
-
-        <ModelPaper />
-      </section>
-
-      {/* ============ PRICING (audit item 2) ============ */}
-      <section id="pricing" className="mx-auto max-w-6xl px-6 pb-24">
-        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
-          Simple, honest pricing
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-          Chat free forever, or get a credit package — cheaper than ChatGPT Go, paid in rupees.
-        </p>
-        <div className="mt-14 grid gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
-            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Free</div>
-            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>0</div>
-            <ul className="mt-6 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />26+ free models, 150 messages a day</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Full playground — history, images in, voice</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />No card, no top-up required</li>
-            </ul>
-          </div>
-          <div className="relative rounded-2xl border border-[var(--primary)]/40 bg-[var(--elevated)] p-8 shadow-lg shadow-zinc-950/20">
-            <div className="absolute -top-3 left-8 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">Most popular</div>
-            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Starter</div>
-            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>499</div>
-            <div className="mt-1 text-sm font-semibold text-green-400">5,990 credits — 20% bonus</div>
-            <ul className="mt-5 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Every model — GPT, Claude, Gemini + images</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />~1,200 smart replies or 6,000 fast ones</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Pay with Khalti, eSewa, or card</li>
-            </ul>
-            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
-              Get Starter →
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-8">
-            <div className="font-[family-name:var(--font-display)] text-lg text-zinc-400">Pro</div>
-            <div className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold"><span lang="ne">रू</span>999</div>
-            <div className="mt-1 text-sm font-semibold text-green-400">12,990 credits — 30% bonus</div>
-            <ul className="mt-5 space-y-2.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Everything in Starter, 2.2x the credits</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Best value for daily Claude & GPT use</li>
-              <li className="flex items-start gap-2"><Check size={15} className="mt-0.5 flex-none" style={{ color: "var(--ev-red)" }} />Credits never expire — use at your pace</li>
-            </ul>
-            <Link href="/topup" className="mt-5 inline-block text-sm font-semibold text-zinc-300 hover:text-white">
-              Get Pro →
-            </Link>
-          </div>
-        </div>
-        <p className="mx-auto mt-6 max-w-xl text-center text-xs text-zinc-600">
-          Need more? Top up any amount from <span lang="ne">रू</span>200. Developers get the same credits via the{" "}
-          <Link href="/docs" className="underline hover:text-zinc-400">OpenAI-compatible API</Link>.
-        </p>
-      </section>
-
-      {/* ============ WHY NOT GO DIRECT (audit item 5) ============ */}
-      <section className="mx-auto max-w-4xl px-6 pb-24">
-        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
-          Why not just use OpenAI directly?
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-          Fair question. If you have a USD credit card and only want one provider, go direct.
-          Here's what AIsathi changes:
-        </p>
-        <div className="mt-12 overflow-x-auto rounded-2xl border border-zinc-800">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-[var(--elevated)] text-left">
-                <th className="px-5 py-4 font-medium text-zinc-500"></th>
-                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-[var(--primary)]">AIsathi</th>
-                <th className="px-5 py-4 font-[family-name:var(--font-display)] text-base text-zinc-500">Going direct</th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON.map(([label, us, them]) => (
-                <tr key={label} className="border-b border-zinc-900 last:border-0">
-                  <td className="px-5 py-4 font-semibold text-zinc-300">{label}</td>
-                  <td className="px-5 py-4 text-zinc-300">{us}</td>
-                  <td className="px-5 py-4 text-zinc-500">{them}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ============ WHICH MODEL? (audit item 6) ============ */}
-      <section className="relative before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[var(--surface)] before:content-[''] mx-auto max-w-6xl px-6 py-24">
-        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
-          Which model should I use?
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-          Don't overthink it — the playground has these as one-click presets.
-        </p>
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {USE_CASES.map((u) => (
-            <div key={u.title} className="rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 transition hover:border-zinc-600">
-              <u.icon size={28} style={{ color: "var(--ev-red)" }} aria-hidden />
-              <div className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold">{u.title}</div>
-              <div className="mt-1 text-xs font-bold uppercase tracking-wider text-[var(--primary)]">→ {u.pick}</div>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{u.detail}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ============ CODE ============ */}
-      <section className="mx-auto max-w-4xl px-6 pb-24">
-        <h2 className="font-[family-name:var(--font-display)] text-sm font-medium uppercase tracking-[0.3em] text-zinc-500">
-          One URL change and you&apos;re in
-        </h2>
-        <div className="relative mt-6">
-          <CopyButton text={CURL} />
-          <pre className="overflow-x-auto rounded-2xl border border-zinc-800 bg-[var(--elevated)] p-6 font-[family-name:var(--font-mono)] text-sm leading-relaxed text-zinc-300 shadow-2xl shadow-red-950/20">
-            {CURL}
-          </pre>
-        </div>
-        <Link href="/docs" className="mt-4 inline-block text-sm font-semibold text-[var(--primary)] hover:opacity-80">
-          Full API documentation →
-        </Link>
-      </section>
-
-      {/* ============ FAQ (audit item 8) ============ */}
-      <section className="mx-auto max-w-3xl px-6 pb-24">
-        <h2 className="font-[family-name:var(--font-display)] text-center text-3xl font-bold sm:text-5xl">
-          Questions, answered
-        </h2>
-        <div className="mt-12 space-y-3">
-          {FAQ.map(([q, a]) => (
-            <details key={q} className="group rounded-xl border border-zinc-800 bg-[var(--elevated)] px-6 py-4 transition hover:border-zinc-700">
-              <summary className="cursor-pointer list-none text-[15px] font-semibold text-zinc-200 marker:content-none">
-                <span className="mr-2 inline-block text-zinc-400 transition-transform group-open:rotate-90">›</span>
-                {q}
-              </summary>
-              <p className="mt-3 pl-5 text-sm leading-relaxed text-zinc-400">{a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      {/* ============ CTA ============ */}
-      <section className="border-t border-zinc-800 bg-[var(--surface)]">
-        <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          {/* The mark, on its own. */}
-          <div className="relative mx-auto mb-8 w-fit">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mark.svg" alt="" aria-hidden className="relative h-20 w-auto sm:h-24" />
-          </div>
-          <h2 lang="ne" className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">
-            साथी बनाउनुहोस्।
-          </h2>
-          <p className="mt-4 text-lg text-zinc-400">Make a friend. Free models are waiting.</p>
-          <Link
-            href="/playground"
-            className="mt-10 inline-block rounded-full bg-[var(--primary)] px-10 py-4 font-medium text-white transition hover:bg-[var(--primary-hover)]"
-          >
-            Start chatting free →
-          </Link>
-        </div>
-        <footer className="border-t border-zinc-900 px-6 py-10">
-          <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center text-xs text-zinc-600">
-            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-              <Link href="/docs" className="hover:text-zinc-400">Docs</Link>
-              <Link href="/models" className="hover:text-zinc-400">Models</Link>
-              <Link href="/#pricing" className="hover:text-zinc-400">Pricing</Link>
-              <Link href="/privacy" className="hover:text-zinc-400">Privacy</Link>
-              <Link href="/terms" className="hover:text-zinc-400">Terms</Link>
-              <a href="mailto:neupaneoscar143@gmail.com" className="hover:text-zinc-400">Contact</a>
-            </nav>
-            <div>
-              AIsathi · <span lang="ne">तपाईंको AI साथी</span> · aisathi.io · Kathmandu ↔ the world
-            </div>
-          </div>
-        </footer>
-      </section>
-    </div>
-  );
-}
+        <div className="hero-observatory"><div className="observatory-rings"/><HeroGalaxy/><span className="observatory-label observatory-label--a">Ideas without borders</span><span className="observatory-label observatory-label--b">A little closer to home</span></div>
+      </div>
+      <div className="hero-bottom"><a href="#models-sector"><span>↓</span> Explore the universe</a><span>Chat · Build · Discover</span></div>
+    </section>
+    <section id="models-sector" data-chapter="models" className="home-wrap model-sector"><div className="chapter-orbit"><OrbitArtwork/></div>
+      <p className="home-kicker">01 / A universe of possibilities</p><h2 className="home-heading">Find the right mind<br/>for what’s on yours.</h2>
+      <p className="home-copy mt-5 max-w-xl">Writing, reasoning, coding, and the questions in between. Explore the models available through the same catalogue used by the playground.</p>
+      <div className="mt-9"><ModelPaper/></div>
+      <Link className="home-secondary mt-7 inline-block" href="/models">Explore models & pricing ↗</Link>
+    </section>
+    <section data-chapter="workspace" className="home-wrap workspace-sector grid gap-6 md:grid-cols-2">
+      <article className="home-panel"><div className="panel-coordinate">01 / Conversation space</div><p className="home-kicker">For everyday ideas</p><h2 className="home-heading">A fresh perspective.<br/>One conversation away.</h2><p className="home-copy mt-5">Choose a model, ask a question, and keep your work together. The playground brings conversations, model selection, and useful tools into one focused space.</p><Link href="/playground" className="primary-action mt-7 inline-block">Open the playground ↗</Link></article>
+      <article className="home-panel"><div className="panel-coordinate">02 / Creation space</div><p className="home-kicker">For your next build</p><h2 className="home-heading">Your idea.<br/>Your integration.</h2><p className="home-copy mt-5">Use the chat-completions endpoint with a model from the catalogue. Manage keys in your account and inspect usage in your dashboard.</p><div className="home-cta"><Link href="/account" className="home-secondary">Manage API keys</Link><Link href="/dashboard" className="text-sm text-zinc-300">View usage ↗</Link></div></article>
+    </section>
+    <section data-chapter="journey" className="journey-sector"><div className="home-wrap"><p className="home-kicker">02 / Global possibilities. A familiar way in.</p><h2 className="home-heading">From a question<br/>to your next creation.</h2><div className="mt-12 grid gap-8 md:grid-cols-3">{[
+      ["01","Find your fit.","Compare models and their current rates. Choose what suits the task in front of you."],
+      ["02","Make it local.","Review the available top-up plans and payment methods, with clear amounts before checkout."],
+      ["03","Make something.","Chat or build with the API. Follow your balance and request history in the usage dashboard."],
+    ].map(([n,title,copy])=><article key={n} className="border-t border-zinc-700 pt-5"><span className="text-sm text-purple-300">{n}</span><h3 className="mt-5 text-xl font-semibold">{title}</h3><p className="home-copy mt-3">{copy}</p></article>)}</div></div></section>
+    <section data-chapter="developers" className="home-wrap developer-sector grid items-center gap-12 lg:grid-cols-2"><div className="transmission-lines"><OrbitArtwork variant="signal"/></div><div><p className="home-kicker">03 / Hello, builders</p><h2 className="home-heading">A little code.<br/><span className="cosmic-gradient">A lot of possibility.</span></h2><p className="home-copy mt-5">Connect your app to the chat-completions gateway. Choose a model from the catalogue, add your key, and send your first request. Keep API secrets on your server.</p><Link href="/docs" className="home-secondary mt-7 inline-block">Explore developer documentation ↗</Link></div><div className="home-panel relative min-w-0"><p className="home-kicker">cURL / chat completions</p><CopyButton text={request}/><pre className="overflow-x-auto pt-6 font-mono text-xs leading-7 text-purple-200"><code>{request}</code></pre></div></section>
+    <section data-chapter="credits" className="home-wrap credits-sector"><div className="chapter-orbit"><OrbitArtwork/></div><p className="home-kicker">04 / Keep it clear</p><div className="grid gap-8 md:grid-cols-2"><div><h2 className="home-heading">Rupees in.<br/>Possibilities out.</h2><p className="home-copy mt-5">Model rates and purchase plans come from the service. See current prices before deciding what to use.</p></div><div className="home-panel"><h3 className="text-xl font-semibold">Know the cost before you create.</h3><p className="home-copy mt-4">Input and output rates differ by model. Your account keeps usage and balance together.</p><div className="home-cta"><Link href="/topup" className="primary-action">View top-up options</Link><Link href="/models" className="text-sm">Compare model rates ↗</Link></div></div></div></section>
+    <section data-chapter="questions" className="home-wrap faq-sector grid gap-12 md:grid-cols-2"><div><p className="home-kicker">A few things, explained</p><h2 className="home-heading">Good questions.<br/>Clear answers.</h2></div><div>{questions.map(([q,a])=><details key={q} className="border-b border-zinc-800 py-5"><summary className="cursor-pointer font-medium">{q}</summary><p className="home-copy pt-4">{a}</p></details>)}</div></section>
+    <section data-chapter="destination" className="final-sector"><div className="destination-art"><OrbitArtwork variant="portal"/></div><div><BrandMark width={54} className="final-mark"/><p className="home-kicker">Your next chapter</p><h2 className="home-heading">A big idea?<br/>Bring a <span className="cosmic-gradient">sathi.</span></h2><p className="home-copy mt-5">You bring the curiosity. Find your starting point.</p><PortalLink className="mt-7">Start a conversation</PortalLink></div></section>
+  </main>
+  <footer className="home-footer"><Brand/><nav aria-label="Footer"><Link href="/docs">Docs</Link><Link href="/models">Models</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></footer>
+</div></CosmicJourney>}

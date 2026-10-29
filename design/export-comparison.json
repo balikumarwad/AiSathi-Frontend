@@ -1,0 +1,27 @@
+[
+  {
+    "file": "package.json",
+    "inExport": true,
+    "matchesCheckout": true
+  },
+  {
+    "file": "app/page.tsx",
+    "inExport": true,
+    "matchesCheckout": true
+  },
+  {
+    "file": "app/playground/page.tsx",
+    "inExport": true,
+    "matchesCheckout": true
+  },
+  {
+    "file": "app/account/page.tsx",
+    "inExport": true,
+    "matchesCheckout": true
+  },
+  {
+    "file": "app/api/keys/route.ts",
+    "inExport": true,
+    "matchesCheckout": true
+  }
+]

@@ -79,10 +79,10 @@ export default function AdminPage() {
   const shown = tab === "down" ? recent.filter((r) => r.vote === "down") : recent;
 
   return (
-    <>
+    <div className="workspace-page min-h-screen">
       <Nav />
-      <main className="mx-auto max-w-5xl px-6 py-12">
-        <h1 className="text-3xl font-bold">AISathi Admin</h1>
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 py-12">
+        <div className="workspace-identity">AIsathi / Operations</div><h1 className="text-3xl font-bold">AISathi Admin</h1>
 
         {!ready && <p className="mt-8 text-zinc-400">Loading…</p>}
 
@@ -262,6 +262,6 @@ export default function AdminPage() {
           </>
         )}
       </main>
-    </>
+    </div>
   );
 }

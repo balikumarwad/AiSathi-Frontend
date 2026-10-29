@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Support the loopback address used by the local preview as well as localhost.
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [
       {

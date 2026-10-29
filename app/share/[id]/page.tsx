@@ -41,7 +41,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
       {!share ? (
-        <main className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-2xl px-6 py-24 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/mark.svg" alt="" aria-hidden className="mx-auto h-16 w-auto opacity-70" />
           <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-bold">This shared chat isn&apos;t available</h1>
@@ -51,7 +51,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
           </Link>
         </main>
       ) : (
-        <main className="mx-auto w-full max-w-3xl px-6 py-10">
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-3xl px-6 py-10">
           <div className="mb-2 text-xs uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>Shared conversation</div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{share.title}</h1>
 

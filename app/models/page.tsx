@@ -49,7 +49,7 @@ export default async function ModelsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
+    <div className="workspace-page min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
       <ModelsTable initial={initial} />
       <footer

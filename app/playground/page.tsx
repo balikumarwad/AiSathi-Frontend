@@ -615,13 +615,30 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    const fit = () => boxRef.current?.style.setProperty("--picker-height", `${Math.max(100, (viewport?.height ?? innerHeight) - 112)}px`);
+    fit();
+    viewport?.addEventListener("resize", fit);
+    window.addEventListener("resize", fit);
+    return () => { viewport?.removeEventListener("resize", fit); window.removeEventListener("resize", fit); };
+  }, [open]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && boxRef.current?.contains(document.activeElement)) {
+        setOpen(false); triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, []);
 
   const ql = q.trim().toLowerCase();
@@ -656,6 +673,10 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
   return (
     <div ref={boxRef} className="relative">
       <button
+        ref={triggerRef}
+        aria-label={`Choose model: ${shortName}`}
+        aria-expanded={open}
+        aria-controls="chat-model-picker"
         onClick={() => setOpen(!open)}
         className="flex max-w-[40vw] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/5 sm:max-w-xs"
         style={{ color: "var(--text-muted)", border: "1px solid var(--border-hairline)" }}
@@ -665,13 +686,14 @@ function ModelPicker({ models, model, onPick }: { models: CatalogModel[]; model:
         <ChevronDown size={13} style={{ color: "var(--text-faint)" }} />
       </button>
       {open && (
-        <div className="absolute bottom-full z-30 mb-2 w-[420px] max-w-[85vw] overflow-hidden" style={{ background: "#131313", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
+        <div id="chat-model-picker" className="fixed inset-x-4 top-24 z-40 flex max-h-[var(--picker-height,70dvh)] flex-col overflow-hidden sm:absolute sm:inset-x-auto sm:bottom-full sm:top-auto sm:mb-2 sm:w-[420px] sm:max-w-[85vw]" style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
           <input
+            aria-label="Search available models"
             autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${models.length} models…`}
-            className="w-full px-4 py-3 text-sm outline-none"
+            className="w-full flex-none px-4 py-3 text-sm outline-none"
             style={{ background: "transparent", borderBottom: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
           />
-          <div className="sathi-scroll max-h-72 overflow-y-auto pb-1">
+          <div className="sathi-scroll min-h-0 max-h-72 overflow-y-auto pb-1">
             {!ql && (
               <>
                 <div style={groupLabel}>Recommended</div>
@@ -2193,7 +2215,7 @@ export default function Playground() {
           style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-md)", color: "var(--text-body)" }}
         >
           <span className="min-w-0 flex-1">
-            <Sparkles size={14} className="mr-1 inline-block align-text-bottom" />You&apos;re trying AIsathi free — <strong>{demoLeft}</strong> {demoLeft === 1 ? "message" : "messages"} left. Sign up for unlimited chats, images &amp; every model.
+            <Sparkles size={14} className="mr-1 inline-block align-text-bottom" />You&apos;re trying AIsathi free — <strong>{demoLeft}</strong> {demoLeft === 1 ? "message" : "messages"} left. Sign in to save conversations and manage your credits.
           </span>
           <a href="/login" className="flex-none font-semibold underline underline-offset-2" style={{ color: "var(--text-strong)" }}>
             Sign up free →
@@ -2217,7 +2239,7 @@ export default function Playground() {
           )}
         </div>
       )}
-      <div className="relative flex flex-col gap-2 p-3" style={{ background: "#141414", border: "1px solid var(--border-strong)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+      <div className="chat-composer relative flex flex-col gap-2 p-3" style={{ background: "#141414", border: "1px solid var(--border-strong)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
         {slashOpen && slashMatches.length > 0 && (
           <div className="absolute bottom-full left-3 z-30 mb-2 w-80 max-w-[85vw] overflow-hidden" style={{ background: "#131313", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
             {slashMatches.map((c) => (
@@ -2299,6 +2321,7 @@ export default function Playground() {
         </div>
         <textarea
           ref={inputRef}
+          aria-label="Message to your selected model"
           rows={1}
           value={input}
           onChange={(e) => {
@@ -2332,7 +2355,7 @@ export default function Playground() {
             : "Setting up your account…"
           }
           disabled={!apiKey && !session && demoLeft <= 0}
-          className="max-h-44 w-full resize-none bg-transparent px-2 pt-1 text-[15px] outline-none placeholder:text-zinc-600"
+          className="min-h-16 max-h-44 w-full resize-none bg-transparent px-2 pt-1 text-[15px] outline-none placeholder:text-zinc-600"
           style={{ color: "var(--text-strong)" }}
         />
         <div className="flex items-center gap-2">
@@ -2441,7 +2464,7 @@ export default function Playground() {
           <input
             value={chatQuery}
             onChange={(e) => setChatQuery(e.target.value)}
-            placeholder="Search chats…"
+            aria-label="Search conversations" placeholder="Search chats…"
             className="mt-2 w-full rounded-md px-3 py-1.5 text-xs outline-none"
             style={{ background: "var(--surface-inset)", border: "1px solid var(--border-hairline)", color: "var(--text-strong)" }}
           />
@@ -2450,7 +2473,7 @@ export default function Playground() {
       <div className="sathi-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         {chats.length === 0 && (
           <p className="px-2 pt-2 text-xs leading-relaxed" style={{ color: "var(--text-faint)" }}>
-            Your conversations live here — stored in your browser only. Double-click to rename.
+            Your conversations live here. Browser history can sync when you sign in. Double-click a title to rename.
           </p>
         )}
         {(() => {
@@ -2477,7 +2500,7 @@ export default function Playground() {
             >
               <span className="block truncate">{c.title || "New chat"}</span>
             </button>
-            <button onClick={() => deleteChat(c.id)} className="flex-none px-2 opacity-0 transition-opacity group-hover:opacity-100" style={{ color: "var(--text-faint)" }} title="Delete chat">
+            <button onClick={() => deleteChat(c.id)} className="flex-none px-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 focus:opacity-100" style={{ color: "var(--text-faint)" }} title="Delete chat">
               ×
             </button>
           </div>
@@ -2576,36 +2599,36 @@ export default function Playground() {
   );
 
   return (
-    <div className="flex h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
+    <div className="chat-shell flex h-dvh flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
       {memoryModal}
       {memoryToastEl}
       <div className="flex min-h-0 flex-1">
         {/* Desktop sidebar */}
-        <aside className="hidden w-64 flex-none flex-col md:flex" style={{ borderRight: "1px solid var(--border-hairline)", background: "#0d0d0d" }}>
+        <aside className="hidden w-64 flex-none flex-col md:flex" style={{ borderRight: "1px solid var(--border-hairline)", background: "var(--surface)" }}>
           {sidebar}
         </aside>
         {/* Mobile drawer */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-            <aside className="absolute bottom-0 left-0 top-0 flex w-72 flex-col" style={{ background: "#0d0d0d", borderRight: "1px solid var(--border-strong)" }}>
+            <aside className="absolute bottom-0 left-0 top-0 flex w-72 flex-col" style={{ background: "var(--surface)", borderRight: "1px solid var(--border-strong)" }}>
               {sidebar}
             </aside>
           </div>
         )}
 
-        <main className="relative flex min-w-0 flex-1 flex-col">
+        <main id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 flex-col">
           {/* Reply-language toggle, floated top-right on the empty state. */}
           {messages.length === 0 && (
-            <div className="absolute right-4 top-3 z-20">{langToggle}</div>
+            <div className="flex flex-none justify-end px-4 py-2">{langToggle}</div>
           )}
           {usageBanner}
           {fbPromoBanner}
           {/* Chat header (only when a conversation is open) */}
           {messages.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-2" style={{ borderBottom: "1px solid var(--border-hairline)" }}>
-              <button onClick={() => setSidebarOpen(true)} className="flex items-center rounded-md px-2 py-1.5 md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
+              <button aria-label="Open conversation history" onClick={() => setSidebarOpen(true)} className="flex items-center rounded-md px-2 py-1.5 md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
                 <Menu size={16} />
               </button>
               <span className="min-w-0 flex-1 truncate text-sm font-medium" onDoubleClick={() => chat && renameChat(chat.id)} title="Double-click to rename">
@@ -2629,14 +2652,16 @@ export default function Playground() {
           )}
 
           {messages.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6">
+            <div className="chat-arrival flex flex-1 flex-col items-center justify-center px-6">
               <div className="w-full max-w-2xl text-center">
+                <div className="chat-beacon" aria-hidden="true"><i /><b /><span /></div>
+                <p className="chat-coordinate">YOUR SPACE TO EXPLORE</p>
                 {chats.length > 0 && (
-                  <button onClick={() => setSidebarOpen(true)} className="mb-6 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
+                  <button aria-label="Open conversation history" onClick={() => setSidebarOpen(true)} className="mb-6 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs md:hidden" style={{ border: "1px solid var(--border-hairline)", color: "var(--text-muted)" }}>
                     <Menu size={14} /> Chat history
                   </button>
                 )}
-                <div className="font-[family-name:var(--font-script)] text-2xl" style={{ color: "var(--ev-red)" }}>{g.np}</div>
+                <div className="font-[family-name:var(--font-script)] text-2xl" style={{ color: "var(--text-accent)" }}>{g.np}</div>
                 <h1 className="mt-1 font-[family-name:var(--font-display)] text-4xl font-normal tracking-tight sm:text-5xl">{g.en}</h1>
                 <div className="mt-8 text-left">{composer}</div>
                 <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -2656,7 +2681,7 @@ export default function Playground() {
                   <p className="mt-6 text-sm" style={{ color: "var(--text-muted)" }}>
                     Just start typing — {DEMO_CAP} free messages, no sign-up. Or{" "}
                     <a href="/login" className="font-semibold no-underline" style={{ color: "var(--ev-red)" }}>sign up free</a>
-                    {" "}for unlimited chats &amp; every model.
+                    {" "}to save your work and manage your credits.
                   </p>
                 )}
               </div>

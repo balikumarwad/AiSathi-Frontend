@@ -42,6 +42,7 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(!initial.length);
 
   // The server renders the table already. This only runs when that came back
   // empty — a build with no upstream key, or a cold ISR miss — so the page
@@ -52,7 +53,8 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
     fetch("/api/v1/models")
       .then((r) => r.json())
       .then((j) => (j.data ? setModels(j.data) : setError(j.error?.message ?? "failed")))
-      .catch((e) => setError(String(e)));
+      .catch(() => setError("Could not load models. Please reload to retry."))
+      .finally(() => setLoading(false));
   }, [initial.length]);
 
   const filtered = useMemo(() => {
@@ -74,7 +76,7 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-[1100px] px-6 pb-20 pt-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1100px] px-6 pb-20 pt-10">
         <h1 className="m-0 mb-2 font-[family-name:var(--font-display)] text-[34px] font-normal tracking-tight">
           Models
         </h1>
@@ -86,7 +88,7 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search models…"
+          aria-label="Search models" placeholder="Search models…"
           className="mb-4 w-full text-sm outline-none"
           style={{
             padding: "13px 16px",
@@ -100,7 +102,7 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
         <div className="mb-6 flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <button
-              key={f.key}
+              key={f.key} aria-pressed={filter === f.key}
               onClick={() => setFilter(f.key)}
               className="px-4 py-[7px] text-[13px] font-semibold transition-colors"
               style={{
@@ -115,6 +117,7 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
           ))}
         </div>
 
+        {loading && <p role="status" className="mb-4 text-sm">Loading model prices…</p>}
         {error && <p className="mb-4 text-sm" style={{ color: "var(--ev-red)" }}>{error}</p>}
 
         <div style={{ border: "1px solid var(--border-hairline)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
@@ -159,19 +162,20 @@ export default function ModelsTable({ initial }: { initial: Model[] }) {
                       </span>
                     )}
                   </div>
-                  <div className="mt-1.5 font-[family-name:var(--font-mono)] text-xs" style={{ color: "var(--text-faint)" }}>
+                  <div className="mt-1.5 break-all font-[family-name:var(--font-mono)] text-xs" style={{ color: "var(--text-faint)" }}>
                     {m.id}
                   </div>
                 </div>
                 <span className="text-sm" style={{ color: "var(--text-body)" }}>
+                  <span className="mr-2 text-xs text-zinc-400 sm:hidden">Context tokens</span>
                   {m.context_length?.toLocaleString() ?? "—"}
                 </span>
-                <span className="text-sm font-semibold">{fmtPrice(m.pricing.prompt_npr_per_m)}</span>
-                <span className="text-sm font-semibold">{fmtPrice(m.pricing.completion_npr_per_m)}</span>
+                <span className="text-sm font-semibold"><span className="mr-2 text-xs font-normal text-zinc-400 sm:hidden">Input / M tokens</span>{fmtPrice(m.pricing.prompt_npr_per_m)}</span>
+                <span className="text-sm font-semibold"><span className="mr-2 text-xs font-normal text-zinc-400 sm:hidden">Output / M tokens</span>{fmtPrice(m.pricing.completion_npr_per_m)}</span>
               </div>
             );
           })}
-          {filtered.length === 0 && !error && (
+          {filtered.length === 0 && !error && !loading && (
             <div className="px-5 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
               No models match &quot;{query}&quot;. Try a different search or clear the filter.
             </div>

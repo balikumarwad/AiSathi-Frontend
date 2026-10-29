@@ -10,7 +10,7 @@ export default function Terms() {
   return (
     <div className="min-h-screen bg-black text-zinc-100">
       <Nav />
-      <main className="mx-auto max-w-3xl px-6 py-14">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl px-6 py-14">
         <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold">Terms of Service</h1>
         <p className="mt-2 text-sm text-zinc-500">Last updated: July 2026 · Short and readable on purpose.</p>
 

@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col bg-black text-zinc-100">
       <Nav />
-      <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/mark-loader.svg" alt="" aria-hidden className="h-20 w-auto opacity-80" />
         <h1 lang="ne" className="mt-8 font-[family-name:var(--font-display)] text-4xl font-bold sm:text-6xl">

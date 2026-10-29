@@ -70,6 +70,7 @@ export default function Dashboard() {
     const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (s) loadSession(s);
+      else { setData(null); setApiKey(""); }
     });
     return () => sub.subscription.unsubscribe();
   }, [loadSession]);
@@ -100,10 +101,10 @@ export default function Dashboard() {
     session?.user.email?.split("@")[0];
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
+    <div className="workspace-page min-h-screen" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <Nav />
-      <main className="mx-auto w-full max-w-4xl px-6 py-10">
-        <h1 className="m-0 font-[family-name:var(--font-display)] text-[34px] font-normal tracking-tight">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-4xl px-6 py-10">
+        <div className="workspace-identity">AIsathi / Usage observatory</div><h1 className="m-0 font-[family-name:var(--font-display)] text-[34px] font-normal tracking-tight">
           Dashboard
         </h1>
         {session && (
@@ -128,7 +129,7 @@ export default function Dashboard() {
               <input
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="np-… API key"
+                aria-label="API key to inspect" type="password" autoComplete="off" placeholder="np-… API key"
                 className="min-w-56 flex-1 px-4 py-2.5 text-sm outline-none"
                 style={{
                   background: "var(--surface-inset)",
@@ -149,7 +150,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {error && <p className="mt-4 text-sm" style={{ color: "var(--ev-red)" }}>{error}</p>}
+        {error && <p role="alert" className="mt-4 text-sm" style={{ color: "var(--ev-red)" }}>{error}</p>}
         {busy && !data && <p className="mt-6 text-sm" style={{ color: "var(--text-muted)" }}>Loading your usage…</p>}
 
         {data && (

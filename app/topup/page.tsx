@@ -31,6 +31,8 @@ function TopupInner() {
   const [amount, setAmount] = useState(500);
   const [market, setMarket] = useState<"np" | "intl">("np");
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ status: string; credited_npr?: number; balance_npr?: number; note?: string } | null>(null);
@@ -38,9 +40,10 @@ function TopupInner() {
   useEffect(() => {
     setApiKey(localStorage.getItem("nepalai_key") ?? "");
     fetch("/api/v1/plans")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Plans unavailable"); return r.json(); })
       .then((j) => setPlans((j.data ?? []).filter((p: Plan) => p.market)))
-      .catch(() => {});
+      .catch(() => setPlansError(true))
+      .finally(() => setPlansLoading(false));
   }, []);
 
   async function buyPlan(plan: Plan) {
@@ -103,13 +106,13 @@ function TopupInner() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-14">
-      <h1 className="text-2xl font-bold">Top up credits</h1>
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-md px-6 py-14">
+      <div className="workspace-identity">AIsathi / Credits & balance</div><h1 className="text-2xl font-bold">Top up credits</h1>
 
       {pidx ? (
         <div className="mt-8 rounded-xl border border-zinc-800 p-6">
           {busy && <p className="text-zinc-400">Verifying payment with Khalti…</p>}
-          {error && <p className="text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-red-400">{error}</p>}
           {result && result.status === "completed" && (
             <>
               <p className="flex items-center gap-2 text-2xl"><CheckCircle2 className="text-green-400" /> Payment verified</p>
@@ -125,25 +128,25 @@ function TopupInner() {
             </>
           )}
           {result && result.status !== "completed" && (
-            <p className="text-yellow-400">Payment status: {result.status} — nothing was charged to your balance.</p>
+            <p className="text-yellow-400">Payment status: {result.status}. Check your balance before trying again.</p>
           )}
         </div>
       ) : (
         <div className="mt-8 space-y-4">
           {stripeResult === "success" && (
             <div className="flex items-center gap-2 rounded-lg border border-green-800 bg-green-900/20 p-3 text-sm text-green-300">
-              <CheckCircle2 size={16} className="flex-none" /> Stripe payment received — credits appear once the webhook settles (usually seconds).
+              <CheckCircle2 size={16} className="flex-none" /> Returned from Stripe checkout. Payment is not confirmed here; check your usage dashboard for the verified balance.
             </div>
           )}
           {stripeResult === "cancel" && (
             <div className="rounded-lg border border-yellow-800 bg-yellow-900/20 p-3 text-sm text-yellow-300">
-              Stripe checkout was cancelled — nothing was charged.
+              Checkout was cancelled. If you see a bank charge, check your account balance or contact support.
             </div>
           )}
           <input
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="np-… API key"
+            aria-label="API key for this top-up" type="password" autoComplete="off" placeholder="np-… API key"
             className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm outline-none focus:border-zinc-600"
           />
 
@@ -152,6 +155,7 @@ function TopupInner() {
             {(["np", "intl"] as const).map((m) => (
               <button
                 key={m}
+                aria-pressed={market === m}
                 onClick={() => setMarket(m)}
                 className={
                   "flex-1 rounded-md px-3 py-1.5 " +
@@ -164,6 +168,9 @@ function TopupInner() {
           </div>
 
           {/* Plans for the selected market */}
+          {plansLoading && <p role="status" className="home-copy">Loading top-up plans…</p>}
+          {plansError && <p role="alert" className="home-copy">Plans could not be loaded. Reload to retry.</p>}
+          {!plansLoading && !plansError && !plans.some(p => p.market === market) && <p className="home-copy">No plans are available for this market right now.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             {plans
               .filter((p) => p.market === market)
@@ -206,6 +213,7 @@ function TopupInner() {
             {PRESETS.map((p) => (
               <button
                 key={p}
+                aria-pressed={amount === p}
                 onClick={() => setAmount(p)}
                 className={
                   "flex-1 rounded-lg border px-3 py-2 text-sm " +
@@ -217,6 +225,7 @@ function TopupInner() {
             ))}
           </div>
           <input
+            aria-label="Top-up amount in Nepali rupees"
             type="number"
             value={amount}
             min={50}
@@ -226,7 +235,7 @@ function TopupInner() {
           />
           <button
             onClick={startTopup}
-            disabled={busy || !apiKey || amount < 50}
+            disabled={busy || !apiKey.trim() || !Number.isFinite(amount) || amount < 50 || amount > 50000}
             className="w-full rounded-lg bg-purple-600 px-5 py-3 font-medium hover:bg-purple-500 disabled:opacity-40"
           >
             {busy ? "Starting…" : <>Pay <span lang="ne">रू</span> {amount.toLocaleString()} with Khalti</>}
@@ -244,7 +253,7 @@ function TopupInner() {
 
 export default function TopupPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="workspace-page min-h-screen bg-zinc-950 text-zinc-100">
       <Nav />
       <Suspense fallback={<main className="mx-auto max-w-md px-6 py-14 text-zinc-400">Loading…</main>}>
         <TopupInner />

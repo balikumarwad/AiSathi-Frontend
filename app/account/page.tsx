@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Nav from "@/components/Nav";
+import CopyButton from "@/components/CopyButton";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type KeyRow = {
@@ -27,13 +28,20 @@ export default function AccountPage() {
   const [keyName, setKeyName] = useState("my-app");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
 
   const sb = supabaseBrowser();
 
   const loadKeys = useCallback(async (token: string) => {
+    setLoading(true);
+    try {
     const res = await fetch("/api/keys", { headers: { Authorization: `Bearer ${token}` } });
     const json = await res.json();
-    if (res.ok) setKeys(json.data ?? []);
+    if (!res.ok) throw new Error("Key list unavailable");
+    setKeys(json.data ?? []);
+    } catch { setError("Could not load API keys. Please try again."); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -45,6 +53,7 @@ export default function AccountPage() {
     const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (s) loadKeys(s.access_token);
+      else { setKeys([]); setNewKey(""); }
     });
     return () => sub.subscription.unsubscribe();
   }, [sb, loadKeys]);
@@ -53,6 +62,7 @@ export default function AccountPage() {
     if (!session) return;
     setBusy(true);
     setError("");
+    try {
     const res = await fetch("/api/keys", {
       method: "POST",
       headers: {
@@ -62,16 +72,19 @@ export default function AccountPage() {
       body: JSON.stringify({ name: keyName }),
     });
     const json = await res.json();
-    setBusy(false);
     if (!res.ok) return setError(json.error?.message ?? `Error ${res.status}`);
     setNewKey(json.key);
     localStorage.setItem("nepalai_key", json.key); // playground picks it up
-    loadKeys(session.access_token);
+    await loadKeys(session.access_token);
+    } catch { setError("Could not create your key. Check your connection and try again."); }
+    finally { setBusy(false); }
   }
 
   async function revoke(id: string) {
     if (!session) return;
-    await fetch("/api/keys", {
+    setBusy(true); setError("");
+    try {
+    const res = await fetch("/api/keys", {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -79,14 +92,21 @@ export default function AccountPage() {
       },
       body: JSON.stringify({ id }),
     });
-    loadKeys(session.access_token);
+    if (!res.ok) throw new Error("Revoke failed");
+    setPendingRevoke(null);
+    const revokedPrefix = keys.find(key => key.id === id)?.key_prefix;
+    if (revokedPrefix && newKey.startsWith(revokedPrefix)) setNewKey("");
+    await loadKeys(session.access_token);
+    } catch { setError("Could not revoke the key. It may still be active. Please retry."); }
+    finally { setBusy(false); }
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="workspace-page min-h-screen bg-zinc-950 text-zinc-100">
       <Nav />
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">Account</h1>
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-6 py-12">
+        <div className="workspace-identity">AIsathi / Identity & access</div><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">Your workspace</h1>
+        <p className="home-copy mt-3">Your profile and the keys connecting your applications to AIsathi.</p>
 
         {!sb && (
           <p className="mt-6 text-sm text-yellow-400">Auth is not configured on this deployment.</p>
@@ -125,9 +145,10 @@ export default function AccountPage() {
             </div>
 
             {newKey && (
-              <div className="rounded-xl border border-green-800 bg-green-900/20 p-4">
+              <div className="relative rounded-xl border border-green-800 bg-green-900/20 p-4 pt-14">
                 <div className="text-sm font-medium text-green-300">
-                  Your new API key — copy it now, it will never be shown again:
+                  <CopyButton text={newKey} label="Copy API key" />
+                  Your new API key — copy it now. The key list only shows its prefix:
                 </div>
                 <code className="mt-2 block break-all rounded bg-black/50 p-3 font-[family-name:var(--font-mono)] text-sm">
                   {newKey}
@@ -140,24 +161,24 @@ export default function AccountPage() {
 
             <div>
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">API keys</h2>
-              <div className="mt-3 flex gap-3">
+              <div className="mt-3 flex flex-wrap gap-3">
                 <input
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
-                  placeholder="key name"
+                  aria-label="API key name" maxLength={80} placeholder="key name"
                   className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm outline-none focus:border-zinc-600"
                 />
                 <button
                   onClick={createKey}
-                  disabled={busy}
+                  disabled={busy || !keyName.trim()}
                   className="rounded-lg bg-[var(--primary)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--primary-hover)] disabled:opacity-40"
                 >
-                  Create key
+                  {busy ? "Working…" : "Create key"}
                 </button>
               </div>
-              {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-              <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800">
-                <table className="w-full text-left text-sm">
+              {error && <p role="alert" className="mt-2 text-sm text-red-400">{error}</p>}
+              <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-800">
+                <table className="w-full min-w-[560px] text-left text-sm">
                   <thead className="bg-zinc-900 text-zinc-400">
                     <tr>
                       <th className="px-4 py-2.5 font-medium">Name</th>
@@ -170,7 +191,7 @@ export default function AccountPage() {
                   <tbody>
                     {keys.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-3 text-zinc-500">No keys yet — create one above.</td>
+                        <td colSpan={5} className="px-4 py-3 text-zinc-500">{loading ? "Loading keys…" : error ? "Keys could not be loaded." : "No keys yet — create one above."}</td>
                       </tr>
                     )}
                     {keys.map((k) => (
@@ -185,7 +206,7 @@ export default function AccountPage() {
                         </td>
                         <td className="px-4 py-2 text-right">
                           {k.active && (
-                            <button onClick={() => revoke(k.id)} className="text-xs text-red-400 hover:text-red-300">
+                            <button onClick={() => setPendingRevoke(k.id)} className="text-xs text-red-400 hover:text-red-300">
                               revoke
                             </button>
                           )}
@@ -197,6 +218,7 @@ export default function AccountPage() {
               </div>
             </div>
 
+            {pendingRevoke && <div role="alert" className="home-panel"><h3 className="font-semibold">Revoke this API key?</h3><p className="home-copy mt-2">Applications using it will lose access. This cannot be undone.</p><div className="home-cta"><button disabled={busy} onClick={() => revoke(pendingRevoke)} className="home-secondary">{busy ? "Revoking…" : "Revoke key"}</button><button disabled={busy} onClick={() => setPendingRevoke(null)}>Keep key</button></div></div>}
             <p className="text-sm text-zinc-500">
               Next: <a href="/topup" className="text-purple-400 hover:text-purple-300">top up credits</a> and{" "}
               <a href="/playground" className="text-purple-400 hover:text-purple-300">try your key in the playground</a>.

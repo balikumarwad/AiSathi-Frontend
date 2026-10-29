@@ -4,6 +4,10 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Geist_Mono, Inter, Mukta } from "next/font/google";
 import "./globals.css";
+import "./evolution.css";
+import "./universe-environment.css";
+import "./cosmic-public.css";
+import Universe from "@/components/Universe";
 import { ldScript, organizationLd, websiteLd } from "@/lib/seo";
 
 // Microsoft Clarity project id (public analytics tag — ships to the browser).
@@ -98,7 +102,9 @@ export default function RootLayout({
         <script {...ldScript(websiteLd())} />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <Universe />
+        <div className="universe-content">{children}</div>
         {/* Microsoft Clarity — session recordings + heatmaps (audit item). */}
         <Script id="ms-clarity" strategy="afterInteractive">
           {`(function(c,l,a,r,i,t,y){

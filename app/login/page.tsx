@@ -9,6 +9,7 @@
  */
 
 import Link from "next/link";
+import Brand from "@/components/Brand";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
@@ -147,14 +148,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
+    <div className="auth-shell flex min-h-screen flex-col" style={{ background: "var(--surface-page)", color: "var(--text-strong)" }}>
       <header className="p-6">
-        <Link href="/" className="text-[22px] font-bold tracking-tight">
-          <span style={{ color: "var(--ev-red)" }}>AI</span>sathi
-        </Link>
+        <Brand />
       </header>
 
-      <main className="flex flex-1 flex-col items-center px-6 pb-16 pt-14">
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col items-center px-6 pb-16 pt-14">
         <div className="w-full max-w-[420px] text-center">
           <h1
             className="m-0 font-[family-name:var(--font-display)] text-[40px] font-normal leading-none tracking-tight"
@@ -164,7 +163,7 @@ export default function LoginPage() {
           <div
             lang="ne"
             className="mt-1.5 font-[family-name:var(--font-script)] text-xl"
-            style={{ color: "var(--ev-red)" }}
+            style={{ color: "var(--text-accent)" }}
           >
             {isSignup ? "खाता बनाउनुहोस्" : "फेरि स्वागत छ"}
           </div>
@@ -240,7 +239,7 @@ export default function LoginPage() {
                       <button
                         onClick={() => { setStep("email"); setError(""); }}
                         className="ml-3 flex-none text-[13px] font-semibold"
-                        style={{ color: "var(--ev-red)" }}
+                        style={{ color: "var(--text-accent)" }}
                       >
                         Change
                       </button>
@@ -331,7 +330,7 @@ export default function LoginPage() {
                 <button
                   onClick={() => { setIsSignup(!isSignup); setError(""); setNotice(""); }}
                   className="font-semibold"
-                  style={{ color: "var(--ev-red)" }}
+                  style={{ color: "var(--text-accent)" }}
                 >
                   {isSignup ? "Sign in" : "Sign up"}
                 </button>
